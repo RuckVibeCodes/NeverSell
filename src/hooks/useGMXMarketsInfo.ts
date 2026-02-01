@@ -46,6 +46,10 @@ export interface MarketInfo {
   borrowingRateShort?: string;
   netRateLong?: string;
   netRateShort?: string;
+  // APY from GMX /apy endpoint (decimal: 0.15 = 15%)
+  apy?: number;
+  baseApy?: number;
+  bonusApr?: number;
 }
 
 /**
@@ -101,6 +105,18 @@ interface RESTMarketInfo {
 
 interface RESTMarketsResponse {
   markets: RESTMarketInfo[];
+}
+
+// APY API response type
+interface APYMarketData {
+  apy: number;       // Total APY as decimal (0.15 = 15%)
+  baseApy: number;   // Base APY from trading fees
+  bonusApr: number;  // Bonus APR from incentives
+}
+
+interface APYResponse {
+  markets: Record<string, APYMarketData>;
+  glvs?: Record<string, APYMarketData>;
 }
 
 /**
@@ -166,6 +182,32 @@ async function fetchRESTMarketsInfo(): Promise<RESTMarketInfo[]> {
     
     const data: RESTMarketsResponse = await response.json();
     return data.markets || [];
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Fetch APY data from GMX /apy endpoint
+ * Returns pre-calculated APY values (decimals: 0.15 = 15%)
+ */
+async function fetchAPYData(): Promise<Record<string, APYMarketData>> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  
+  try {
+    // Use 'total' period for all-time APY, could also use '7d' or '30d'
+    const response = await fetch(`${GMX_REST_API.base}/apy?period=total`, {
+      cache: 'no-cache',
+      signal: controller.signal,
+    });
+    
+    if (!response.ok) {
+      throw new Error(`APY API error: ${response.status}`);
+    }
+    
+    const data: APYResponse = await response.json();
+    return data.markets || {};
   } finally {
     clearTimeout(timeoutId);
   }
@@ -261,11 +303,17 @@ export function useGMXMarketsInfo(): GMXMarketsInfoResult {
         }
       }
       
-      // Also fetch REST data for funding/borrowing rates (not in SDK)
+      // Fetch REST data (rates) and APY data in parallel
       try {
-        const restMarkets = await fetchRESTMarketsInfo();
+        const [restMarkets, apyData] = await Promise.all([
+          fetchRESTMarketsInfo().catch(() => [] as RESTMarketInfo[]),
+          fetchAPYData().catch(() => ({} as Record<string, APYMarketData>)),
+        ]);
+        
         setMarkets(prev => {
           const updated = { ...prev };
+          
+          // Merge REST rate data
           for (const restMarket of restMarkets) {
             const key = restMarket.marketToken.toLowerCase();
             if (updated[key]) {
@@ -304,10 +352,24 @@ export function useGMXMarketsInfo(): GMXMarketsInfoResult {
               };
             }
           }
+          
+          // Merge APY data (key is checksummed address from API)
+          for (const [address, data] of Object.entries(apyData)) {
+            const key = address.toLowerCase();
+            if (updated[key]) {
+              updated[key] = {
+                ...updated[key],
+                apy: data.apy,
+                baseApy: data.baseApy,
+                bonusApr: data.bonusApr,
+              };
+            }
+          }
+          
           return updated;
         });
       } catch (restErr) {
-        // REST fallback failed - continue with SDK data only
+        // REST/APY fallback failed - continue with SDK data only
         if (process.env.NODE_ENV === 'development') {
           console.warn('REST API supplement failed:', restErr);
         }
@@ -323,11 +385,17 @@ export function useGMXMarketsInfo(): GMXMarketsInfoResult {
       
       // Try REST API as full fallback
       try {
-        const restMarkets = await fetchRESTMarketsInfo();
+        const [restMarkets, apyData] = await Promise.all([
+          fetchRESTMarketsInfo(),
+          fetchAPYData().catch(() => ({} as Record<string, APYMarketData>)),
+        ]);
+        
         const marketsMap: Record<string, MarketInfo> = {};
         
         for (const restMarket of restMarkets) {
           const key = restMarket.marketToken.toLowerCase();
+          const apy = apyData[restMarket.marketToken] || apyData[key];
+          
           marketsMap[key] = {
             marketToken: restMarket.marketToken,
             indexToken: restMarket.indexToken,
@@ -349,6 +417,9 @@ export function useGMXMarketsInfo(): GMXMarketsInfoResult {
             borrowingRateShort: restMarket.borrowingRateShort,
             netRateLong: restMarket.netRateLong,
             netRateShort: restMarket.netRateShort,
+            apy: apy?.apy,
+            baseApy: apy?.baseApy,
+            bonusApr: apy?.bonusApr,
           };
         }
         

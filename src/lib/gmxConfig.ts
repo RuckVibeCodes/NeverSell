@@ -10,7 +10,9 @@ export const GMX_SDK_CONFIG = {
 
 // REST API endpoints (backup/fallback)
 export const GMX_REST_API = {
+  base: 'https://arbitrum-api.gmxinfra.io',
   marketsInfo: 'https://arbitrum-api.gmxinfra.io/markets/info',
+  apy: 'https://arbitrum-api.gmxinfra.io/apy',
   tokens: 'https://arbitrum-api.gmxinfra.io/tokens',
   prices: 'https://arbitrum-api.gmxinfra.io/prices/tickers',
   glvInfo: 'https://arbitrum-api.gmxinfra.io/glvs/info',

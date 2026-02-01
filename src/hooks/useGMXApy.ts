@@ -83,20 +83,40 @@ function findMarketByPoolName(
 
 /**
  * Convert MarketInfo to PoolAPY
+ * Uses pre-calculated APY from GMX /apy endpoint when available
  */
 function marketToPoolApy(
   market: MarketInfo,
   poolName: GMPoolName
 ): PoolAPY {
-  const { feeApy, performanceApy, totalApy } = calculateTotalApy(market);
   const tvlUsd = getPoolTvlUsd(market);
+  
+  // Use pre-calculated APY from GMX API (apy is decimal: 0.15 = 15%)
+  if (market.apy !== undefined && market.apy > 0) {
+    const totalApy = market.apy * 100; // Convert to percentage
+    const baseApy = (market.baseApy ?? market.apy) * 100;
+    const bonusApr = (market.bonusApr ?? 0) * 100;
+    
+    return {
+      poolName,
+      feeApy: baseApy,
+      perfApy: bonusApr, // Bonus APR acts like performance/incentive
+      totalApy,
+      apy7d: totalApy,
+      tvlUsd,
+      lastUpdated: new Date(),
+    };
+  }
+  
+  // Fallback to calculated APY from rates (less accurate)
+  const { feeApy, performanceApy, totalApy } = calculateTotalApy(market);
   
   return {
     poolName,
     feeApy,
     perfApy: performanceApy,
     totalApy,
-    apy7d: totalApy, // TODO: Calculate actual 7d average from historical data
+    apy7d: totalApy,
     tvlUsd,
     lastUpdated: new Date(),
   };

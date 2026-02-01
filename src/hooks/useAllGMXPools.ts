@@ -110,12 +110,12 @@ function parseRate(rateStr: string | undefined): number {
 
 /**
  * Convert MarketInfo to GMPool
+ * Uses pre-calculated APY from GMX /apy endpoint when available
  */
 function marketToPool(
   market: MarketInfo, 
   tokensData: Record<string, { symbol: string }>
 ): GMPool {
-  const { feeApy, performanceApy, totalApy } = calculateTotalApy(market);
   const tvlUsd = getPoolTvlUsd(market);
   
   const longSymbol = getTokenSymbol(market.longToken, tokensData, market.name);
@@ -129,6 +129,23 @@ function marketToPool(
     ? `${longSymbol}-${longSymbol}`
     : `${longSymbol}-${shortSymbol}`;
 
+  // Use pre-calculated APY from GMX API when available (apy is decimal: 0.15 = 15%)
+  let apy: number;
+  let feeApy: number;
+  let perfApy: number;
+  
+  if (market.apy !== undefined && market.apy > 0) {
+    apy = market.apy * 100; // Convert to percentage
+    feeApy = (market.baseApy ?? market.apy) * 100;
+    perfApy = (market.bonusApr ?? 0) * 100;
+  } else {
+    // Fallback to calculated APY from rates (less accurate)
+    const calculated = calculateTotalApy(market);
+    apy = calculated.totalApy;
+    feeApy = calculated.feeApy;
+    perfApy = calculated.performanceApy;
+  }
+
   return {
     id: market.marketToken,
     symbol,
@@ -137,11 +154,11 @@ function marketToPool(
     shortToken: shortSymbol,
     indexToken: market.indexToken,
     marketToken: market.marketToken,
-    apy: totalApy,
+    apy,
     feeApy,
-    perfApy: performanceApy,
-    apy7d: null, // TODO: Calculate from historical data
-    apy30d: null,
+    perfApy,
+    apy7d: null, // TODO: Fetch 7d APY from /apy?period=7d
+    apy30d: null, // TODO: Fetch 30d APY from /apy?period=30d
     tvlUsd,
     poolType: isSingleSided ? 'single-sided' : 'standard',
     isDisabled: market.isDisabled,
