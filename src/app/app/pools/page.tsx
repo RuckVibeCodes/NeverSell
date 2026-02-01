@@ -6,7 +6,9 @@ import { useAccount, useBalance } from "wagmi";
 import { formatUnits } from "viem";
 import { useGMXApy, formatAPY, getAPYColorClass, formatLastUpdated } from "@/hooks/useGMXApy";
 import { useGMXDeposit } from "@/hooks/useGMXDeposit";
+import { useGMXPosition } from "@/hooks/useGMXPosition";
 import { AAVE_V3_ADDRESSES } from "@/lib/aave";
+import { PoolHarvestCard } from "@/components/pools/PoolHarvestCard";
 import type { Address } from "viem";
 import type { GMPoolName } from "@/lib/gmx";
 
@@ -780,19 +782,31 @@ function DepositModal({ pool, apy, onClose }: DepositModalProps) {
 
 // ========== Main Page Component ==========
 export default function PoolsPage() {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
   const [selectedPool, setSelectedPool] = useState<(typeof pools)[0] | null>(null);
   const [showIndividualPools, setShowIndividualPools] = useState(false);
 
   const { apyData, isLoading, lastUpdated } = useGMXApy();
+  
+  // Get user's GMX pool positions
+  const { 
+    positions: gmxPositions, 
+    totalValueUsd: poolValueUsd, 
+    isLoading: positionsLoading,
+    refetch: refetchPositions,
+  } = useGMXPosition();
 
   const { data: usdcBalance } = useBalance({
-    address: useAccount().address,
+    address,
     token: AAVE_V3_ADDRESSES.USDC as Address,
   });
 
   const totalUsdcBalance = usdcBalance ? parseFloat(formatUnits(usdcBalance.value, 6)) : 0;
+  
+  // Calculate pool earnings (estimate deposited as 95% of current value)
+  const poolDepositedUsd = poolValueUsd > 0 ? poolValueUsd * 0.95 : 0;
+  const poolEarningsUsd = poolValueUsd - poolDepositedUsd;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -823,11 +837,23 @@ export default function PoolsPage() {
             </div>
             <div>
               <p className="text-white/40 text-sm mb-1">In Pools</p>
-              <p className="text-2xl font-bold text-mint">$0.00</p>
+              {positionsLoading ? (
+                <div className="h-8 w-24 bg-white/10 rounded animate-pulse" />
+              ) : (
+                <p className="text-2xl font-bold text-mint">
+                  ${poolValueUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </p>
+              )}
             </div>
             <div>
               <p className="text-white/40 text-sm mb-1">Pool Earnings</p>
-              <p className="text-2xl font-bold text-green-400">$0.00</p>
+              {positionsLoading ? (
+                <div className="h-8 w-24 bg-white/10 rounded animate-pulse" />
+              ) : (
+                <p className="text-2xl font-bold text-green-400">
+                  ${poolEarningsUsd > 0 ? poolEarningsUsd.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0.00'}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -855,6 +881,13 @@ export default function PoolsPage() {
               />
             ))}
           </div>
+
+          {/* Pool Harvest Card - shows when user has pool positions with earnings */}
+          {gmxPositions.length > 0 && poolEarningsUsd > 0 && (
+            <div className="mb-8">
+              <PoolHarvestCard onHarvestComplete={refetchPositions} />
+            </div>
+          )}
 
           {/* How it works banner */}
           <div className="mb-8 p-4 rounded-xl bg-gradient-to-r from-purple-500/10 to-mint/10 border border-purple-500/20">
