@@ -25,6 +25,7 @@ export { useAaveWithdraw } from "./useAaveWithdraw";
 export { useAaveBorrow } from "./useAaveBorrow";
 export { useAaveRepay } from "./useAaveRepay";
 export { useAavePosition } from "./useAavePosition";
+export { useAaveSupplyRates, useAaveSupplyRate, FALLBACK_AAVE_SUPPLY_APY } from "./useAaveSupplyRate";
 
 // GMX hooks (internal - don't expose protocol details to users)
 export { useGMXApy, useGMXPoolApy, useGMXBlendedApy } from "./useGMXApy";

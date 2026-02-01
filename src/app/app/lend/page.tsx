@@ -8,6 +8,7 @@ import Image from "next/image";
 import { useAaveDeposit } from "@/hooks/useAaveDeposit";
 import { useAavePosition } from "@/hooks/useAavePosition";
 import { useGMXApy, formatAPY, formatLastUpdated } from "@/hooks/useGMXApy";
+import { useAaveSupplyRates, FALLBACK_AAVE_SUPPLY_APY } from "@/hooks/useAaveSupplyRate";
 import { AAVE_V3_ADDRESSES } from "@/lib/aave";
 import type { Address } from "viem";
 import type { GMPoolName } from "@/lib/gmx";
@@ -69,11 +70,11 @@ const lendableAssets = [
 
 interface SupplyModalProps {
   asset: typeof lendableAssets[0];
-  gmApy: number;
+  apyData: { blended: number; aave: number; gmPool: number };
   onClose: () => void;
 }
 
-function SupplyModal({ asset, gmApy, onClose }: SupplyModalProps) {
+function SupplyModal({ asset, apyData, onClose }: SupplyModalProps) {
   const [amount, setAmount] = useState("");
   const { address } = useAccount();
   
@@ -130,10 +131,9 @@ function SupplyModal({ asset, gmApy, onClose }: SupplyModalProps) {
   // 60% goes to Aave for borrowing capacity
   const borrowingCapacity = depositValueUSD * 0.6;
   
-  // 40% goes to GM pools for yield
-  // Monthly earnings = (depositAmount × 0.4 × gmPoolAPY / 12) × 0.9 (after performance fee)
-  const yieldBuffer = depositValueUSD * 0.4;
-  const monthlyEarningsGross = (yieldBuffer * (gmApy / 100)) / 12;
+  // Monthly earnings based on blended APY
+  // Blended = (Aave APY × 0.6) + (GM Pool Fee APY × 0.4)
+  const monthlyEarningsGross = (depositValueUSD * (apyData.blended / 100)) / 12;
   const monthlyEarningsNet = monthlyEarningsGross * 0.9; // After 10% platform fee
 
   return (
@@ -196,20 +196,20 @@ function SupplyModal({ asset, gmApy, onClose }: SupplyModalProps) {
         {/* Strategy breakdown */}
         {amountNum > 0 && (
           <div className="mb-6 space-y-4">
-            {/* APY */}
+            {/* Blended APY */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-white/60 text-sm">Estimated APY</span>
+                <span className="text-white/60 text-sm">Blended APY</span>
                 <div className="group relative">
                   <Info size={14} className="text-white/40 cursor-help" />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-navy-100 rounded-lg text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                    Yield earned on 40% buffer deployed to GM pools
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-navy-100 rounded-lg text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 min-w-[200px]">
+                    <div className="mb-1">Aave: {formatAPY(apyData.aave)} × 60%</div>
+                    <div>GM Pool: {formatAPY(apyData.gmPool)} × 40%</div>
                   </div>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-mint font-bold text-lg">{formatAPY(gmApy)}</span>
-                <span className="text-white/40 text-xs ml-1">(on 40% yield buffer)</span>
+                <span className="text-mint font-bold text-lg">{formatAPY(apyData.blended)}</span>
               </div>
             </div>
 
@@ -285,11 +285,11 @@ function SupplyModal({ asset, gmApy, onClose }: SupplyModalProps) {
 
 function AssetCard({ 
   asset, 
-  gmApy,
+  apyData,
   onSupply 
 }: { 
   asset: typeof lendableAssets[0]; 
-  gmApy: number;
+  apyData: { blended: number; aave: number; gmPool: number };
   onSupply: () => void;
 }) {
   const { address, isConnected } = useAccount();
@@ -329,12 +329,18 @@ function AssetCard({
           </div>
         </div>
         
-        <div className="text-right">
+        <div className="text-right group/apy relative">
           <div className="flex items-center gap-1 text-mint text-xl font-bold">
             <TrendingUp size={18} />
-            {formatAPY(gmApy)}
+            {formatAPY(apyData.blended)}
           </div>
-          <p className="text-white/50 text-xs">APY (on 40% buffer)</p>
+          <p className="text-white/50 text-xs">Blended APY</p>
+          {/* APY Breakdown Tooltip */}
+          <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-navy-100 rounded-lg text-xs text-white/80 opacity-0 group-hover/apy:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 border border-white/10">
+            <div className="text-white/60 mb-1">APY Breakdown:</div>
+            <div>Aave ({formatAPY(apyData.aave)} × 60%)</div>
+            <div>GM Pool ({formatAPY(apyData.gmPool)} × 40%)</div>
+          </div>
         </div>
       </div>
 
@@ -376,24 +382,44 @@ function AssetCard({
   );
 }
 
+// Blended APY calculation constants
+const AAVE_WEIGHT = 0.6;  // 60% to Aave
+const GMX_WEIGHT = 0.4;   // 40% to GM pools
+
 export default function LendPage() {
   const { isConnected } = useAccount();
   const [selectedAsset, setSelectedAsset] = useState<typeof lendableAssets[0] | null>(null);
   
   const { position } = useAavePosition();
-  const { apyData, isLoading: apyLoading, lastUpdated } = useGMXApy();
+  const { apyData, isLoading: gmxApyLoading, lastUpdated } = useGMXApy();
+  const { supplyRates, isLoading: aaveApyLoading } = useAaveSupplyRates();
+  
+  const apyLoading = gmxApyLoading || aaveApyLoading;
 
-  // Get APY for each asset from their mapped GM pool
-  const getAssetApy = useMemo(() => {
-    return (symbol: string): number => {
+  // Calculate blended APY for each asset
+  // Formula: (Aave Supply APY × 0.6) + (GM Pool Fee APY × 0.4)
+  const getBlendedApy = useMemo(() => {
+    return (symbol: string): { blended: number; aave: number; gmPool: number } => {
+      // Get Aave supply rate
+      const aaveApy = supplyRates[symbol] ?? FALLBACK_AAVE_SUPPLY_APY[symbol] ?? 0;
+      
+      // Get GM pool fee APY
       const poolName = ASSET_GM_POOL[symbol];
-      if (!poolName) return 0;
-      const poolApy = apyData[poolName];
-      return poolApy?.totalApy ?? 0;
+      const poolApy = poolName ? apyData[poolName] : null;
+      const gmPoolFeeApy = poolApy?.feeApy ?? 0;
+      
+      // Calculate blended APY
+      const blendedApy = (aaveApy * AAVE_WEIGHT) + (gmPoolFeeApy * GMX_WEIGHT);
+      
+      return {
+        blended: Math.round(blendedApy * 100) / 100,
+        aave: aaveApy,
+        gmPool: gmPoolFeeApy,
+      };
     };
-  }, [apyData]);
+  }, [apyData, supplyRates]);
 
-  const selectedAssetApy = selectedAsset ? getAssetApy(selectedAsset.symbol) : 0;
+  const selectedAssetApy = selectedAsset ? getBlendedApy(selectedAsset.symbol) : { blended: 0, aave: 0, gmPool: 0 };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -472,7 +498,7 @@ export default function LendPage() {
             <AssetCard 
               key={asset.symbol} 
               asset={asset} 
-              gmApy={getAssetApy(asset.symbol)}
+              apyData={getBlendedApy(asset.symbol)}
               onSupply={() => setSelectedAsset(asset)}
             />
           ))}
@@ -483,7 +509,7 @@ export default function LendPage() {
       {selectedAsset && (
         <SupplyModal 
           asset={selectedAsset} 
-          gmApy={selectedAssetApy}
+          apyData={selectedAssetApy}
           onClose={() => setSelectedAsset(null)} 
         />
       )}
