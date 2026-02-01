@@ -148,6 +148,13 @@ function EmptyDashboard() {
         </div>
       </div>
 
+      {/* Harvest Card Preview (disabled state) */}
+      <HarvestCard
+        earningsUSD={0}
+        depositedUSD={0}
+        dailyEarnings={0}
+      />
+
       {/* Quick actions */}
       <div>
         <h3 className="text-lg font-semibold text-white mb-4">Get Started</h3>
