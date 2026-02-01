@@ -44,24 +44,42 @@ export function PoolHarvestCard({ onHarvestComplete }: PoolHarvestCardProps) {
     };
   }, [positions, totalValueUsd]);
   
-  // Don't show if loading, no positions, or no earnings
-  if (isLoading || !positions.length || earningsUSD <= 0) {
+  // Don't show if loading or no positions at all
+  if (isLoading || !positions.length) {
     return null;
   }
   
+  const hasEarnings = earningsUSD > 0;
+  
   return (
     <>
-      <div className="glass-card p-6 border-mint/10 hover:border-mint/20 transition-colors">
+      <div className={cn(
+        "glass-card p-6 transition-colors",
+        hasEarnings 
+          ? "border-mint/10 hover:border-mint/20" 
+          : "border-white/5 opacity-60"
+      )}>
         {/* Header with harvest emoji */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-mint/20 to-emerald-500/20 flex items-center justify-center">
-              <span className="text-xl">🌾</span>
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center",
+              hasEarnings 
+                ? "bg-gradient-to-br from-mint/20 to-emerald-500/20" 
+                : "bg-white/5"
+            )}>
+              <span className={cn("text-xl", !hasEarnings && "grayscale opacity-50")}>🌾</span>
             </div>
-            <h2 className="text-lg font-semibold text-white/80">Pool Earnings</h2>
+            <h2 className={cn(
+              "text-lg font-semibold",
+              hasEarnings ? "text-white/80" : "text-white/40"
+            )}>Pool Earnings</h2>
           </div>
-          <div className="text-mint text-sm font-medium">
-            +${dailyEarnings.toFixed(2)}/day
+          <div className={cn(
+            "text-sm font-medium",
+            hasEarnings ? "text-mint" : "text-white/30"
+          )}>
+            {hasEarnings ? `+$${dailyEarnings.toFixed(2)}/day` : 'No yield yet'}
           </div>
         </div>
         
@@ -69,19 +87,28 @@ export function PoolHarvestCard({ onHarvestComplete }: PoolHarvestCardProps) {
         <div className="space-y-3 mb-5">
           <div className="flex justify-between items-center">
             <span className="text-white/50 text-sm">Deposited</span>
-            <span className="text-white font-medium">
+            <span className={cn(
+              "font-medium",
+              hasEarnings ? "text-white" : "text-white/30"
+            )}>
               ${depositedUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-white/50 text-sm">Current</span>
-            <span className="text-white font-medium">
+            <span className={cn(
+              "font-medium",
+              hasEarnings ? "text-white" : "text-white/30"
+            )}>
               ${totalValueUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-white/50 text-sm">Earnings</span>
-            <span className="text-mint text-xl font-bold">
+            <span className={cn(
+              "text-xl font-bold",
+              hasEarnings ? "text-mint" : "text-white/30"
+            )}>
               ${earningsUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
@@ -89,16 +116,28 @@ export function PoolHarvestCard({ onHarvestComplete }: PoolHarvestCardProps) {
         
         {/* Harvest button */}
         <button
-          onClick={() => setIsModalOpen(true)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-mint to-emerald-500 text-white rounded-xl font-semibold hover:from-mint/90 hover:to-emerald-500/90 transition-all shadow-lg shadow-mint/20"
+          onClick={() => hasEarnings && setIsModalOpen(true)}
+          disabled={!hasEarnings}
+          className={cn(
+            "w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all",
+            hasEarnings
+              ? "bg-gradient-to-r from-mint to-emerald-500 text-white hover:from-mint/90 hover:to-emerald-500/90 shadow-lg shadow-mint/20"
+              : "bg-white/5 text-white/30 cursor-not-allowed"
+          )}
         >
           <Leaf size={18} />
-          Harvest ${earningsUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {hasEarnings 
+            ? `Harvest $${earningsUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : 'Nothing to Harvest'
+          }
         </button>
         
         {/* Info note */}
         <p className="text-white/40 text-xs mt-4 text-center">
-          💡 Your ${depositedUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} principal keeps compounding in the pools.
+          {hasEarnings 
+            ? `💡 Your $${depositedUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} principal keeps compounding in the pools.`
+            : '💡 Pool earnings will appear here as your positions generate yield.'
+          }
         </p>
       </div>
       
