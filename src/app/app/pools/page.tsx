@@ -791,7 +791,6 @@ export default function PoolsPage() {
   
   // Get user's GMX pool positions
   const { 
-    positions: gmxPositions, 
     totalValueUsd: poolValueUsd, 
     isLoading: positionsLoading,
     refetch: refetchPositions,
@@ -882,12 +881,10 @@ export default function PoolsPage() {
             ))}
           </div>
 
-          {/* Pool Harvest Card - shows when user has pool positions with earnings */}
-          {gmxPositions.length > 0 && poolEarningsUsd > 0 && (
-            <div className="mb-8">
-              <PoolHarvestCard onHarvestComplete={refetchPositions} />
-            </div>
-          )}
+          {/* Pool Harvest Card - always shows when user has pool positions (handles disabled state internally) */}
+          <div className="mb-8">
+            <PoolHarvestCard onHarvestComplete={refetchPositions} />
+          </div>
 
           {/* How it works banner */}
           <div className="mb-8 p-4 rounded-xl bg-gradient-to-r from-purple-500/10 to-mint/10 border border-purple-500/20">
