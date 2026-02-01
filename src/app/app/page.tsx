@@ -1,83 +1,122 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { TrendingUp,  ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { useAccount } from 'wagmi';
+import { useUserPosition } from '@/hooks';
+import {
+  EmptyState,
+  PositionSummary,
+  APYDisplay,
+  BorrowCapacityCard,
+  ActionButtons,
+  FeaturedVaults,
+} from '@/components/dashboard';
 
-const mockPositions = {
-  totalDeposited: 0,
-  totalBorrowed: 0,
-  netAPY: 0,
-  healthFactor: 0,
-};
-
-export default function Dashboard() {
+/**
+ * Dashboard Page
+ * 
+ * Two states:
+ * 1. Empty - No deposits, show CTA to get started
+ * 2. Has Position - Show position summary, APY, borrow capacity
+ * 
+ * CRITICAL: No protocol names (Aave/GMX), no health factors, ONE APY number
+ */
+export default function DashboardPage() {
+  const { isConnected } = useAccount();
+  const position = useUserPosition();
+  
+  // Loading state
+  if (isConnected && position.isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-white/5 rounded-lg w-48" />
+          <div className="h-48 bg-white/5 rounded-2xl" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="h-40 bg-white/5 rounded-2xl" />
+            <div className="h-40 bg-white/5 rounded-2xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Not connected or no position - show empty state
+  if (!isConnected || !position.hasPosition) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-display font-bold text-white mb-2">
+            Dashboard
+          </h1>
+          <p className="text-white/60">
+            {isConnected 
+              ? 'Get started by making your first deposit'
+              : 'Connect your wallet to get started'
+            }
+          </p>
+        </div>
+        
+        {/* Empty state with CTA */}
+        <div className="glass-card mb-8">
+          <EmptyState />
+        </div>
+        
+        {/* Featured vaults to inspire */}
+        <FeaturedVaults />
+      </div>
+    );
+  }
+  
+  // Has position - show full dashboard
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-        <p className="text-white/60">Overview of your positions and activity</p>
+        <h1 className="text-3xl font-display font-bold text-white mb-2">
+          Dashboard
+        </h1>
+        <p className="text-white/60">
+          Your yield is growing every second
+        </p>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="stat-card">
-          <span className="text-white/50 text-sm">Total Deposited</span>
-          <span className="text-2xl font-bold text-white">
-            ${mockPositions.totalDeposited.toLocaleString()}
-          </span>
-        </div>
-        <div className="stat-card">
-          <span className="text-white/50 text-sm">Total Borrowed</span>
-          <span className="text-2xl font-bold text-white">
-            ${mockPositions.totalBorrowed.toLocaleString()}
-          </span>
-        </div>
-        <div className="stat-card">
-          <span className="text-white/50 text-sm">Net APY</span>
-          <span className="text-2xl font-bold text-mint">
-            {mockPositions.netAPY}%
-          </span>
-        </div>
-        <div className="stat-card">
-          <span className="text-white/50 text-sm">Health Factor</span>
-          <span className="text-2xl font-bold text-white">
-            {mockPositions.healthFactor || "—"}
-          </span>
-        </div>
+      
+      {/* Position Summary - Full width */}
+      <div className="mb-6">
+        <PositionSummary
+          totalValueUSD={position.totalValueUSD}
+          depositedUSD={position.depositedUSD}
+          earningsUSD={position.earningsUSD}
+          earningsPercent={position.earningsPercent}
+          dailyEarnings={position.dailyEarnings}
+        />
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Link href="/app/deposit" className="glass-card p-6 hover:border-mint/50 transition-colors group">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-mint/10 flex items-center justify-center group-hover:bg-mint/20 transition-colors">
-              <ArrowDownToLine className="text-mint" size={24} />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-white">Deposit Assets</h3>
-              <p className="text-white/50 text-sm">Supply collateral and earn yield</p>
-            </div>
-          </div>
-        </Link>
+      
+      {/* APY + Borrow Capacity - Two columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <APYDisplay
+          apy={position.currentAPY}
+          dailyEarnings={position.dailyEarnings}
+          monthlyEarnings={position.monthlyEarnings}
+          yearlyEarnings={position.yearlyEarnings}
+        />
         
-        <Link href="/app/borrow" className="glass-card p-6 hover:border-mint/50 transition-colors group">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-mint/10 flex items-center justify-center group-hover:bg-mint/20 transition-colors">
-              <ArrowUpFromLine className="text-mint" size={24} />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-white">Borrow</h3>
-              <p className="text-white/50 text-sm">Access liquidity without selling</p>
-            </div>
-          </div>
-        </Link>
+        <BorrowCapacityCard
+          borrowCapacityUSD={position.borrowCapacityUSD}
+          borrowedUSD={position.borrowedUSD}
+          availableToBorrowUSD={position.availableToBorrowUSD}
+          borrowUtilization={position.borrowUtilization}
+          borrowAPR={position.borrowAPR}
+        />
       </div>
-
-      <div className="glass-card p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Your Positions</h2>
-        <div className="text-center py-12 text-white/50">
-          <TrendingUp className="mx-auto mb-4 opacity-50" size={48} />
-          <p>No positions yet. Deposit assets to get started.</p>
-        </div>
+      
+      {/* Quick Actions */}
+      <div className="mb-6">
+        <ActionButtons hasPosition={position.hasPosition} />
       </div>
+      
+      {/* Featured Vaults */}
+      <FeaturedVaults />
     </div>
   );
 }
