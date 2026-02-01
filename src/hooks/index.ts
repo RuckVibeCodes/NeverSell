@@ -35,3 +35,6 @@ export { useGMXWithdraw } from "./useGMXWithdraw";
 
 // Bridge hook
 export { useLiFiBridge } from "./useLiFiBridge";
+
+// Re-export Aave addresses for components that need them
+export { AAVE_V3_ADDRESSES } from "@/lib/aave";

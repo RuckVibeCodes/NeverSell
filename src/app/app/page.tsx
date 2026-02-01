@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useAccount } from 'wagmi';
 import { useUserPosition } from '@/hooks';
 import { useAavePosition } from '@/hooks/useAavePosition';
+import { HarvestCard } from '@/components/dashboard';
 import { 
   Wallet, 
   PiggyBank, 
@@ -313,6 +314,18 @@ export default function DashboardPage() {
           color="text-pink-400"
         />
       </div>
+
+      {/* Harvest Card - show when user has earnings */}
+      {position.earningsUSD > 0 && (
+        <div className="mb-6">
+          <HarvestCard
+            earningsUSD={position.earningsUSD}
+            depositedUSD={position.depositedUSD}
+            dailyEarnings={position.dailyEarnings}
+            onHarvestComplete={() => position.refetch()}
+          />
+        </div>
+      )}
 
       {/* Two column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

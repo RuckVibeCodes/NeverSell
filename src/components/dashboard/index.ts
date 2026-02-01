@@ -4,3 +4,4 @@ export { APYDisplay } from './APYDisplay';
 export { BorrowCapacityCard } from './BorrowCapacityCard';
 export { ActionButtons } from './ActionButtons';
 export { FeaturedVaults } from './FeaturedVaults';
+export { HarvestCard } from './HarvestCard';
