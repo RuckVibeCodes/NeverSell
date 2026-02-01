@@ -18,7 +18,8 @@ export interface GMPool {
   name: string;
   longToken: string;
   shortToken: string;
-  indexToken: string;
+  indexToken: string;       // Address
+  indexTokenSymbol: string; // Symbol (e.g., "PENGU", "ASTER") for search
   marketToken: string;
   apy: number;
   feeApy: number;
@@ -120,6 +121,7 @@ function marketToPool(
   
   const longSymbol = getTokenSymbol(market.longToken, tokensData, market.name);
   const shortSymbol = getTokenSymbol(market.shortToken, tokensData, market.name);
+  const indexSymbol = getTokenSymbol(market.indexToken, tokensData, market.name);
   
   // Determine pool type
   const isSingleSided = market.longToken.toLowerCase() === market.shortToken.toLowerCase();
@@ -153,6 +155,7 @@ function marketToPool(
     longToken: longSymbol,
     shortToken: shortSymbol,
     indexToken: market.indexToken,
+    indexTokenSymbol: indexSymbol, // For search: PENGU, ASTER, etc.
     marketToken: market.marketToken,
     apy,
     feeApy,
@@ -245,7 +248,7 @@ export function useFilteredGMXPools(
       filtered = Array.from(mainPoolsBySymbol.values());
     }
 
-    // Search filter
+    // Search filter - includes index token for assets like PENGU, ASTER
     if (options.search) {
       const searchLower = options.search.toLowerCase();
       filtered = filtered.filter(
@@ -253,7 +256,8 @@ export function useFilteredGMXPools(
           p.symbol.toLowerCase().includes(searchLower) ||
           p.name.toLowerCase().includes(searchLower) ||
           p.longToken.toLowerCase().includes(searchLower) ||
-          p.shortToken.toLowerCase().includes(searchLower)
+          p.shortToken.toLowerCase().includes(searchLower) ||
+          p.indexTokenSymbol.toLowerCase().includes(searchLower)
       );
     }
 

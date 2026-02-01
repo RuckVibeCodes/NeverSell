@@ -21,10 +21,9 @@ import {
   formatTVL, 
   formatPoolAPY, 
   getPoolAPYColor,
-  getTokenIcon,
-  getPoolGradient,
   type GMPool
 } from "@/hooks/useAllGMXPools";
+import { TokenLogo, StackedTokenLogos } from "@/components/ui/TokenLogo";
 
 // Filter options
 type SortBy = 'tvl' | 'apy' | 'symbol';
@@ -52,11 +51,15 @@ function PoolCard({ pool }: { pool: GMPool }) {
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${getPoolGradient(pool.longToken)} flex items-center justify-center text-white font-bold text-lg`}>
-            {getTokenIcon(pool.longToken)}
-          </div>
+          <StackedTokenLogos 
+            tokens={[
+              { symbol: pool.longToken },
+              ...(pool.longToken !== pool.shortToken ? [{ symbol: pool.shortToken }] : [])
+            ]}
+            size={36}
+          />
           <div>
-            <h3 className="text-white font-medium">{pool.longToken}/{pool.shortToken}</h3>
+            <h3 className="text-white font-medium">{pool.indexTokenSymbol || pool.longToken}/{pool.shortToken}</h3>
             <div className="flex items-center gap-2">
               <span className="text-white/40 text-xs">{pool.symbol}</span>
               {pool.poolType === 'single-sided' && (
@@ -104,16 +107,12 @@ function PoolCard({ pool }: { pool: GMPool }) {
             <p className="text-white/40 text-xs mb-2">Pool Composition</p>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className={`w-6 h-6 rounded bg-gradient-to-br ${getPoolGradient(pool.longToken)} flex items-center justify-center text-white text-xs font-bold`}>
-                  {getTokenIcon(pool.longToken)}
-                </div>
+                <TokenLogo symbol={pool.longToken} size={24} />
                 <span className="text-white text-sm">{pool.longToken}</span>
               </div>
               <span className="text-white/30">+</span>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-gray-500/30 flex items-center justify-center text-white text-xs font-bold">
-                  {getTokenIcon(pool.shortToken)}
-                </div>
+                <TokenLogo symbol={pool.shortToken} size={24} />
                 <span className="text-white text-sm">{pool.shortToken}</span>
               </div>
             </div>
@@ -217,7 +216,7 @@ export default function MarketsPage() {
   const [minTvl, setMinTvl] = useState(0); // Show all TVL levels by default
   const [minApy, setMinApy] = useState(0);
   const [poolType, setPoolType] = useState<PoolTypeFilter>('all');
-  const [mainOnly, setMainOnly] = useState(true); // Show only highest TVL per symbol
+  const [mainOnly, setMainOnly] = useState(false); // Show all pools by default
   const [sortBy, setSortBy] = useState<SortBy>('tvl');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showFilters, setShowFilters] = useState(false);
@@ -287,7 +286,7 @@ export default function MarketsPage() {
               placeholder="Search pools (e.g., BTC, ETH, SOL...)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-navy-200 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-mint/50 transition-colors"
+              className="w-full bg-navy-light border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-mint/50 transition-colors"
             />
           </div>
           <button
@@ -335,7 +334,7 @@ export default function MarketsPage() {
                   placeholder="0"
                   value={minApy || ''}
                   onChange={(e) => setMinApy(Number(e.target.value) || 0)}
-                  className="w-full bg-navy-200 border border-white/10 rounded-lg px-3 py-2 text-white placeholder:text-white/30 focus:outline-none focus:border-mint/50 text-sm"
+                  className="w-full bg-navy-light border border-white/10 rounded-lg px-3 py-2 text-white placeholder:text-white/30 focus:outline-none focus:border-mint/50 text-sm"
                 />
               </div>
 
@@ -410,14 +409,14 @@ export default function MarketsPage() {
           Showing {filteredPools.length} of {pools.length} pools
           {mainOnly && <span className="text-mint ml-1">(main pools)</span>}
         </p>
-        {(search || minTvl > 0 || minApy > 0 || poolType !== 'all' || !mainOnly) && (
+        {(search || minTvl > 0 || minApy > 0 || poolType !== 'all' || mainOnly) && (
           <button
             onClick={() => {
               setSearch('');
               setMinTvl(0);
               setMinApy(0);
               setPoolType('all');
-              setMainOnly(true);
+              setMainOnly(false);
             }}
             className="text-mint text-sm hover:underline"
           >
