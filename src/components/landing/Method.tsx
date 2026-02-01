@@ -15,7 +15,30 @@ const Method = () => {
   const subheadRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+
     const ctx = gsap.context(() => {
+      if (isMobile) {
+        // Simple fade-in on mobile
+        gsap.fromTo(
+          [headingRef.current, sellCardRef.current, borrowCardRef.current, subheadRef.current],
+          { y: 30, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.6,
+            stagger: 0.1,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: 'top 80%',
+            },
+          }
+        );
+        return;
+      }
+
+      // Desktop: full scroll-driven animation
       const scrollTl = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,

@@ -20,7 +20,22 @@ gsap.registerPlugin(ScrollTrigger);
 
 export default function Home() {
   useEffect(() => {
-    // Wait for all ScrollTriggers to be created
+    // Disable complex scroll animations on mobile for better UX
+    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+    
+    if (isMobile) {
+      // On mobile, kill all pinning ScrollTriggers for simpler scrolling
+      const timeout = setTimeout(() => {
+        ScrollTrigger.getAll().forEach((st) => {
+          if (st.vars.pin) {
+            st.kill();
+          }
+        });
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+
+    // Desktop: Wait for all ScrollTriggers to be created
     const timeout = setTimeout(() => {
       const pinned = ScrollTrigger.getAll()
         .filter((st) => st.vars.pin)

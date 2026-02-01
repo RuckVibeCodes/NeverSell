@@ -150,73 +150,78 @@ const Hero = () => {
   const ctaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Check for mobile - skip complex animations
+    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+
     const ctx = gsap.context(() => {
-      // Initial load animation
+      // Initial load animation (keep this on all devices, but simpler on mobile)
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
       tl.fromTo(
         '.hero-line',
-        { y: 80, opacity: 0, rotateX: 20 },
-        { y: 0, opacity: 1, rotateX: 0, duration: 1.2, stagger: 0.15 }
+        { y: isMobile ? 30 : 80, opacity: 0, rotateX: isMobile ? 0 : 20 },
+        { y: 0, opacity: 1, rotateX: 0, duration: isMobile ? 0.6 : 1.2, stagger: 0.1 }
       )
         .fromTo(
           subheadRef.current,
-          { y: 30, opacity: 0 },
-          { y: 0, opacity: 1, duration: 1 },
-          '-=0.5'
+          { y: 20, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.6 },
+          '-=0.3'
         )
         .fromTo(
           ctaRef.current,
-          { y: 25, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.9 },
-          '-=0.4'
+          { y: 15, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.5 },
+          '-=0.2'
         )
         .fromTo(
           calculatorRef.current,
-          { x: 100, opacity: 0, rotateY: -10 },
-          { x: 0, opacity: 1, rotateY: 0, duration: 1, ease: 'power2.out' },
-          '-=0.8'
+          { y: isMobile ? 20 : 0, x: isMobile ? 0 : 100, opacity: 0, rotateY: isMobile ? 0 : -10 },
+          { y: 0, x: 0, opacity: 1, rotateY: 0, duration: 0.6, ease: 'power2.out' },
+          '-=0.4'
         );
 
-      // Scroll-driven exit animation
-      const scrollTl = gsap.timeline({
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top top',
-          end: '+=140%',
-          pin: true,
-          scrub: 1.2,
-        },
-      });
+      // Only add scroll-driven exit animation on desktop
+      if (!isMobile) {
+        const scrollTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: 'top top',
+            end: '+=140%',
+            pin: true,
+            scrub: 1.2,
+          },
+        });
 
-      // Phase 3: EXIT (70% - 100%)
-      scrollTl.fromTo(
-        headlineRef.current,
-        { x: 0, opacity: 1 },
-        { x: '-20vw', opacity: 0, ease: 'power2.in' },
-        0.7
-      );
+        // Phase 3: EXIT (70% - 100%)
+        scrollTl.fromTo(
+          headlineRef.current,
+          { x: 0, opacity: 1 },
+          { x: '-20vw', opacity: 0, ease: 'power2.in' },
+          0.7
+        );
 
-      scrollTl.fromTo(
-        subheadRef.current,
-        { x: 0, opacity: 1 },
-        { x: '-15vw', opacity: 0, ease: 'power2.in' },
-        0.72
-      );
+        scrollTl.fromTo(
+          subheadRef.current,
+          { x: 0, opacity: 1 },
+          { x: '-15vw', opacity: 0, ease: 'power2.in' },
+          0.72
+        );
 
-      scrollTl.fromTo(
-        ctaRef.current,
-        { x: 0, opacity: 1 },
-        { x: '-10vw', opacity: 0, ease: 'power2.in' },
-        0.74
-      );
+        scrollTl.fromTo(
+          ctaRef.current,
+          { x: 0, opacity: 1 },
+          { x: '-10vw', opacity: 0, ease: 'power2.in' },
+          0.74
+        );
 
-      scrollTl.fromTo(
-        calculatorRef.current,
-        { x: 0, opacity: 1 },
-        { x: '20vw', opacity: 0, ease: 'power2.in' },
-        0.7
-      );
+        scrollTl.fromTo(
+          calculatorRef.current,
+          { x: 0, opacity: 1 },
+          { x: '20vw', opacity: 0, ease: 'power2.in' },
+          0.7
+        );
+      }
     }, sectionRef);
 
     return () => ctx.revert();
