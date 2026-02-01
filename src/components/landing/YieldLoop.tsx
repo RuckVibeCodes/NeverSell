@@ -9,11 +9,41 @@ import { Button } from '@/components/ui/button';
 gsap.registerPlugin(ScrollTrigger);
 
 const loopSteps = [
-  { id: 'deposit', label: 'Deposit', icon: Wallet, color: '#94A3B8', description: 'BTC, ETH, ARB, or USDC' },
-  { id: 'earn1', label: 'Earn Yield', icon: TrendingUp, color: '#2ED573', description: '7-15% APY on deposit' },
-  { id: 'borrow', label: 'Borrow', icon: Landmark, color: '#6366F1', description: 'Up to 70% of value' },
-  { id: 'deploy', label: 'Deploy', icon: Rocket, color: '#A855F7', description: 'To pools & vaults' },
-  { id: 'earn2', label: 'Earn Again', icon: Layers, color: '#2ED573', description: 'Stack more yield' },
+  {
+    id: 'deposit',
+    label: 'Deposit',
+    icon: Wallet,
+    color: '#94A3B8',
+    description: 'BTC, ETH, ARB, or USDC',
+  },
+  {
+    id: 'earn1',
+    label: 'Earn Yield',
+    icon: TrendingUp,
+    color: '#2ED573',
+    description: '7-15% APY on deposit',
+  },
+  {
+    id: 'borrow',
+    label: 'Borrow',
+    icon: Landmark,
+    color: '#6366F1',
+    description: 'Up to 70% of value',
+  },
+  {
+    id: 'deploy',
+    label: 'Deploy',
+    icon: Rocket,
+    color: '#A855F7',
+    description: 'To pools & vaults',
+  },
+  {
+    id: 'earn2',
+    label: 'Earn Again',
+    icon: Layers,
+    color: '#2ED573',
+    description: 'Stack more yield',
+  },
 ];
 
 const YieldLoop = () => {
@@ -21,49 +51,206 @@ const YieldLoop = () => {
   const headlineRef = useRef<HTMLDivElement>(null);
   const loopRef = useRef<HTMLDivElement>(null);
   const nodesRef = useRef<(HTMLDivElement | null)[]>([]);
+  const linesRef = useRef<SVGSVGElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      const scrollTl = gsap.timeline({ scrollTrigger: { trigger: sectionRef.current, start: 'top top', end: '+=150%', pin: true, scrub: 0.6 } });
-      scrollTl.fromTo(headlineRef.current, { y: -80, opacity: 0 }, { y: 0, opacity: 1 }, 0)
-        .fromTo(loopRef.current, { scale: 0.85, opacity: 0 }, { scale: 1, opacity: 1 }, 0.02);
-      nodesRef.current.forEach((node, i) => scrollTl.fromTo(node, { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, ease: 'back.out(1.7)' }, 0.04 + i * 0.03));
-      scrollTl.fromTo(ctaRef.current, { y: 30, opacity: 0 }, { y: 0, opacity: 1 }, 0.25)
-        .fromTo(loopRef.current, { scale: 1, opacity: 1 }, { scale: 0.9, opacity: 0 }, 0.75);
+      const scrollTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: 'top top',
+          end: '+=150%',
+          pin: true,
+          scrub: 0.6,
+        },
+      });
+
+      // Phase 1: ENTRANCE (0% - 30%)
+      scrollTl.fromTo(
+        headlineRef.current,
+        { y: -80, opacity: 0 },
+        { y: 0, opacity: 1, ease: 'none' },
+        0
+      );
+
+      scrollTl.fromTo(
+        loopRef.current,
+        { scale: 0.85, opacity: 0 },
+        { scale: 1, opacity: 1, ease: 'none' },
+        0.02
+      );
+
+      // Nodes stagger in clockwise
+      nodesRef.current.forEach((node, index) => {
+        scrollTl.fromTo(
+          node,
+          { scale: 0, opacity: 0 },
+          { scale: 1, opacity: 1, ease: 'back.out(1.7)' },
+          0.04 + index * 0.03
+        );
+      });
+
+      // Lines draw on
+      if (linesRef.current) {
+        const paths = linesRef.current.querySelectorAll('path');
+        paths.forEach((path, index) => {
+          const length = (path as SVGPathElement).getTotalLength?.() || 200;
+          gsap.set(path, { strokeDasharray: length, strokeDashoffset: length });
+          scrollTl.to(
+            path,
+            { strokeDashoffset: 0, ease: 'none' },
+            0.08 + index * 0.02
+          );
+        });
+      }
+
+      scrollTl.fromTo(
+        ctaRef.current,
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, ease: 'none' },
+        0.25
+      );
+
+      // Phase 3: EXIT (70% - 100%)
+      scrollTl.fromTo(
+        loopRef.current,
+        { scale: 1, opacity: 1 },
+        { scale: 0.9, opacity: 0, ease: 'power2.in' },
+        0.75
+      );
+
+      scrollTl.fromTo(
+        headlineRef.current,
+        { opacity: 1 },
+        { opacity: 0, ease: 'power2.in' },
+        0.85
+      );
+
+      scrollTl.fromTo(
+        ctaRef.current,
+        { opacity: 1 },
+        { opacity: 0, ease: 'power2.in' },
+        0.88
+      );
     }, sectionRef);
+
     return () => ctx.revert();
   }, []);
 
   return (
-    <section id="yield-loop" ref={sectionRef} className="relative min-h-screen w-full flex items-center justify-center overflow-hidden">
+    <section
+      id="yield-loop"
+      ref={sectionRef}
+      className="relative min-h-screen w-full flex items-center justify-center overflow-hidden"
+    >
+      {/* Background glow */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-[800px] h-[800px] bg-gradient-to-br from-mint/10 via-electric-blue/8 to-electric-purple/5 rounded-full blur-[150px]" />
       </div>
+
       <div className="relative z-10 w-full px-6 lg:px-10 py-20">
+        {/* Headline */}
         <div ref={headlineRef} className="text-center mb-12 lg:mb-16">
-          <h2 className="font-display text-display-2 text-text-primary mb-4">Stack yield on <span className="text-gradient">yield.</span></h2>
-          <p className="text-text-secondary text-lg max-w-xl mx-auto">Your money works twice. First from your deposit. Again from your deployment.</p>
+          <h2 className="font-display text-display-2 text-text-primary mb-4">
+            Stack yield on <span className="text-gradient">yield.</span>
+          </h2>
+          <p className="text-text-secondary text-lg max-w-xl mx-auto">
+            Your money works twice. First from your deposit. Again from your deployment.
+          </p>
         </div>
+
+        {/* Loop Visualization */}
         <div ref={loopRef} className="relative max-w-4xl mx-auto">
+          {/* SVG Flow Lines */}
+          <svg
+            ref={linesRef}
+            className="absolute inset-0 w-full h-full"
+            viewBox="0 0 800 300"
+            preserveAspectRatio="xMidYMid meet"
+            style={{ zIndex: 0 }}
+          >
+            {/* Flow paths with animated dashes */}
+            <defs>
+              <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#2ED573" stopOpacity="0.6" />
+                <stop offset="50%" stopColor="#6366F1" stopOpacity="0.6" />
+                <stop offset="100%" stopColor="#A855F7" stopOpacity="0.6" />
+              </linearGradient>
+            </defs>
+            {/* Top curved path */}
+            <path
+              d="M 100 150 Q 250 50, 400 50 Q 550 50, 700 150"
+              fill="none"
+              stroke="url(#flowGradient)"
+              strokeWidth="2"
+              className="flow-line"
+            />
+            {/* Bottom curved path */}
+            <path
+              d="M 700 150 Q 550 250, 400 250 Q 250 250, 100 150"
+              fill="none"
+              stroke="url(#flowGradient)"
+              strokeWidth="2"
+              className="flow-line"
+            />
+          </svg>
+
+          {/* Nodes */}
           <div className="relative grid grid-cols-5 gap-4 lg:gap-8">
-            {loopSteps.map((step, i) => {
+            {loopSteps.map((step, index) => {
               const Icon = step.icon;
               const isMint = step.color === '#2ED573';
+              const isPurple = step.color === '#A855F7';
+              
               return (
-                <div key={step.id} ref={(el) => { nodesRef.current[i] = el; }} className="flex flex-col items-center text-center group">
-                  <div className={`w-16 h-16 lg:w-20 lg:h-20 rounded-2xl flex items-center justify-center mb-4 transition-all group-hover:scale-110 ${isMint ? 'bg-mint/15 border border-mint/30' : 'bg-white/5 border border-white/10'}`}>
-                    <Icon className="w-7 h-7 lg:w-8 lg:h-8" style={{ color: step.color }} />
+                <div
+                  key={step.id}
+                  ref={(el) => { nodesRef.current[index] = el; }}
+                  className="flex flex-col items-center text-center group"
+                >
+                  {/* Node circle */}
+                  <div 
+                    className={`w-16 h-16 lg:w-20 lg:h-20 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110 ${
+                      isMint 
+                        ? 'bg-mint/15 border border-mint/30 shadow-[0_0_30px_rgba(46,213,115,0.25)]' 
+                        : isPurple
+                        ? 'bg-electric-purple/15 border border-electric-purple/30 shadow-[0_0_30px_rgba(168,85,247,0.2)]'
+                        : 'bg-white/5 border border-white/10'
+                    }`}
+                  >
+                    <Icon 
+                      className="w-7 h-7 lg:w-8 lg:h-8" 
+                      style={{ color: step.color }}
+                    />
                   </div>
-                  <h3 className="font-display text-sm lg:text-lg font-semibold text-text-primary mb-1">{step.label}</h3>
-                  <p className="text-xs lg:text-sm text-text-muted">{step.description}</p>
+                  
+                  {/* Label */}
+                  <h3 className="font-display text-sm lg:text-lg font-semibold text-text-primary mb-1">
+                    {step.label}
+                  </h3>
+                  <p className="text-xs lg:text-sm text-text-muted">
+                    {step.description}
+                  </p>
                 </div>
               );
             })}
           </div>
+
+          {/* Arrow indicators between nodes (mobile) */}
+          <div className="flex justify-center gap-2 mt-6 lg:hidden">
+            {[...Array(4)].map((_, i) => (
+              <ArrowRight key={i} className="w-4 h-4 text-mint/50" />
+            ))}
+          </div>
         </div>
+
+        {/* CTA */}
         <div ref={ctaRef} className="text-center mt-12 lg:mt-16">
-          <Button className="btn-primary text-navy px-8 py-4 rounded-full font-semibold flex items-center gap-2 group mx-auto">Start Stacking <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></Button>
+          <Button className="btn-primary text-navy hover:opacity-90 px-8 py-4 rounded-full text-base font-semibold transition-all flex items-center gap-2 group mx-auto">
+            Start Stacking
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </Button>
         </div>
       </div>
     </section>

@@ -1,18 +1,27 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const faqs = [
   {
     question: 'How does the yield loop work?',
     answer:
-      "It's simple: 1) Deposit crypto and earn 7-15% APY. 2) Borrow up to 70% of your deposit value without selling. 3) Deploy borrowed funds into yield pools or Creator Vaults. 4) Earn yield on your borrowed capital while your original deposit keeps earning. Your money works twice.",
+      'It\'s simple: 1) Deposit crypto and earn 7-15% APY. 2) Borrow up to 70% of your deposit value without selling. 3) Deploy borrowed funds into yield pools or Creator Vaults. 4) Earn yield on your borrowed capital while your original deposit keeps earning. Your money works twice.',
   },
   {
     question: 'What are Creator Vaults?',
     answer:
-      "Creator Vaults let influencers, traders, and community leaders launch their own yield strategies. Followers can deposit into these vaults and earn alongside their favorite creators. It's a way to earn together while supporting the creators you trust.",
+      'Creator Vaults let influencers, traders, and community leaders launch their own yield strategies. Followers can deposit into these vaults and earn alongside their favorite creators. It\'s a way to earn together while supporting the creators you trust.',
   },
   {
     question: 'Is my money safe?',
@@ -30,60 +39,90 @@ const faqs = [
       'We take 10-15% of your yield (not your principal). If you earn $100, we keep $10-15, you keep $85-90. No deposit fees. No withdrawal fees. No hidden costs.',
   },
   {
-    question: 'What chains do you support?',
+    question: 'What if prices drop?',
     answer:
-      'We launch on Arbitrum One for low fees and fast transactions. More chains coming soon based on community demand.',
-  },
-  {
-    question: 'How do I get started?',
-    answer:
-      'Connect your wallet, choose your assets, and deposit. Your yield loop starts automatically. Watch your earnings grow in real-time.',
+      'If you\'re in BTC, ETH, or ARB, your position value moves with the market — just like holding those assets anywhere. If you\'ve borrowed against your position and prices drop significantly, liquidation can occur. We show your Health Factor at all times so you can manage risk. For zero price risk, choose USDC.',
   },
 ];
 
-export default function FAQ() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+const FAQ = () => {
+  const sectionRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const accordionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        headingRef.current,
+        { y: 20, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.6,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: 'top 75%',
+          },
+        }
+      );
+
+      gsap.fromTo(
+        accordionRef.current,
+        { y: 30, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.6,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: accordionRef.current,
+            start: 'top 80%',
+          },
+        }
+      );
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, []);
 
   return (
-    <section className="py-24 bg-navy-900/50">
-      <div className="max-w-4xl mx-auto px-6">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Frequently Asked <span className="text-mint-400">Questions</span>
+    <section
+      id="faq"
+      ref={sectionRef}
+      className="relative w-full py-24 lg:py-32"
+    >
+      <div className="w-full px-6 lg:px-10">
+        <div className="max-w-3xl mx-auto">
+          <h2
+            ref={headingRef}
+            className="font-display text-display-2 text-text-primary text-center mb-12"
+          >
+            Questions? <span className="text-gradient">Answered.</span>
           </h2>
-          <p className="text-white/60 text-lg">
-            Everything you need to know about earning yield without selling
-          </p>
-        </div>
 
-        <div className="space-y-4">
-          {faqs.map((faq, index) => (
-            <div
-              key={index}
-              className="glass-card-mint rounded-xl overflow-hidden"
-            >
-              <button
-                onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
-              >
-                <span className="text-white font-medium text-lg">
-                  {faq.question}
-                </span>
-                <ChevronDown
-                  className={`w-5 h-5 text-mint-400 transition-transform duration-200 ${
-                    openIndex === index ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-              {openIndex === index && (
-                <div className="px-6 pb-5 text-white/60 leading-relaxed">
-                  {faq.answer}
-                </div>
-              )}
-            </div>
-          ))}
+          <div ref={accordionRef}>
+            <Accordion type="single" collapsible className="space-y-4">
+              {faqs.map((faq, index) => (
+                <AccordionItem
+                  key={index}
+                  value={`item-${index}`}
+                  className="glass-card rounded-xl border-0 px-6 data-[state=open]:border-mint/30 transition-colors"
+                >
+                  <AccordionTrigger className="text-text-primary text-left hover:no-underline py-5 text-base lg:text-lg font-medium">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-text-secondary pb-5 leading-relaxed">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
         </div>
       </div>
     </section>
   );
-}
+};
+
+export default FAQ;

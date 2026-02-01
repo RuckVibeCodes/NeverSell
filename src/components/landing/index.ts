@@ -1,9 +1,0 @@
-export { default as Hero } from './Hero';
-export { default as YieldLoop } from './YieldLoop';
-export { default as CreatorVaults } from './CreatorVaults';
-export { default as Strategy } from './Strategy';
-export { default as Security } from './Security';
-export { default as FAQ } from './FAQ';
-export { default as FinalCTA } from './FinalCTA';
-export { default as Navigation } from './Navigation';
-export { default as Footer } from './Footer';
