@@ -55,7 +55,61 @@ const YieldLoop = () => {
   const ctaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+
     const ctx = gsap.context(() => {
+      if (isMobile) {
+        // Simple fade-in on mobile
+        gsap.fromTo(
+          headlineRef.current,
+          { y: 30, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.6,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: 'top 80%',
+            },
+          }
+        );
+
+        gsap.fromTo(
+          loopRef.current,
+          { y: 30, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.6,
+            delay: 0.1,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: 'top 80%',
+            },
+          }
+        );
+
+        gsap.fromTo(
+          ctaRef.current,
+          { y: 20, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.5,
+            delay: 0.2,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: 'top 70%',
+            },
+          }
+        );
+        return;
+      }
+
+      // Desktop: full scroll-driven animation
       const scrollTl = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,

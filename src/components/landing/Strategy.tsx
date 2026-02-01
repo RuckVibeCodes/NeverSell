@@ -81,7 +81,47 @@ const Strategy = () => {
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+
     const ctx = gsap.context(() => {
+      if (isMobile) {
+        // Simple fade-in on mobile
+        gsap.fromTo(
+          headingRef.current,
+          { y: 30, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.6,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: 'top 80%',
+            },
+          }
+        );
+
+        cardsRef.current.forEach((card, index) => {
+          gsap.fromTo(
+            card,
+            { y: 30, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.5,
+              delay: index * 0.1,
+              ease: 'power2.out',
+              scrollTrigger: {
+                trigger: sectionRef.current,
+                start: 'top 70%',
+              },
+            }
+          );
+        });
+        return;
+      }
+
+      // Desktop: full scroll-driven animation
       const scrollTl = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
