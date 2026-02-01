@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
-  ArrowDownToLine, 
+  Wallet, 
+  PiggyBank, 
   Landmark, 
-  Vault, 
-  Settings,
+  Layers,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -16,14 +17,16 @@ interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  highlight?: boolean;
 }
 
 const navItems: NavItem[] = [
   { href: '/app', label: 'Home', icon: LayoutDashboard },
-  { href: '/app/deposit', label: 'Deposit', icon: ArrowDownToLine },
+  { href: '/app/fund', label: 'Fund', icon: Wallet },
+  { href: '/app/lend', label: 'Lend', icon: PiggyBank },
   { href: '/app/borrow', label: 'Borrow', icon: Landmark },
-  { href: '/app/vaults', label: 'Vaults', icon: Vault },
-  { href: '/app/settings', label: 'Settings', icon: Settings },
+  { href: '/app/pools', label: 'Pools', icon: Layers },
+  { href: '/app/vaults', label: 'Vaults', icon: Sparkles, highlight: true },
 ];
 
 /**
@@ -49,20 +52,26 @@ export function MobileNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex flex-col items-center justify-center gap-1 flex-1 py-2 transition-colors',
-                isActive ? 'text-mint' : 'text-white/40'
+                'flex flex-col items-center justify-center gap-1 flex-1 py-2 transition-colors relative',
+                isActive ? 'text-mint' : item.highlight ? 'text-purple-400' : 'text-white/40'
               )}
             >
+              {/* Highlight glow for Vaults */}
+              {item.highlight && !isActive && (
+                <div className="absolute inset-0 bg-gradient-to-t from-purple-500/10 to-transparent rounded-lg pointer-events-none" />
+              )}
+              
               <item.icon 
                 size={22} 
                 className={cn(
                   'transition-all',
-                  isActive && 'drop-shadow-[0_0_8px_rgba(46,213,115,0.5)]'
+                  isActive && 'drop-shadow-[0_0_8px_rgba(46,213,115,0.5)]',
+                  item.highlight && !isActive && 'drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]'
                 )} 
               />
               <span className={cn(
                 'text-[10px] font-medium',
-                isActive ? 'text-mint' : 'text-white/40'
+                isActive ? 'text-mint' : item.highlight ? 'text-purple-400' : 'text-white/40'
               )}>
                 {item.label}
               </span>

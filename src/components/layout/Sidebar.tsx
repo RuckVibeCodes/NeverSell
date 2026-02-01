@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
-  ArrowDownToLine, 
+  Wallet, 
+  PiggyBank, 
   Landmark, 
-  Vault, 
+  Layers,
+  Sparkles,
   Settings,
   type LucideIcon,
 } from 'lucide-react';
@@ -16,13 +18,16 @@ interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  badge?: string;
 }
 
 const navItems: NavItem[] = [
   { href: '/app', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/app/deposit', label: 'Deposit', icon: ArrowDownToLine },
+  { href: '/app/fund', label: 'Fund', icon: Wallet },
+  { href: '/app/lend', label: 'Lend', icon: PiggyBank },
   { href: '/app/borrow', label: 'Borrow', icon: Landmark },
-  { href: '/app/vaults', label: 'Vaults', icon: Vault },
+  { href: '/app/pools', label: 'Pools', icon: Layers },
+  { href: '/app/vaults', label: 'Vaults', icon: Sparkles, badge: 'NEW' },
   { href: '/app/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -61,8 +66,15 @@ export function Sidebar() {
               />
               <span>{item.label}</span>
               
+              {/* Badge */}
+              {item.badge && (
+                <span className="ml-auto px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full">
+                  {item.badge}
+                </span>
+              )}
+              
               {/* Active indicator */}
-              {isActive && (
+              {isActive && !item.badge && (
                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-mint" />
               )}
             </Link>
