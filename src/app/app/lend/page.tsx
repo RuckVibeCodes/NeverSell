@@ -1,55 +1,79 @@
 "use client";
 
-import { useState } from "react";
-import { PiggyBank, TrendingUp, Loader2, Check, AlertCircle, X } from "lucide-react";
+import { useState, useMemo } from "react";
+import { PiggyBank, TrendingUp, Loader2, Check, AlertCircle, X, Info } from "lucide-react";
 import { useAccount, useBalance } from "wagmi";
 import { formatUnits } from "viem";
+import Image from "next/image";
 import { useAaveDeposit } from "@/hooks/useAaveDeposit";
 import { useAavePosition } from "@/hooks/useAavePosition";
+import { useGMXApy, formatAPY } from "@/hooks/useGMXApy";
 import { AAVE_V3_ADDRESSES } from "@/lib/aave";
 import type { Address } from "viem";
+import type { GMPoolName } from "@/lib/gmx";
+
+// Asset logo URLs from CoinGecko
+const ASSET_LOGOS = {
+  WBTC: "https://assets.coingecko.com/coins/images/7598/small/wrapped_bitcoin_wbtc.png",
+  ETH: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
+  USDC: "https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png",
+  ARB: "https://assets.coingecko.com/coins/images/16547/small/photo_2023-03-29_21.47.00.jpeg",
+} as const;
+
+// Approximate USD prices (replace with price feed hook in production)
+const ASSET_PRICES: Record<string, number> = {
+  WBTC: 97000,
+  ETH: 3400,
+  USDC: 1,
+  ARB: 0.80,
+};
+
+// Map assets to their GM pool for APY
+const ASSET_GM_POOL: Record<string, GMPoolName> = {
+  WBTC: "BTC/USD",
+  ETH: "ETH/USD",
+  USDC: "ETH/USD", // USDC uses ETH/USD pool (short side)
+  ARB: "ARB/USD",
+};
 
 const lendableAssets = [
   { 
     symbol: "WBTC", 
     name: "Wrapped Bitcoin", 
-    icon: "₿",
+    logo: ASSET_LOGOS.WBTC,
     address: AAVE_V3_ADDRESSES.WBTC,
-    apy: 0.45,
     color: "from-orange-500 to-amber-500",
   },
   { 
     symbol: "ETH", 
     name: "Ethereum", 
-    icon: "Ξ",
+    logo: ASSET_LOGOS.ETH,
     address: AAVE_V3_ADDRESSES.WETH,
-    apy: 2.1,
     color: "from-blue-500 to-purple-500",
   },
   { 
     symbol: "USDC", 
     name: "USD Coin", 
-    icon: "$",
+    logo: ASSET_LOGOS.USDC,
     address: AAVE_V3_ADDRESSES.USDC,
-    apy: 4.8,
     color: "from-blue-400 to-cyan-400",
   },
   { 
     symbol: "ARB", 
     name: "Arbitrum", 
-    icon: "A",
+    logo: ASSET_LOGOS.ARB,
     address: AAVE_V3_ADDRESSES.ARB,
-    apy: 1.2,
     color: "from-blue-600 to-indigo-500",
   },
 ];
 
 interface SupplyModalProps {
   asset: typeof lendableAssets[0];
+  gmApy: number;
   onClose: () => void;
 }
 
-function SupplyModal({ asset, onClose }: SupplyModalProps) {
+function SupplyModal({ asset, gmApy, onClose }: SupplyModalProps) {
   const [amount, setAmount] = useState("");
   const { address } = useAccount();
   
@@ -92,17 +116,25 @@ function SupplyModal({ asset, onClose }: SupplyModalProps) {
 
   const getButtonText = () => {
     if (isApproving || isApprovalPending) return 'Approving...';
-    if (isDepositing || isDepositPending) return 'Supplying...';
+    if (isDepositing || isDepositPending) return 'Depositing...';
     if (isDepositSuccess) return 'Success!';
     if (needsApproval) return `Approve ${asset.symbol}`;
-    return 'Supply';
+    return 'Deposit';
   };
 
-  // Calculate estimated earnings
+  // Calculate projections based on NeverSell strategy
   const amountNum = parseFloat(amount) || 0;
-  const dailyEarnings = (amountNum * asset.apy / 100 / 365);
-  const monthlyEarnings = dailyEarnings * 30;
-  const yearlyEarnings = amountNum * asset.apy / 100;
+  const assetPrice = ASSET_PRICES[asset.symbol] || 1;
+  const depositValueUSD = amountNum * assetPrice;
+  
+  // 60% goes to Aave for borrowing capacity
+  const borrowingCapacity = depositValueUSD * 0.6;
+  
+  // 40% goes to GM pools for yield
+  // Monthly earnings = (depositAmount × 0.4 × gmPoolAPY / 12) × 0.9 (after 10% fee)
+  const yieldBuffer = depositValueUSD * 0.4;
+  const monthlyEarningsGross = (yieldBuffer * (gmApy / 100)) / 12;
+  const monthlyEarningsNet = monthlyEarningsGross * 0.9; // After 10% platform fee
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -117,17 +149,24 @@ function SupplyModal({ asset, onClose }: SupplyModalProps) {
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${asset.color} flex items-center justify-center text-white font-bold text-xl shadow-lg`}>
-            {asset.icon}
+          <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${asset.color} flex items-center justify-center shadow-lg overflow-hidden`}>
+            <Image 
+              src={asset.logo} 
+              alt={asset.symbol}
+              width={32}
+              height={32}
+              className="object-contain"
+            />
           </div>
           <div>
-            <h3 className="text-xl font-semibold text-white">Supply {asset.symbol}</h3>
-            <p className="text-mint text-sm">{asset.apy}% APY</p>
+            <h3 className="text-xl font-semibold text-white">{asset.symbol}</h3>
+            <p className="text-white/50 text-sm">{asset.name}</p>
           </div>
         </div>
 
         {/* Amount input */}
         <div className="space-y-3 mb-6">
+          <label className="text-white/60 text-sm">Deposit Amount</label>
           <div className="relative">
             <input
               type="number"
@@ -151,21 +190,61 @@ function SupplyModal({ asset, onClose }: SupplyModalProps) {
           </div>
         </div>
 
-        {/* Estimated earnings */}
+        {/* Divider */}
+        <div className="border-t border-white/10 my-6" />
+
+        {/* Strategy breakdown */}
         {amountNum > 0 && (
-          <div className="mb-6 p-4 rounded-xl bg-mint/5 border border-mint/20 space-y-2">
-            <p className="text-white/60 text-sm font-medium mb-3">Estimated Earnings</p>
+          <div className="mb-6 space-y-4">
+            {/* APY */}
             <div className="flex items-center justify-between">
-              <span className="text-white/60 text-sm">Daily</span>
-              <span className="text-mint font-medium">+{dailyEarnings.toFixed(6)} {asset.symbol}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-white/60 text-sm">Estimated APY</span>
+                <div className="group relative">
+                  <Info size={14} className="text-white/40 cursor-help" />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-navy-100 rounded-lg text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    Yield earned on 40% buffer deployed to GM pools
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-mint font-bold text-lg">{formatAPY(gmApy)}</span>
+                <span className="text-white/40 text-xs ml-1">(on 40% yield buffer)</span>
+              </div>
             </div>
+
+            {/* Monthly Earnings */}
             <div className="flex items-center justify-between">
-              <span className="text-white/60 text-sm">Monthly</span>
-              <span className="text-mint font-medium">+{monthlyEarnings.toFixed(6)} {asset.symbol}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-white/60 text-sm">Monthly Earnings</span>
+                <div className="group relative">
+                  <Info size={14} className="text-white/40 cursor-help" />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-navy-100 rounded-lg text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    After 10% platform performance fee
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-mint font-bold text-lg">~${monthlyEarningsNet.toFixed(2)}</span>
+                <span className="text-white/40 text-xs ml-1">(after 10% fee)</span>
+              </div>
             </div>
+
+            {/* Borrowing Capacity */}
             <div className="flex items-center justify-between">
-              <span className="text-white/60 text-sm">Yearly</span>
-              <span className="text-mint font-medium">+{yearlyEarnings.toFixed(6)} {asset.symbol}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-white/60 text-sm">Borrowing Capacity</span>
+                <div className="group relative">
+                  <Info size={14} className="text-white/40 cursor-help" />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-navy-100 rounded-lg text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    60% of deposit available to borrow against
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-white font-bold text-lg">${borrowingCapacity.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                <span className="text-white/40 text-xs ml-1">(60% LTV)</span>
+              </div>
             </div>
           </div>
         )}
@@ -196,7 +275,7 @@ function SupplyModal({ asset, onClose }: SupplyModalProps) {
         {isDepositSuccess && (
           <div className="mt-4 p-3 rounded-xl bg-mint/10 border border-mint/20 flex items-center gap-2 text-mint text-sm">
             <Check size={16} />
-            Successfully supplied {amount} {asset.symbol}!
+            Successfully deposited {amount} {asset.symbol}!
           </div>
         )}
       </div>
@@ -204,7 +283,15 @@ function SupplyModal({ asset, onClose }: SupplyModalProps) {
   );
 }
 
-function AssetCard({ asset, onSupply }: { asset: typeof lendableAssets[0]; onSupply: () => void }) {
+function AssetCard({ 
+  asset, 
+  gmApy,
+  onSupply 
+}: { 
+  asset: typeof lendableAssets[0]; 
+  gmApy: number;
+  onSupply: () => void;
+}) {
   const { address, isConnected } = useAccount();
   
   const { data: balance } = useBalance({
@@ -218,12 +305,23 @@ function AssetCard({ asset, onSupply }: { asset: typeof lendableAssets[0]; onSup
 
   const supplied = assetPositions.find(p => p.asset === asset.address)?.aTokenBalance || 0;
 
+  // Calculate borrowing capacity on supplied amount
+  const assetPrice = ASSET_PRICES[asset.symbol] || 1;
+  const suppliedValueUSD = supplied * assetPrice;
+  const borrowingCapacity = suppliedValueUSD * 0.6;
+
   return (
     <div className="glass-card p-6 hover:border-mint/20 transition-all duration-300 group">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
-          <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${asset.color} flex items-center justify-center text-white font-bold text-2xl shadow-lg group-hover:scale-105 transition-transform`}>
-            {asset.icon}
+          <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${asset.color} flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform overflow-hidden`}>
+            <Image 
+              src={asset.logo} 
+              alt={asset.symbol}
+              width={36}
+              height={36}
+              className="object-contain"
+            />
           </div>
           <div>
             <h3 className="text-xl font-semibold text-white">{asset.symbol}</h3>
@@ -234,9 +332,9 @@ function AssetCard({ asset, onSupply }: { asset: typeof lendableAssets[0]; onSup
         <div className="text-right">
           <div className="flex items-center gap-1 text-mint text-xl font-bold">
             <TrendingUp size={18} />
-            {asset.apy}%
+            {formatAPY(gmApy)}
           </div>
-          <p className="text-white/50 text-sm">APY</p>
+          <p className="text-white/50 text-xs">APY (on 40% buffer)</p>
         </div>
       </div>
 
@@ -254,12 +352,25 @@ function AssetCard({ asset, onSupply }: { asset: typeof lendableAssets[0]; onSup
         </div>
       </div>
 
+      {/* Borrowing capacity for supplied assets */}
+      {supplied > 0 && (
+        <div className="mb-4 p-3 rounded-xl bg-mint/5 border border-mint/20">
+          <div className="flex justify-between items-center">
+            <span className="text-white/60 text-sm">Borrowing Capacity</span>
+            <span className="text-mint font-medium">
+              ${borrowingCapacity.toLocaleString(undefined, { maximumFractionDigits: 0 })} 
+              <span className="text-white/40 text-xs ml-1">(60% LTV)</span>
+            </span>
+          </div>
+        </div>
+      )}
+
       <button 
         onClick={onSupply}
         disabled={!isConnected}
         className="w-full btn-primary py-3 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Supply
+        Deposit
       </button>
     </div>
   );
@@ -270,13 +381,52 @@ export default function LendPage() {
   const [selectedAsset, setSelectedAsset] = useState<typeof lendableAssets[0] | null>(null);
   
   const { position } = useAavePosition();
+  const { apyData, isLoading: apyLoading } = useGMXApy();
+
+  // Get APY for each asset from their mapped GM pool
+  const getAssetApy = useMemo(() => {
+    return (symbol: string): number => {
+      const poolName = ASSET_GM_POOL[symbol];
+      if (!poolName) return 0;
+      const poolApy = apyData[poolName];
+      // Use 7-day APY as the primary display metric
+      return poolApy?.apy7d ?? 0;
+    };
+  }, [apyData]);
+
+  const selectedAssetApy = selectedAsset ? getAssetApy(selectedAsset.symbol) : 0;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-display font-bold text-white mb-2">Lend & Earn</h1>
-        <p className="text-white/60">Supply assets to earn yield and use as collateral for borrowing</p>
+        <p className="text-white/60">Deposit assets to earn yield on GM pools and unlock borrowing capacity</p>
+      </div>
+
+      {/* Strategy explanation */}
+      <div className="glass-card p-6 mb-8 border-mint/20">
+        <h2 className="text-lg font-semibold text-white mb-3">How NeverSell Works</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-mint/20 flex items-center justify-center text-mint font-bold shrink-0">
+              60%
+            </div>
+            <div>
+              <p className="text-white font-medium">Borrowing Collateral</p>
+              <p className="text-white/50">Deposited to Aave for borrowing capacity</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-mint/20 flex items-center justify-center text-mint font-bold shrink-0">
+              40%
+            </div>
+            <div>
+              <p className="text-white font-medium">Yield Buffer</p>
+              <p className="text-white/50">Deployed to GMX GM pools for yield</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Stats summary */}
@@ -305,7 +455,12 @@ export default function LendPage() {
             <PiggyBank size={32} />
           </div>
           <h2 className="text-xl font-semibold text-white mb-2">Connect Your Wallet</h2>
-          <p className="text-white/60">Connect your wallet to start lending and earning yield.</p>
+          <p className="text-white/60">Connect your wallet to start earning yield.</p>
+        </div>
+      ) : apyLoading ? (
+        <div className="glass-card p-12 text-center">
+          <Loader2 size={32} className="animate-spin text-mint mx-auto mb-4" />
+          <p className="text-white/60">Loading yield data...</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -313,6 +468,7 @@ export default function LendPage() {
             <AssetCard 
               key={asset.symbol} 
               asset={asset} 
+              gmApy={getAssetApy(asset.symbol)}
               onSupply={() => setSelectedAsset(asset)}
             />
           ))}
@@ -323,6 +479,7 @@ export default function LendPage() {
       {selectedAsset && (
         <SupplyModal 
           asset={selectedAsset} 
+          gmApy={selectedAssetApy}
           onClose={() => setSelectedAsset(null)} 
         />
       )}
