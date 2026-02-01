@@ -8,6 +8,7 @@ import {
   PiggyBank, 
   Landmark, 
   Layers,
+  BarChart3,
   Sparkles,
   User,
   type LucideIcon,
@@ -27,6 +28,7 @@ const navItems: NavItem[] = [
   { href: '/app/lend', label: 'Lend', icon: PiggyBank },
   { href: '/app/borrow', label: 'Borrow', icon: Landmark },
   { href: '/app/pools', label: 'Pools', icon: Layers },
+  { href: '/app/markets', label: 'Markets', icon: BarChart3 },
   { href: '/app/vaults', label: 'Portfolios', icon: Sparkles, badge: 'NEW' },
   { href: '/app/profile', label: 'Profile', icon: User },
 ];
