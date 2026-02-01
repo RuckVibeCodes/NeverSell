@@ -183,7 +183,7 @@ function EmptyDashboard() {
           <ActionCard 
             href="/app/vaults" 
             icon={Sparkles} 
-            title="Explore Vaults" 
+            title="Explore Portfolios" 
             description="Copy top traders"
             color="from-purple-500 to-pink-500"
           />

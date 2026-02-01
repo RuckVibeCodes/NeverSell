@@ -173,7 +173,7 @@ const mockVaults = [
   },
 ];
 
-// ========== Create Vault Modal ==========
+// ========== Create Portfolio Modal ==========
 interface CreateVaultModalProps {
   onClose: () => void;
   onSuccess: () => void;
@@ -238,7 +238,7 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
     // Mock creation - in production this would deploy a contract
     await new Promise(resolve => setTimeout(resolve, 2000));
     const mockVaultId = Math.random().toString(36).substring(7);
-    setShareLink(`https://neversell.finance/vault/${mockVaultId}`);
+    setShareLink(`https://neversell.finance/portfolio/${mockVaultId}`);
     setIsCreating(false);
     setStep(4); // Success step
   };
@@ -293,7 +293,7 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
           {step === 1 && (
             <div className="space-y-6">
               <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-white mb-2">Fund Your Vault</h2>
+                <h2 className="text-2xl font-bold text-white mb-2">Fund Your Portfolio</h2>
                 <p className="text-white/60">Deposit USDC to seed your strategy</p>
               </div>
 
@@ -328,7 +328,7 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
 
               <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                 <p className="text-white/60 text-sm">
-                  💡 This deposit seeds your vault. When followers deposit, their funds follow your strategy automatically.
+                  💡 This deposit seeds your portfolio. When followers deposit, their funds follow your strategy automatically.
                 </p>
               </div>
 
@@ -472,13 +472,13 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
           {step === 3 && (
             <div className="space-y-6">
               <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-white mb-2">Personalize Your Vault</h2>
+                <h2 className="text-2xl font-bold text-white mb-2">Personalize Your Portfolio</h2>
                 <p className="text-white/60">Give it a name and connect your socials</p>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-white/60 text-sm mb-2 block">Vault Name *</label>
+                  <label className="text-white/60 text-sm mb-2 block">Portfolio Name *</label>
                   <input
                     type="text"
                     placeholder="e.g., Alpha Hunter Strategy"
@@ -574,7 +574,7 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
                   ) : (
                     <>
                       <Sparkles size={18} />
-                      Create Vault
+                      Create Portfolio
                     </>
                   )}
                 </button>
@@ -588,8 +588,8 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-mint to-emerald-500 flex items-center justify-center text-4xl mx-auto mb-4 animate-bounce">
                 🎉
               </div>
-              <h2 className="text-2xl font-bold text-white">Vault Created!</h2>
-              <p className="text-white/60">Share your vault and start building your following</p>
+              <h2 className="text-2xl font-bold text-white">Portfolio Created!</h2>
+              <p className="text-white/60">Share your portfolio and start building your following</p>
 
               {/* Share link */}
               <div className="flex items-center gap-2 p-4 rounded-xl bg-white/5 border border-white/10">
@@ -628,7 +628,7 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
                 onClick={() => { onSuccess(); onClose(); }}
                 className="w-full btn-primary py-4"
               >
-                View My Vault
+                View My Portfolio
               </button>
             </div>
           )}
@@ -908,7 +908,7 @@ function Leaderboard({ vaults }: { vaults: typeof mockVaults }) {
         </div>
         <div>
           <h2 className="text-lg font-bold text-white">Top Performers</h2>
-          <p className="text-white/50 text-sm">This month&apos;s best vaults</p>
+          <p className="text-white/50 text-sm">This month&apos;s best portfolios</p>
         </div>
       </div>
 
@@ -1049,7 +1049,7 @@ export default function VaultsPage() {
           <div className="flex flex-wrap justify-center gap-4 text-white/40 text-sm">
             <span className="flex items-center gap-1"><Users size={16} /> 50K+ Followers</span>
             <span className="flex items-center gap-1"><TrendingUp size={16} /> $15M+ TVL</span>
-            <span className="flex items-center gap-1"><Star size={16} /> 100+ Vaults</span>
+            <span className="flex items-center gap-1"><Star size={16} /> 100+ Portfolios</span>
           </div>
         </div>
       ) : (
@@ -1059,7 +1059,7 @@ export default function VaultsPage() {
             <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-orange-500/10" />
             <div className="relative grid grid-cols-2 md:grid-cols-4 gap-6">
               <div>
-                <p className="text-white/40 text-sm mb-1">Your Vault Deposits</p>
+                <p className="text-white/40 text-sm mb-1">Your Portfolio Deposits</p>
                 <p className="text-2xl font-bold text-white">$0.00</p>
               </div>
               <div>
@@ -1067,7 +1067,7 @@ export default function VaultsPage() {
                 <p className="text-2xl font-bold text-green-400">$0.00</p>
               </div>
               <div>
-                <p className="text-white/40 text-sm mb-1">Vaults Following</p>
+                <p className="text-white/40 text-sm mb-1">Portfolios Following</p>
                 <p className="text-2xl font-bold text-white">0</p>
               </div>
               <div>
@@ -1090,7 +1090,7 @@ export default function VaultsPage() {
 
           {filteredVaults.length === 0 && (
             <div className="glass-card p-12 text-center">
-              <p className="text-white/40">No vaults found for this filter.</p>
+              <p className="text-white/40">No portfolios found for this filter.</p>
             </div>
           )}
         </>
@@ -1112,7 +1112,7 @@ export default function VaultsPage() {
             className="btn-primary inline-flex items-center gap-2"
           >
             <Plus size={18} />
-            Create Your Vault
+            Create Your Portfolio
           </button>
         </div>
       </div>
@@ -1125,12 +1125,12 @@ export default function VaultsPage() {
         />
       )}
 
-      {/* Create Vault Modal */}
+      {/* Create Portfolio Modal */}
       {showCreateVault && (
         <CreateVaultModal 
           onClose={() => setShowCreateVault(false)}
           onSuccess={() => {
-            // In production: refresh vault list, navigate to new vault
+            // In production: refresh vault list, navigate to new portfolio
             console.log('Vault created successfully');
           }}
         />

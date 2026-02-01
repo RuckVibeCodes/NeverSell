@@ -8,7 +8,7 @@ const navLinks = [
   { href: "/app", label: "Dashboard" },
   { href: "/app/deposit", label: "Deposit" },
   { href: "/app/borrow", label: "Borrow" },
-  { href: "/app/vaults", label: "Vaults" },
+  { href: "/app/vaults", label: "Portfolios" },
 ];
 
 export function Navbar() {
