@@ -22,7 +22,7 @@ const Method = () => {
           start: 'top top',
           end: '+=120%',
           pin: true,
-          scrub: 0.6,
+          scrub: 1.2,
         },
       });
 

@@ -57,8 +57,8 @@ export default function Home() {
             );
             return target.settleCenter;
           },
-          duration: { min: 0.15, max: 0.4 },
-          ease: 'power2.out',
+          duration: { min: 0.4, max: 0.8 },
+          ease: 'power2.inOut',
         },
       });
     }, 100);

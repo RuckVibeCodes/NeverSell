@@ -42,7 +42,7 @@ const HowItWorks = () => {
           start: 'top top',
           end: '+=130%',
           pin: true,
-          scrub: 0.6,
+          scrub: 1.2,
         },
       });
 

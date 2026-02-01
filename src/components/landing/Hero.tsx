@@ -155,18 +155,18 @@ const Hero = () => {
       tl.fromTo(
         '.hero-line',
         { y: 80, opacity: 0, rotateX: 20 },
-        { y: 0, opacity: 1, rotateX: 0, duration: 1, stagger: 0.1 }
+        { y: 0, opacity: 1, rotateX: 0, duration: 1.2, stagger: 0.15 }
       )
         .fromTo(
           subheadRef.current,
           { y: 30, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.7 },
+          { y: 0, opacity: 1, duration: 1 },
           '-=0.5'
         )
         .fromTo(
           ctaRef.current,
           { y: 25, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.6 },
+          { y: 0, opacity: 1, duration: 0.9 },
           '-=0.4'
         )
         .fromTo(
@@ -183,7 +183,7 @@ const Hero = () => {
           start: 'top top',
           end: '+=140%',
           pin: true,
-          scrub: 0.6,
+          scrub: 1.2,
         },
       });
 

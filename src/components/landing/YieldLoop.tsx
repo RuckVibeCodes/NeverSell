@@ -62,7 +62,7 @@ const YieldLoop = () => {
           start: 'top top',
           end: '+=150%',
           pin: true,
-          scrub: 0.6,
+          scrub: 1.2,
         },
       });
 
