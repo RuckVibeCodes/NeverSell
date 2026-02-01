@@ -120,7 +120,7 @@ function StrategyCard({
   onSelect,
 }: {
   strategy: Strategy;
-  apyData: Record<string, { apy7d: number; tvlUsd: number } | null>;
+  apyData: Record<string, { totalApy: number; tvlUsd: number } | null>;
   isLoading: boolean;
   onSelect: () => void;
 }) {
@@ -134,7 +134,7 @@ function StrategyCard({
     for (const allocation of strategy.allocations) {
       const poolData = apyData[allocation.pool];
       if (poolData) {
-        weightedApy += (poolData.apy7d * allocation.percentage) / 100;
+        weightedApy += (poolData.totalApy * allocation.percentage) / 100;
       }
     }
     return weightedApy || strategy.estimatedApy;
@@ -213,7 +213,7 @@ function StrategyModal({
   onClose,
 }: {
   strategy: Strategy;
-  apyData: Record<string, { apy7d: number; tvlUsd: number } | null>;
+  apyData: Record<string, { totalApy: number; tvlUsd: number } | null>;
   onClose: () => void;
 }) {
   const [amount, setAmount] = useState("");
@@ -245,7 +245,7 @@ function StrategyModal({
     for (const allocation of strategy.allocations) {
       const poolData = apyData[allocation.pool];
       if (poolData) {
-        apy += (poolData.apy7d * allocation.percentage) / 100;
+        apy += (poolData.totalApy * allocation.percentage) / 100;
       }
     }
     return apy || strategy.estimatedApy;
@@ -388,7 +388,7 @@ function StrategyModal({
                   <div>
                     <p className="text-white text-sm font-medium">{allocation.pool}</p>
                     <p className="text-white/40 text-xs">
-                      {allocation.poolData ? formatAPY(allocation.poolData.apy7d) : "~12%"} APY
+                      {allocation.poolData ? formatAPY(allocation.poolData.totalApy) : "~12%"} APY
                     </p>
                   </div>
                 </div>
