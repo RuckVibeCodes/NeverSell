@@ -79,11 +79,13 @@ const Navigation = () => {
                   {link.label}
                 </button>
               ))}
-              <Button
-                className="btn-primary text-navy hover:opacity-90 px-6 py-2.5 rounded-full text-sm font-semibold transition-all"
-              >
-                Launch App →
-              </Button>
+              <Link href="/app">
+                <Button
+                  className="btn-primary text-navy hover:opacity-90 px-6 py-2.5 rounded-full text-sm font-semibold transition-all"
+                >
+                  Launch App →
+                </Button>
+              </Link>
             </div>
 
             {/* Mobile Menu Button */}
@@ -121,11 +123,13 @@ const Navigation = () => {
               {link.label}
             </button>
           ))}
-          <Button
-            className="mt-4 btn-primary text-navy px-8 py-3 rounded-full text-lg font-semibold"
-          >
-            Launch App →
-          </Button>
+          <Link href="/app" onClick={() => setIsMobileMenuOpen(false)}>
+            <Button
+              className="mt-4 btn-primary text-navy px-8 py-3 rounded-full text-lg font-semibold"
+            >
+              Launch App →
+            </Button>
+          </Link>
         </div>
       </div>
     </>
