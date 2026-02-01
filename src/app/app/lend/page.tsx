@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { PiggyBank, TrendingUp, Loader2, Check, AlertCircle, X, Info } from "lucide-react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { PiggyBank, TrendingUp, Loader2, Check, AlertCircle, X, Info, ExternalLink } from "lucide-react";
 import { useAccount, useBalance } from "wagmi";
 import { formatUnits } from "viem";
 import Image from "next/image";
@@ -10,6 +10,7 @@ import { useAavePosition } from "@/hooks/useAavePosition";
 import { useGMXApy, formatAPY, formatLastUpdated } from "@/hooks/useGMXApy";
 import { useAaveSupplyRates, FALLBACK_AAVE_SUPPLY_APY } from "@/hooks/useAaveSupplyRate";
 import { AAVE_V3_ADDRESSES } from "@/lib/aave";
+import { getArbiscanTxUrl, parseTransactionError } from "@/lib/arbiscan";
 import { HarvestCard } from "@/components/dashboard";
 import type { Address } from "viem";
 import type { GMPoolName } from "@/lib/gmx";
@@ -82,16 +83,23 @@ interface SupplyModalProps {
   asset: typeof lendableAssets[0];
   apyData: { blended: number; aave: number; gmPool: number; gmPoolFee: number; gmPoolPerf: number };
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-function SupplyModal({ asset, apyData, onClose }: SupplyModalProps) {
+function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
   const [amount, setAmount] = useState("");
   const { address } = useAccount();
   
-  const { data: balance } = useBalance({
+  const { data: balance, refetch: refetchBalance } = useBalance({
     address,
     token: asset.address as Address,
   });
+
+  // Handle successful deposit
+  const handleDepositSuccess = useCallback((hash: string) => {
+    refetchBalance();
+    onSuccess?.();
+  }, [refetchBalance, onSuccess]);
 
   const {
     needsApproval,
@@ -99,15 +107,26 @@ function SupplyModal({ asset, apyData, onClose }: SupplyModalProps) {
     deposit,
     isApproving,
     isApprovalPending,
+    isApprovalSuccess,
     isDepositing,
     isDepositPending,
     isDepositSuccess,
     depositError,
     approvalError,
+    depositHash,
+    reset,
   } = useAaveDeposit({
     asset: asset.address as Address,
     amount: parseFloat(amount) || 0,
+    onDepositSuccess: handleDepositSuccess,
   });
+
+  // Auto-proceed to deposit after approval succeeds
+  useEffect(() => {
+    if (isApprovalSuccess && !needsApproval && !isDepositing && !isDepositPending && !isDepositSuccess) {
+      deposit();
+    }
+  }, [isApprovalSuccess, needsApproval, isDepositing, isDepositPending, isDepositSuccess, deposit]);
 
   const isPending = isApproving || isApprovalPending || isDepositing || isDepositPending;
 
@@ -125,6 +144,11 @@ function SupplyModal({ asset, apyData, onClose }: SupplyModalProps) {
     }
   };
 
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
+
   const getButtonText = () => {
     if (isApproving || isApprovalPending) return 'Approving...';
     if (isDepositing || isDepositPending) return 'Depositing...';
@@ -132,6 +156,9 @@ function SupplyModal({ asset, apyData, onClose }: SupplyModalProps) {
     if (needsApproval) return `Approve ${asset.symbol}`;
     return 'Deposit';
   };
+
+  // Parse errors for user-friendly messages
+  const errorMessage = parseTransactionError(depositError || approvalError);
 
   // Calculate projections based on NeverSell strategy
   const amountNum = parseFloat(amount) || 0;
@@ -151,7 +178,7 @@ function SupplyModal({ asset, apyData, onClose }: SupplyModalProps) {
       <div className="glass-card w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200">
         {/* Close button */}
         <button 
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
         >
           <X size={20} />
@@ -277,18 +304,37 @@ function SupplyModal({ asset, apyData, onClose }: SupplyModalProps) {
         </button>
 
         {/* Errors */}
-        {(depositError || approvalError) && (
+        {errorMessage && (
           <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-red-400 text-sm">
             <AlertCircle size={16} />
-            {(depositError || approvalError)?.message || 'Transaction failed'}
+            {errorMessage}
           </div>
         )}
 
         {/* Success */}
         {isDepositSuccess && (
-          <div className="mt-4 p-3 rounded-xl bg-mint/10 border border-mint/20 flex items-center gap-2 text-mint text-sm">
-            <Check size={16} />
-            Successfully deposited {amount} {asset.symbol}!
+          <div className="mt-4 p-4 rounded-xl bg-mint/10 border border-mint/20 space-y-3">
+            <div className="flex items-center gap-2 text-mint">
+              <Check size={18} />
+              <span className="font-medium">Successfully deposited {amount} {asset.symbol}!</span>
+            </div>
+            {depositHash && (
+              <a 
+                href={getArbiscanTxUrl(depositHash)} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-mint/80 hover:text-mint text-sm transition-colors"
+              >
+                <ExternalLink size={14} />
+                View on Arbiscan
+              </a>
+            )}
+            <button
+              onClick={handleClose}
+              className="w-full mt-2 py-2 rounded-xl bg-mint/20 text-mint hover:bg-mint/30 transition-colors text-sm font-medium"
+            >
+              Done
+            </button>
           </div>
         )}
       </div>
@@ -405,7 +451,7 @@ export default function LendPage() {
   const { isConnected } = useAccount();
   const [selectedAsset, setSelectedAsset] = useState<typeof lendableAssets[0] | null>(null);
   
-  const { position } = useAavePosition();
+  const { position, refetch: refetchPosition } = useAavePosition();
   const { apyData, isLoading: gmxApyLoading, lastUpdated } = useGMXApy();
   const { supplyRates, isLoading: aaveApyLoading } = useAaveSupplyRates();
   
@@ -566,7 +612,8 @@ export default function LendPage() {
         <SupplyModal 
           asset={selectedAsset} 
           apyData={selectedAssetApy}
-          onClose={() => setSelectedAsset(null)} 
+          onClose={() => setSelectedAsset(null)}
+          onSuccess={() => refetchPosition()}
         />
       )}
     </div>
