@@ -26,7 +26,7 @@ const navItems: NavItem[] = [
   { href: '/app/lend', label: 'Lend', icon: PiggyBank },
   { href: '/app/borrow', label: 'Borrow', icon: Landmark },
   { href: '/app/pools', label: 'Pools', icon: Layers },
-  { href: '/app/vaults', label: 'Vaults', icon: Sparkles, highlight: true },
+  { href: '/app/vaults', label: 'Portfolios', icon: Sparkles, highlight: true },
 ];
 
 /**
@@ -56,7 +56,7 @@ export function MobileNav() {
                 isActive ? 'text-mint' : item.highlight ? 'text-purple-400' : 'text-white/40'
               )}
             >
-              {/* Highlight glow for Vaults */}
+              {/* Highlight glow for Portfolios */}
               {item.highlight && !isActive && (
                 <div className="absolute inset-0 bg-gradient-to-t from-purple-500/10 to-transparent rounded-lg pointer-events-none" />
               )}

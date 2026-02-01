@@ -9,7 +9,7 @@ import {
   Landmark, 
   Layers,
   Sparkles,
-  Settings,
+  User,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -27,8 +27,8 @@ const navItems: NavItem[] = [
   { href: '/app/lend', label: 'Lend', icon: PiggyBank },
   { href: '/app/borrow', label: 'Borrow', icon: Landmark },
   { href: '/app/pools', label: 'Pools', icon: Layers },
-  { href: '/app/vaults', label: 'Vaults', icon: Sparkles, badge: 'NEW' },
-  { href: '/app/settings', label: 'Settings', icon: Settings },
+  { href: '/app/vaults', label: 'Portfolios', icon: Sparkles, badge: 'NEW' },
+  { href: '/app/profile', label: 'Profile', icon: User },
 ];
 
 /**
