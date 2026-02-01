@@ -212,9 +212,9 @@ function StatsSummary({ pools }: { pools: GMPool[] }) {
 export default function MarketsPage() {
   const { pools, isLoading, isError, error, lastUpdated, refetch } = useAllGMXPools();
   
-  // Filter state - default to main pools only + $100K+ TVL to filter tiny pools
+  // Filter state - show all pools by default (user can filter if needed)
   const [search, setSearch] = useState('');
-  const [minTvl, setMinTvl] = useState(100_000);
+  const [minTvl, setMinTvl] = useState(0); // Show all TVL levels by default
   const [minApy, setMinApy] = useState(0);
   const [poolType, setPoolType] = useState<PoolTypeFilter>('all');
   const [mainOnly, setMainOnly] = useState(true); // Show only highest TVL per symbol
@@ -410,11 +410,11 @@ export default function MarketsPage() {
           Showing {filteredPools.length} of {pools.length} pools
           {mainOnly && <span className="text-mint ml-1">(main pools)</span>}
         </p>
-        {(search || minTvl !== 100_000 || minApy > 0 || poolType !== 'all' || !mainOnly) && (
+        {(search || minTvl > 0 || minApy > 0 || poolType !== 'all' || !mainOnly) && (
           <button
             onClick={() => {
               setSearch('');
-              setMinTvl(100_000);
+              setMinTvl(0);
               setMinApy(0);
               setPoolType('all');
               setMainOnly(true);
@@ -430,7 +430,7 @@ export default function MarketsPage() {
       {isLoading && pools.length === 0 && (
         <div className="glass-card p-12 text-center">
           <Loader2 size={32} className="text-mint animate-spin mx-auto mb-4" />
-          <p className="text-white/60">Loading GM pools from DefiLlama...</p>
+          <p className="text-white/60">Loading GM pools from GMX...</p>
         </div>
       )}
 
