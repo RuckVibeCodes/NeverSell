@@ -71,7 +71,7 @@ export function HarvestCard({
         
         {/* Info note */}
         <p className="text-white/40 text-xs mt-4 text-center">
-          💡 Harvesting withdraws only your yield. Your ${depositedUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} principal stays earning.
+          💡 Harvesting withdraws only your yield. Your ${depositedUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} principal keeps compounding.
         </p>
       </div>
       
@@ -243,7 +243,7 @@ function HarvestModal({ earningsUSD, onClose, onComplete }: HarvestModalProps) {
         {/* Info box */}
         <div className="bg-mint/5 border border-mint/20 rounded-xl p-4 mb-6">
           <p className="text-white/70 text-sm">
-            💡 Only your earnings will be withdrawn. Your principal continues earning yield.
+            💡 Only your earnings will be withdrawn. Your principal continues compounding — earning more yield every day.
           </p>
         </div>
         
