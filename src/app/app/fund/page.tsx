@@ -11,7 +11,9 @@ import {
   ChevronDown,
   Clock,
   Fuel,
-  Route
+  Route,
+  CreditCard,
+  Sparkles,
 } from "lucide-react";
 import { useAccount, useChainId, useBalance, useSwitchChain } from "wagmi";
 import { formatUnits } from "viem";
@@ -311,6 +313,58 @@ export default function FundPage() {
         <h1 className="text-3xl font-display font-bold text-white mb-2">Fund Your Account</h1>
         <p className="text-white/60">Swap any token to get started on Arbitrum</p>
       </div>
+
+      {/* Coinbase Onramp - Buy with Card */}
+      {isConnected && address && (
+        <div className="glass-card rounded-2xl p-6 mb-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/5 to-mint/10" />
+          <div className="relative">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                <CreditCard size={24} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  No crypto? No problem
+                  <span className="px-2 py-0.5 rounded-full bg-mint/20 text-mint text-xs">Easiest</span>
+                </h2>
+                <p className="text-white/60 text-sm">Buy USDC instantly with Apple Pay, card, or bank</p>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => {
+                // Coinbase Onramp URL - opens in new tab
+                const onrampUrl = new URL('https://pay.coinbase.com/buy/select-asset');
+                onrampUrl.searchParams.set('appId', 'neversell'); // Replace with real app ID
+                onrampUrl.searchParams.set('destinationWallets', JSON.stringify([{
+                  address: address,
+                  assets: ['USDC'],
+                  supportedNetworks: ['arbitrum'],
+                }]));
+                window.open(onrampUrl.toString(), '_blank');
+              }}
+              className="w-full flex items-center justify-center gap-3 py-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold hover:from-blue-400 hover:to-blue-500 transition-all shadow-lg shadow-blue-500/25"
+            >
+              <Sparkles size={20} />
+              Buy with Card
+            </button>
+            
+            <p className="text-center text-white/40 text-xs mt-3">
+              Powered by Coinbase • Instant delivery to your wallet
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Divider */}
+      {isConnected && (
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex-1 border-t border-white/10" />
+          <span className="text-white/40 text-sm">or swap existing crypto</span>
+          <div className="flex-1 border-t border-white/10" />
+        </div>
+      )}
 
       {!isConnected ? (
         <div className="glass-card rounded-2xl p-12 text-center">
