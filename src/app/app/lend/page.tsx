@@ -131,7 +131,7 @@ function SupplyModal({ asset, gmApy, onClose }: SupplyModalProps) {
   const borrowingCapacity = depositValueUSD * 0.6;
   
   // 40% goes to GM pools for yield
-  // Monthly earnings = (depositAmount × 0.4 × gmPoolAPY / 12) × 0.9 (after 10% fee)
+  // Monthly earnings = (depositAmount × 0.4 × gmPoolAPY / 12) × 0.9 (after performance fee)
   const yieldBuffer = depositValueUSD * 0.4;
   const monthlyEarningsGross = (yieldBuffer * (gmApy / 100)) / 12;
   const monthlyEarningsNet = monthlyEarningsGross * 0.9; // After 10% platform fee
@@ -220,13 +220,13 @@ function SupplyModal({ asset, gmApy, onClose }: SupplyModalProps) {
                 <div className="group relative">
                   <Info size={14} className="text-white/40 cursor-help" />
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-navy-100 rounded-lg text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                    After 10% platform performance fee
+                    After platform performance fee
                   </div>
                 </div>
               </div>
               <div className="text-right">
                 <span className="text-mint font-bold text-lg">~${monthlyEarningsNet.toFixed(2)}</span>
-                <span className="text-white/40 text-xs ml-1">(after 10% fee)</span>
+                <span className="text-white/40 text-xs ml-1">(after performance fee)</span>
               </div>
             </div>
 
