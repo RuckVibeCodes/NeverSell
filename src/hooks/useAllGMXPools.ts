@@ -176,10 +176,23 @@ export function useFilteredGMXPools(
     poolType?: 'all' | 'standard' | 'single-sided';
     sortBy?: 'tvl' | 'apy' | 'symbol';
     sortOrder?: 'asc' | 'desc';
+    mainOnly?: boolean; // Dedupe to highest TVL pool per symbol
   } = {}
 ): GMPool[] {
   return useMemo(() => {
     let filtered = [...pools];
+
+    // Main pools only - dedupe to highest TVL per symbol
+    if (options.mainOnly) {
+      const mainPoolsBySymbol = new Map<string, GMPool>();
+      for (const pool of filtered) {
+        const existing = mainPoolsBySymbol.get(pool.symbol);
+        if (!existing || pool.tvlUsd > existing.tvlUsd) {
+          mainPoolsBySymbol.set(pool.symbol, pool);
+        }
+      }
+      filtered = Array.from(mainPoolsBySymbol.values());
+    }
 
     // Search filter
     if (options.search) {
@@ -223,7 +236,7 @@ export function useFilteredGMXPools(
     });
 
     return filtered;
-  }, [pools, options.search, options.minTvl, options.minApy, options.poolType, options.sortBy, options.sortOrder]);
+  }, [pools, options.search, options.minTvl, options.minApy, options.poolType, options.sortBy, options.sortOrder, options.mainOnly]);
 }
 
 /**

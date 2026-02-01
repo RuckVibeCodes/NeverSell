@@ -212,11 +212,12 @@ function StatsSummary({ pools }: { pools: GMPool[] }) {
 export default function MarketsPage() {
   const { pools, isLoading, isError, error, lastUpdated, refetch } = useAllGMXPools();
   
-  // Filter state
+  // Filter state - default to main pools only + $1M+ TVL to filter duplicates
   const [search, setSearch] = useState('');
-  const [minTvl, setMinTvl] = useState(0);
+  const [minTvl, setMinTvl] = useState(1_000_000);
   const [minApy, setMinApy] = useState(0);
   const [poolType, setPoolType] = useState<PoolTypeFilter>('all');
+  const [mainOnly, setMainOnly] = useState(true); // Show only highest TVL per symbol
   const [sortBy, setSortBy] = useState<SortBy>('tvl');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showFilters, setShowFilters] = useState(false);
@@ -227,6 +228,7 @@ export default function MarketsPage() {
     minTvl,
     minApy,
     poolType,
+    mainOnly,
     sortBy,
     sortOrder,
   });
@@ -380,6 +382,24 @@ export default function MarketsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Main pools toggle */}
+            <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
+              <div>
+                <p className="text-white text-sm font-medium">Main pools only</p>
+                <p className="text-white/40 text-xs">Show only the highest TVL pool per market (hides duplicates)</p>
+              </div>
+              <button
+                onClick={() => setMainOnly(!mainOnly)}
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  mainOnly ? 'bg-mint' : 'bg-white/20'
+                }`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                  mainOnly ? 'left-7' : 'left-1'
+                }`} />
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -388,18 +408,20 @@ export default function MarketsPage() {
       <div className="flex items-center justify-between mb-4">
         <p className="text-white/50 text-sm">
           Showing {filteredPools.length} of {pools.length} pools
+          {mainOnly && <span className="text-mint ml-1">(main pools)</span>}
         </p>
-        {(search || minTvl > 0 || minApy > 0 || poolType !== 'all') && (
+        {(search || minTvl !== 1_000_000 || minApy > 0 || poolType !== 'all' || !mainOnly) && (
           <button
             onClick={() => {
               setSearch('');
-              setMinTvl(0);
+              setMinTvl(1_000_000);
               setMinApy(0);
               setPoolType('all');
+              setMainOnly(true);
             }}
             className="text-mint text-sm hover:underline"
           >
-            Clear filters
+            Reset filters
           </button>
         )}
       </div>
