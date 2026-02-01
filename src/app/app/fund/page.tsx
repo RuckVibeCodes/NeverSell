@@ -17,6 +17,9 @@ import { useAccount, useChainId, useBalance, useSwitchChain } from "wagmi";
 import { formatUnits } from "viem";
 import { useLiFiBridge, ARBITRUM_CHAIN_ID } from "@/hooks/useLiFiBridge";
 
+// Platform fee (0.1%)
+const PLATFORM_FEE_PERCENT = 0.001;
+
 // Chain definitions with metadata
 const CHAINS = [
   { id: 1, name: "Ethereum", symbol: "ETH", icon: "⟠", color: "from-blue-500 to-purple-500" },
@@ -204,6 +207,7 @@ export default function FundPage() {
   // Li.Fi bridge hook
   const {
     status,
+    quote,
     error,
     fetchQuote,
     executeBridge,
@@ -218,6 +222,34 @@ export default function FundPage() {
     amount,
     decimals: selectedFromToken?.decimals || 18,
   });
+
+  // Calculate platform fee and final amounts
+  const feeCalculations = useMemo(() => {
+    if (!estimatedOutput || status !== 'quoted') {
+      return null;
+    }
+
+    const outputAmount = parseFloat(estimatedOutput);
+    const platformFee = outputAmount * PLATFORM_FEE_PERCENT;
+    const finalAmount = outputAmount - platformFee;
+    
+    // Calculate exchange rate
+    const inputAmount = parseFloat(amount) || 0;
+    const exchangeRate = inputAmount > 0 ? outputAmount / inputAmount : 0;
+    
+    // Estimate fee in USD (rough estimate based on output token)
+    // For stablecoins, 1 token ≈ $1, for others use the exchange rate context
+    const isStablecoin = ['USDC', 'USDT', 'DAI'].includes(selectedToToken.symbol);
+    const feeUsd = isStablecoin ? platformFee : platformFee * (quote?.step?.estimate?.toAmountUSD ? parseFloat(quote.step.estimate.toAmountUSD) / outputAmount : 1);
+
+    return {
+      outputBeforeFee: outputAmount,
+      platformFee,
+      platformFeeUsd: feeUsd,
+      finalAmount,
+      exchangeRate,
+    };
+  }, [estimatedOutput, status, amount, selectedToToken.symbol, quote]);
 
   // Reset quote when inputs change
   useEffect(() => {
@@ -364,8 +396,8 @@ export default function FundPage() {
                 <div className="ml-auto text-white text-xl font-semibold">
                   {status === 'quoting' ? (
                     <span className="text-white/40">Calculating...</span>
-                  ) : status === 'quoted' ? (
-                    `~${estimatedOutput} ${selectedToToken.symbol}`
+                  ) : status === 'quoted' && feeCalculations ? (
+                    `~${feeCalculations.finalAmount.toFixed(6)} ${selectedToToken.symbol}`
                   ) : (
                     <span className="text-white/40">-</span>
                   )}
@@ -375,33 +407,71 @@ export default function FundPage() {
           </div>
 
           {/* Quote Details */}
-          {status === 'quoted' && (
+          {status === 'quoted' && feeCalculations && (
             <div className="bg-mint/5 border border-mint/20 rounded-xl p-4 space-y-3">
-              {isCrossChain && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-white/60 text-sm">
-                    <Route size={14} />
-                    Route
-                  </div>
-                  <div className="text-white text-sm">
-                    {selectedChain.name} → {bridgePath} → Arbitrum
-                  </div>
-                </div>
-              )}
+              {/* Exchange Rate */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-white/60 text-sm">
-                  <Clock size={14} />
-                  Est. time
+                <div className="text-white/60 text-sm">Exchange rate</div>
+                <div className="text-white text-sm font-medium">
+                  1 {selectedFromToken?.symbol} = {feeCalculations.exchangeRate.toFixed(4)} {selectedToToken.symbol}
                 </div>
-                <div className="text-white text-sm">{estimatedTime}</div>
               </div>
+
+              {/* Platform Fee */}
+              <div className="flex items-center justify-between">
+                <div className="text-white/60 text-sm">
+                  Platform fee (0.1%)
+                </div>
+                <div className="text-amber-400 text-sm">
+                  ~{feeCalculations.platformFee.toFixed(6)} {selectedToToken.symbol}
+                  <span className="text-white/40 ml-1">
+                    (~${feeCalculations.platformFeeUsd.toFixed(2)})
+                  </span>
+                </div>
+              </div>
+
+              {/* Network Gas */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-white/60 text-sm">
                   <Fuel size={14} />
-                  Gas
+                  Network gas
                 </div>
                 <div className="text-white text-sm">{estimatedGas}</div>
               </div>
+
+              {/* Divider */}
+              <div className="border-t border-white/10 my-2" />
+
+              {/* You Receive (highlighted) */}
+              <div className="flex items-center justify-between">
+                <div className="text-white font-medium">You receive</div>
+                <div className="text-mint text-lg font-semibold">
+                  ~{feeCalculations.finalAmount.toFixed(6)} {selectedToToken.symbol}
+                </div>
+              </div>
+
+              {isCrossChain && (
+                <>
+                  <div className="border-t border-white/10 my-2" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <Route size={14} />
+                      Route
+                    </div>
+                    <div className="text-white text-sm">
+                      {selectedChain.name} → {bridgePath} → Arbitrum
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <Clock size={14} />
+                      Est. time
+                    </div>
+                    <div className="text-white text-sm">{estimatedTime}</div>
+                  </div>
+                </>
+              )}
+
               <button
                 onClick={fetchQuote}
                 className="w-full flex items-center justify-center gap-2 text-sm text-white/60 hover:text-mint transition-colors py-2 mt-2"
