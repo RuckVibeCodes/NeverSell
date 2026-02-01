@@ -55,39 +55,24 @@ const assets = [
   },
 ];
 
-// SVG Token Icons
-const TokenIcon = ({ symbol, color }: { symbol: string; color: string }) => {
-  const icons: Record<string, React.ReactNode> = {
-    BTC: (
-      <svg viewBox="0 0 48 48" className="w-full h-full">
-        <circle cx="24" cy="24" r="22" fill={color} />
-        <path d="M30.5 20.5c0.5-3.3-2-5.1-5.4-6.3l1.1-4.4-2.7-0.7-1.1 4.3c-0.7-0.2-1.4-0.3-2.1-0.5l1.1-4.4-2.7-0.7-1.1 4.4c-0.6-0.1-1.2-0.3-1.8-0.4l0-0-3.7-0.9-0.7 2.9s2 0.5 2 0.5c1.1 0.3 1.3 1 1.3 1.6l-1.3 5.2c0 0 0.1 0 0.3 0.1l-0.3 0-1.8 7.3c-0.1 0.4-0.5 1-1.6 0.7 0 0-2-0.5-2-0.5l-1.3 3.1 3.5 0.9c0.6 0.2 1.3 0.3 1.9 0.4l-1.1 4.5 2.7 0.7 1.1-4.4c0.7 0.2 1.5 0.4 2.2 0.5l-1.1 4.4 2.7 0.7 1.1-4.5c4.7 0.7 8.2-0.1 9.7-3.7 1.2-2.8 0-4.4-1.9-5.4 1.4-0.3 2.5-1.2 2.8-3zM25 28.5c-0.8 3.3-6.4 1.5-8.2 1l1.4-5.7c1.8 0.5 7.5 1.4 6.8 4.7zM25.8 20.3c-0.8 3-5.5 1.4-7 1.1l1.3-5.1c1.4 0.3 6.1 0.9 5.7 4z" fill="white"/>
-      </svg>
-    ),
-    ETH: (
-      <svg viewBox="0 0 48 48" className="w-full h-full">
-        <circle cx="24" cy="24" r="22" fill={color} />
-        <path d="M24 8l-10.5 17 10.5 6 10.5-6L24 8z" fill="white" fillOpacity="0.6" />
-        <path d="M24 8l-10.5 17 10.5 6V8z" fill="white" />
-        <path d="M13.5 27.5l10.5 14.5 10.5-14.5-10.5 6-10.5-6z" fill="white" fillOpacity="0.6" />
-        <path d="M24 42V31l-10.5-6L24 42z" fill="white" />
-      </svg>
-    ),
-    ARB: (
-      <svg viewBox="0 0 48 48" className="w-full h-full">
-        <circle cx="24" cy="24" r="22" fill={color} />
-        <path d="M30 16l-8 13-4-7-8 13h24l-4-19z" fill="white" fillOpacity="0.9" />
-        <path d="M26 29l4 7h-8l4-7z" fill="white" />
-      </svg>
-    ),
-    USDC: (
-      <svg viewBox="0 0 48 48" className="w-full h-full">
-        <circle cx="24" cy="24" r="22" fill={color} />
-        <text x="24" y="30" textAnchor="middle" fill="white" fontSize="20" fontWeight="bold">$</text>
-      </svg>
-    ),
-  };
-  return icons[symbol] || null;
+// Token icon mapping to actual images
+const tokenIcons: Record<string, string> = {
+  BTC: '/tokens/btc.png',
+  ETH: '/tokens/eth.png',
+  ARB: '/tokens/arb.png',
+  USDC: '/tokens/usdc.png',
+};
+
+const TokenIcon = ({ symbol }: { symbol: string; color?: string }) => {
+  const iconSrc = tokenIcons[symbol];
+  if (!iconSrc) return null;
+  return (
+    <img 
+      src={iconSrc} 
+      alt={symbol} 
+      className="w-full h-full rounded-full object-cover"
+    />
+  );
 };
 
 const Strategy = () => {

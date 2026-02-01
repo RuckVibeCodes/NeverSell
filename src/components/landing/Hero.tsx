@@ -49,10 +49,10 @@ const Calculator = ({ amount, setAmount, asset, setAsset }: CalculatorProps) => 
   const yearlyEarn = amount * (apy / 100);
 
   const assets = [
-    { id: 'BTC', label: 'BTC', color: '#F7931A' },
-    { id: 'ETH', label: 'ETH', color: '#627EEA' },
-    { id: 'ARB', label: 'ARB', color: '#28A0F0' },
-    { id: 'USDC', label: 'USDC', color: '#2775CA' },
+    { id: 'BTC', label: 'BTC', color: '#F7931A', icon: '/tokens/btc.png' },
+    { id: 'ETH', label: 'ETH', color: '#627EEA', icon: '/tokens/eth.png' },
+    { id: 'ARB', label: 'ARB', color: '#28A0F0', icon: '/tokens/arb.png' },
+    { id: 'USDC', label: 'USDC', color: '#2775CA', icon: '/tokens/usdc.png' },
   ];
 
   return (
@@ -95,12 +95,13 @@ const Calculator = ({ amount, setAmount, asset, setAsset }: CalculatorProps) => 
               <button
                 key={a.id}
                 onClick={() => setAsset(a.id)}
-                className={`py-3 px-2 rounded-xl border text-sm font-mono font-semibold transition-all ${
+                className={`py-3 px-2 rounded-xl border text-sm font-mono font-semibold transition-all flex items-center justify-center gap-2 ${
                   asset === a.id
                     ? 'border-mint bg-mint/15 text-mint shadow-[0_0_20px_rgba(46,213,115,0.2)]'
                     : 'border-white/10 text-text-secondary hover:border-white/20 hover:text-text-primary'
                 }`}
               >
+                <img src={a.icon} alt={a.label} className="w-5 h-5 rounded-full" />
                 {a.label}
               </button>
             ))}
