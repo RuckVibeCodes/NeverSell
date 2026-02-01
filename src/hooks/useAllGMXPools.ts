@@ -1,37 +1,38 @@
-// Hook for fetching ALL GMX GM pools from DefiLlama
+// Hook for fetching ALL GMX GM pools from native SDK
 // Used by the Markets explorer page
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-
-// DefiLlama pool data structure
-interface DefiLlamaPool {
-  chain: string;
-  project: string;
-  symbol: string;
-  tvlUsd: number;
-  apyBase: number | null;
-  apy: number | null;
-  pool: string;
-  apyPct1D: number | null;
-  apyPct7D: number | null;
-  apyPct30D: number | null;
-  apyMean30d: number | null;
-  underlyingTokens: string[];
-}
+import { useMemo } from 'react';
+import { useGMXMarketsInfo, type MarketInfo } from './useGMXMarketsInfo';
+import { 
+  calculateTotalApy, 
+  getPoolTvlUsd,
+  formatApy,
+  getApyColorClass,
+} from '@/lib/gmxApy';
 
 export interface GMPool {
   id: string;
   symbol: string;
+  name: string;
   longToken: string;
   shortToken: string;
+  indexToken: string;
+  marketToken: string;
   apy: number;
+  feeApy: number;
+  perfApy: number;
   apy7d: number | null;
   apy30d: number | null;
   tvlUsd: number;
   poolType: 'standard' | 'single-sided';
-  defiLlamaId: string;
+  isDisabled: boolean;
+  // Rate data for advanced displays
+  fundingRateLong: number;
+  fundingRateShort: number;
+  borrowingRateLong: number;
+  borrowingRateShort: number;
 }
 
 export interface UseAllGMXPoolsResult {
@@ -43,116 +44,124 @@ export interface UseAllGMXPoolsResult {
   refetch: () => void;
 }
 
-// DefiLlama yields API endpoint
-const DEFILLAMA_YIELDS_API = 'https://yields.llama.fi/pools';
+// Token symbol mappings
+const TOKEN_SYMBOLS: Record<string, string> = {
+  '0x82af49447d8a07e3bd95bd0d56f35241523fbab1': 'ETH',
+  '0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f': 'WBTC',
+  '0xaf88d065e77c8cc2239327c5edb3a432268e5831': 'USDC',
+  '0x912ce59144191c1204e64559fe8253a0e49e6548': 'ARB',
+  '0xfc5a1a6eb076a2c7ad06ed22c90d7e710e35ad0a': 'GMX',
+  '0xf97f4df75117a78c1a5a0dbb814af92458539fb4': 'LINK',
+  '0xfa7f8980b0f1e64a2062791cc3b0871572f1f7f0': 'UNI',
+  '0xff970a61a04b1ca14834a43f5de4533ebddb5cc8': 'USDC.e',
+  '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9': 'USDT',
+  '0xda10009cbd5d07dd0cecc66161fc93d7c9000da1': 'DAI',
+  '0x17fc002b466eec40dae837fc4be5c67993ddbd6f': 'FRAX',
+  '0xf42ae1d54fd613c9bb14810b0588faaa09a426ca': 'SOL',
+};
 
-// Parse pool symbol into tokens (e.g., "WBTC.B-USDC" -> ["WBTC.B", "USDC"])
-function parsePoolSymbol(symbol: string): { longToken: string; shortToken: string; poolType: 'standard' | 'single-sided' } {
-  const parts = symbol.split('-');
-  if (parts.length < 2) {
-    return { longToken: symbol, shortToken: 'USDC', poolType: 'standard' };
+/**
+ * Get token symbol from address
+ */
+function getTokenSymbol(address: string, fallback?: string): string {
+  const symbol = TOKEN_SYMBOLS[address.toLowerCase()];
+  if (symbol) return symbol;
+  
+  // Try to extract from fallback (often name contains symbol)
+  if (fallback && fallback.includes('/')) {
+    const parts = fallback.split('/');
+    if (parts[0]) return parts[0];
   }
   
-  const longToken = parts[0];
-  const shortToken = parts[1];
-  
-  // If both tokens are the same (e.g., "ETH-ETH"), it's a single-sided pool
-  const poolType = longToken === shortToken ? 'single-sided' : 'standard';
-  
-  return { longToken, shortToken, poolType };
+  // Return shortened address as last resort
+  return address.slice(0, 6) + '...';
 }
 
-// Normalize token symbols for display
-function normalizeTokenSymbol(token: string): string {
-  // Handle wrapped tokens
-  if (token === 'WBTC.B' || token === 'WBTC') return 'BTC';
-  if (token === 'WETH') return 'ETH';
-  return token;
+/**
+ * Parse rate string to number (annualized %)
+ */
+function parseRate(rateStr: string | undefined): number {
+  if (!rateStr) return 0;
+  try {
+    const rate = BigInt(rateStr);
+    // Convert from per-second to annual (× seconds per year / 10^28 for percentage)
+    const secondsPerYear = BigInt(31536000);
+    const annual = Number(rate * secondsPerYear) / 1e28;
+    return Math.round(annual * 100) / 100;
+  } catch {
+    return 0;
+  }
 }
 
-// Convert DefiLlama pool to our GMPool format
-function convertToGMPool(pool: DefiLlamaPool): GMPool {
-  const { longToken, shortToken, poolType } = parsePoolSymbol(pool.symbol);
+/**
+ * Convert MarketInfo to GMPool
+ */
+function marketToPool(market: MarketInfo): GMPool {
+  const { feeApy, performanceApy, totalApy } = calculateTotalApy(market);
+  const tvlUsd = getPoolTvlUsd(market);
   
+  const longSymbol = getTokenSymbol(market.longToken, market.name);
+  const shortSymbol = getTokenSymbol(market.shortToken, market.name);
+  
+  // Determine pool type
+  const isSingleSided = market.longToken.toLowerCase() === market.shortToken.toLowerCase();
+  
+  // Build symbol
+  const symbol = isSingleSided 
+    ? `${longSymbol}-${longSymbol}`
+    : `${longSymbol}-${shortSymbol}`;
+
   return {
-    id: pool.pool,
-    symbol: pool.symbol,
-    longToken: normalizeTokenSymbol(longToken),
-    shortToken: normalizeTokenSymbol(shortToken),
-    apy: pool.apy || pool.apyBase || 0,
-    apy7d: pool.apyPct7D,
-    apy30d: pool.apyMean30d,
-    tvlUsd: pool.tvlUsd,
-    poolType,
-    defiLlamaId: pool.pool,
+    id: market.marketToken,
+    symbol,
+    name: market.name || `${longSymbol}/${shortSymbol}`,
+    longToken: longSymbol,
+    shortToken: shortSymbol,
+    indexToken: market.indexToken,
+    marketToken: market.marketToken,
+    apy: totalApy,
+    feeApy,
+    perfApy: performanceApy,
+    apy7d: null, // TODO: Calculate from historical data
+    apy30d: null,
+    tvlUsd,
+    poolType: isSingleSided ? 'single-sided' : 'standard',
+    isDisabled: market.isDisabled,
+    fundingRateLong: parseRate(market.fundingRateLong),
+    fundingRateShort: parseRate(market.fundingRateShort),
+    borrowingRateLong: parseRate(market.borrowingRateLong),
+    borrowingRateShort: parseRate(market.borrowingRateShort),
   };
 }
 
 /**
- * Hook for fetching all GMX GM pools from DefiLlama
+ * Hook for fetching all GMX GM pools
  */
 export function useAllGMXPools(): UseAllGMXPoolsResult {
-  const [pools, setPools] = useState<GMPool[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isError, setIsError] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { 
+    markets, 
+    isLoading, 
+    isError, 
+    error, 
+    pricesUpdatedAt,
+    refetch 
+  } = useGMXMarketsInfo();
 
-  const fetchPools = useCallback(async () => {
-    setIsLoading(true);
-    setIsError(false);
-    setError(null);
+  const pools = useMemo(() => {
+    const poolList = Object.values(markets)
+      .map(marketToPool)
+      .filter(pool => !pool.isDisabled) // Only show active pools
+      .sort((a, b) => b.tvlUsd - a.tvlUsd); // Sort by TVL desc
+    
+    return poolList;
+  }, [markets]);
 
-    try {
-      const response = await fetch(DEFILLAMA_YIELDS_API, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        cache: 'no-cache',
-      });
-
-      if (!response.ok) {
-        throw new Error(`DefiLlama API request failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Filter to GMX V2 pools on Arbitrum
-      const gmxPools = data.data.filter(
-        (p: DefiLlamaPool) => p.project === 'gmx-v2-perps' && p.chain === 'Arbitrum'
-      );
-
-      if (gmxPools.length === 0) {
-        throw new Error('No GMX pools found');
-      }
-
-      // Convert to our format and sort by TVL
-      const convertedPools = gmxPools
-        .map(convertToGMPool)
-        .sort((a: GMPool, b: GMPool) => b.tvlUsd - a.tvlUsd);
-
-      setPools(convertedPools);
-      setLastUpdated(new Date());
-    } catch (err) {
-      console.error('Failed to fetch GMX pools:', err);
-      setError(err instanceof Error ? err : new Error('Failed to fetch pools'));
-      setIsError(true);
-    } finally {
-      setIsLoading(false);
+  const lastUpdated = useMemo(() => {
+    if (pricesUpdatedAt) {
+      return new Date(pricesUpdatedAt);
     }
-  }, []);
-
-  // Initial fetch
-  useEffect(() => {
-    fetchPools();
-  }, [fetchPools]);
-
-  // Auto-refresh every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(fetchPools, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [fetchPools]);
+    return null;
+  }, [pricesUpdatedAt]);
 
   return {
     pools,
@@ -160,7 +169,7 @@ export function useAllGMXPools(): UseAllGMXPoolsResult {
     isError,
     error,
     lastUpdated,
-    refetch: fetchPools,
+    refetch,
   };
 }
 
@@ -200,6 +209,7 @@ export function useFilteredGMXPools(
       filtered = filtered.filter(
         p => 
           p.symbol.toLowerCase().includes(searchLower) ||
+          p.name.toLowerCase().includes(searchLower) ||
           p.longToken.toLowerCase().includes(searchLower) ||
           p.shortToken.toLowerCase().includes(searchLower)
       );
@@ -257,24 +267,14 @@ export function formatTVL(tvl: number): string {
  * Format APY for display
  */
 export function formatPoolAPY(apy: number): string {
-  if (apy >= 100) {
-    return `${apy.toFixed(0)}%`;
-  } else if (apy >= 10) {
-    return `${apy.toFixed(1)}%`;
-  } else {
-    return `${apy.toFixed(2)}%`;
-  }
+  return formatApy(apy);
 }
 
 /**
  * Get APY color class based on value
  */
 export function getPoolAPYColor(apy: number): string {
-  if (apy >= 25) return 'text-green-400';
-  if (apy >= 15) return 'text-lime-400';
-  if (apy >= 10) return 'text-yellow-400';
-  if (apy >= 5) return 'text-orange-400';
-  return 'text-white/60';
+  return getApyColorClass(apy);
 }
 
 /**
@@ -283,7 +283,9 @@ export function getPoolAPYColor(apy: number): string {
 export function getTokenIcon(token: string): string {
   const icons: Record<string, string> = {
     'BTC': '₿',
+    'WBTC': '₿',
     'ETH': 'Ξ',
+    'WETH': 'Ξ',
     'ARB': 'A',
     'SOL': '◎',
     'LINK': '⛓',
@@ -297,6 +299,8 @@ export function getTokenIcon(token: string): string {
     'XRP': '✕',
     'USDC': '$',
     'USDT': '$',
+    'DAI': '$',
+    'GMX': 'G',
   };
   return icons[token] || token.charAt(0);
 }
@@ -307,7 +311,9 @@ export function getTokenIcon(token: string): string {
 export function getPoolGradient(longToken: string): string {
   const gradients: Record<string, string> = {
     'BTC': 'from-orange-500 to-amber-500',
+    'WBTC': 'from-orange-500 to-amber-500',
     'ETH': 'from-blue-500 to-purple-500',
+    'WETH': 'from-blue-500 to-purple-500',
     'ARB': 'from-blue-600 to-indigo-500',
     'SOL': 'from-purple-500 to-pink-500',
     'LINK': 'from-blue-400 to-cyan-500',
@@ -315,6 +321,7 @@ export function getPoolGradient(longToken: string): string {
     'DOGE': 'from-yellow-500 to-amber-500',
     'AAVE': 'from-teal-500 to-cyan-500',
     'PEPE': 'from-green-500 to-emerald-500',
+    'GMX': 'from-blue-500 to-purple-500',
   };
   return gradients[longToken] || 'from-gray-500 to-slate-500';
 }

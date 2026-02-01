@@ -151,13 +151,13 @@ function PoolCard({ pool }: { pool: GMPool }) {
               View on GMX <ExternalLink size={12} />
             </a>
             <a
-              href={`https://defillama.com/yields/pool/${pool.defiLlamaId}`}
+              href={`https://arbiscan.io/address/${pool.marketToken}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-white/70 text-sm text-center hover:bg-white/10 hover:text-white transition-colors flex items-center justify-center gap-1.5"
               onClick={(e) => e.stopPropagation()}
             >
-              DefiLlama <ExternalLink size={12} />
+              Arbiscan <ExternalLink size={12} />
             </a>
           </div>
         </div>
