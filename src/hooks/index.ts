@@ -1,33 +1,14 @@
-// GMX Integration Hooks
-// Export all GMX-related hooks for NeverSell yield strategy
+/**
+ * Aave V3 Hooks for NeverSell
+ * 
+ * @example
+ * ```tsx
+ * import { useAavePosition, useAaveDeposit, useAaveBorrow } from "@/hooks";
+ * ```
+ */
 
-export {
-  useGMXDeposit,
-  type UseGMXDepositParams,
-  type UseGMXDepositResult,
-} from './useGMXDeposit';
-
-export {
-  useGMXWithdraw,
-  type UseGMXWithdrawParams,
-  type UseGMXWithdrawResult,
-} from './useGMXWithdraw';
-
-export {
-  useGMXPosition,
-  useGMXPoolPosition,
-  useGMXPositionWithValue,
-  type GMPosition,
-  type UseGMXPositionParams,
-  type UseGMXPositionResult,
-} from './useGMXPosition';
-
-export {
-  useGMXApy,
-  useGMXPoolApy,
-  useGMXBlendedApy,
-  formatAPY,
-  getAPYColorClass,
-  type PoolAPY,
-  type UseGMXApyResult,
-} from './useGMXApy';
+export { useAaveDeposit } from "./useAaveDeposit";
+export { useAaveWithdraw } from "./useAaveWithdraw";
+export { useAaveBorrow } from "./useAaveBorrow";
+export { useAaveRepay } from "./useAaveRepay";
+export { useAavePosition } from "./useAavePosition";

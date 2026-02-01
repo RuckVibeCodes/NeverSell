@@ -12,13 +12,9 @@ import {
 } from "@/lib/aave";
 
 interface UseAaveBorrowParams {
-  /** Asset to borrow (default: USDC) */
   asset?: Address;
-  /** Amount to borrow in human-readable format */
   amount: number;
-  /** Interest rate mode (default: VARIABLE) */
   interestRateMode?: typeof INTEREST_RATE_MODE[keyof typeof INTEREST_RATE_MODE];
-  /** Address on whose behalf to borrow (default: connected wallet) */
   onBehalfOf?: Address;
 }
 
@@ -31,25 +27,6 @@ interface UseAaveBorrowReturn {
   hash: `0x${string}` | undefined;
 }
 
-/**
- * Hook for borrowing assets (typically USDC) from Aave V3
- * 
- * Note: You must have sufficient collateral deposited before borrowing.
- * Check your position's availableBorrowsUSD with useAavePosition.
- * 
- * @example
- * ```tsx
- * const { borrow, isPending, isSuccess } = useAaveBorrow({
- *   amount: 1000, // Borrow 1000 USDC
- * });
- * 
- * // With custom asset
- * const { borrow: borrowWETH } = useAaveBorrow({
- *   asset: AAVE_V3_ADDRESSES.WETH,
- *   amount: 0.5,
- * });
- * ```
- */
 export function useAaveBorrow({
   asset = AAVE_V3_ADDRESSES.USDC,
   amount,
@@ -77,24 +54,15 @@ export function useAaveBorrow({
     isLoading: isConfirming, 
     isSuccess,
     error: receiptError,
-  } = useWaitForTransactionReceipt({
-    hash,
-  });
+  } = useWaitForTransactionReceipt({ hash });
 
   const borrow = useCallback(() => {
     if (!address || !borrower) return;
-    
     writeContract({
       address: AAVE_V3_ADDRESSES.POOL,
       abi: AAVE_POOL_ABI,
       functionName: "borrow",
-      args: [
-        asset,
-        amountInWei,
-        BigInt(interestRateMode),
-        0, // referralCode
-        borrower,
-      ],
+      args: [asset, amountInWei, BigInt(interestRateMode), 0, borrower],
     });
   }, [address, borrower, asset, amountInWei, interestRateMode, writeContract]);
 

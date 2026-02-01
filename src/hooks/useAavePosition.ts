@@ -16,11 +16,8 @@ import {
 } from "@/lib/aave";
 
 interface UseAavePositionParams {
-  /** User address to query (default: connected wallet) */
   user?: Address;
-  /** Specific assets to get reserve data for */
   assets?: Address[];
-  /** Polling interval in ms (default: 15000) */
   refetchInterval?: number;
 }
 
@@ -31,45 +28,22 @@ interface AssetPosition {
   variableDebt: number;
   totalDebt: number;
   usageAsCollateralEnabled: boolean;
-  supplyAPY: number; // liquidityRate as APY
-  borrowAPY: number; // variableBorrowRate as APY (approximation)
+  supplyAPY: number;
+  borrowAPY: number;
 }
 
 interface UseAavePositionReturn {
-  // Overall account data
   position: AavePosition | null;
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;
-  
-  // Per-asset positions (if assets provided)
   assetPositions: AssetPosition[];
   isLoadingAssets: boolean;
-  
-  // Convenience getters
   isHealthy: boolean;
-  isAtRisk: boolean; // Health factor < 1.5
+  isAtRisk: boolean;
   canBorrow: boolean;
 }
 
-/**
- * Hook for fetching a user's Aave V3 position data
- * 
- * @example
- * ```tsx
- * const { position, isHealthy, canBorrow } = useAavePosition();
- * 
- * if (position) {
- *   console.log(`Health Factor: ${position.healthFactor}`);
- *   console.log(`Available to Borrow: $${position.availableBorrowsUSD}`);
- * }
- * 
- * // Get per-asset breakdown
- * const { assetPositions } = useAavePosition({
- *   assets: [AAVE_V3_ADDRESSES.WETH, AAVE_V3_ADDRESSES.WBTC],
- * });
- * ```
- */
 export function useAavePosition({
   user,
   assets = [],
@@ -78,7 +52,6 @@ export function useAavePosition({
   const { address } = useAccount();
   const targetUser = user ?? address;
 
-  // Fetch main account data
   const {
     data: accountData,
     isLoading,
@@ -89,25 +62,12 @@ export function useAavePosition({
     abi: AAVE_POOL_ABI,
     functionName: "getUserAccountData",
     args: targetUser ? [targetUser] : undefined,
-    query: {
-      enabled: !!targetUser,
-      refetchInterval,
-    },
+    query: { enabled: !!targetUser, refetchInterval },
   });
 
-  // Parse account data into friendly format
   const position = useMemo((): AavePosition | null => {
     if (!accountData) return null;
-
-    const [
-      totalCollateralBase,
-      totalDebtBase,
-      availableBorrowsBase,
-      currentLiquidationThreshold,
-      ltv,
-      healthFactor,
-    ] = accountData;
-
+    const [totalCollateralBase, totalDebtBase, availableBorrowsBase, currentLiquidationThreshold, ltv, healthFactor] = accountData;
     return {
       totalCollateralUSD: parseBaseToUSD(totalCollateralBase),
       totalDebtUSD: parseBaseToUSD(totalDebtBase),
@@ -115,21 +75,12 @@ export function useAavePosition({
       healthFactor: parseHealthFactor(healthFactor),
       ltv: parsePercentage(ltv),
       liquidationThreshold: parsePercentage(currentLiquidationThreshold),
-      raw: {
-        totalCollateralBase,
-        totalDebtBase,
-        availableBorrowsBase,
-        currentLiquidationThreshold,
-        ltv,
-        healthFactor,
-      },
+      raw: { totalCollateralBase, totalDebtBase, availableBorrowsBase, currentLiquidationThreshold, ltv, healthFactor },
     };
   }, [accountData]);
 
-  // Fetch per-asset data if assets provided
   const assetContracts = useMemo(() => {
     if (!targetUser || assets.length === 0) return [];
-    
     return assets.map((asset) => ({
       address: AAVE_V3_ADDRESSES.POOL_DATA_PROVIDER,
       abi: POOL_DATA_PROVIDER_ABI,
@@ -143,51 +94,19 @@ export function useAavePosition({
     isLoading: isLoadingAssets,
   } = useReadContracts({
     contracts: assetContracts,
-    query: {
-      enabled: assetContracts.length > 0,
-      refetchInterval,
-    },
+    query: { enabled: assetContracts.length > 0, refetchInterval },
   });
 
-  // Parse per-asset positions
   const assetPositions = useMemo((): AssetPosition[] => {
     if (!assetDataResults || assets.length === 0) return [];
-
     return assets.map((asset, index) => {
       const result = assetDataResults[index];
-      
       if (!result || result.status !== "success" || !result.result) {
-        return {
-          asset,
-          aTokenBalance: 0,
-          stableDebt: 0,
-          variableDebt: 0,
-          totalDebt: 0,
-          usageAsCollateralEnabled: false,
-          supplyAPY: 0,
-          borrowAPY: 0,
-        };
+        return { asset, aTokenBalance: 0, stableDebt: 0, variableDebt: 0, totalDebt: 0, usageAsCollateralEnabled: false, supplyAPY: 0, borrowAPY: 0 };
       }
-
       const data = result.result as readonly [bigint, bigint, bigint, bigint, bigint, bigint, bigint, number, boolean];
-      const [
-        currentATokenBalance,
-        currentStableDebt,
-        currentVariableDebt,
-        , // principalStableDebt
-        , // scaledVariableDebt
-        , // stableBorrowRate
-        liquidityRate,
-        , // stableRateLastUpdated
-        usageAsCollateralEnabled,
-      ] = data;
-
+      const [currentATokenBalance, currentStableDebt, currentVariableDebt, , , , liquidityRate, , usageAsCollateralEnabled] = data;
       const decimals = ASSET_DECIMALS[asset] ?? 18;
-
-      // Convert ray (27 decimals) rate to APY percentage
-      // APY ≈ rate / 1e27 * 100
-      const supplyAPY = Number(liquidityRate) / 1e27 * 100;
-
       return {
         asset,
         aTokenBalance: formatTokenAmount(currentATokenBalance, decimals),
@@ -195,13 +114,12 @@ export function useAavePosition({
         variableDebt: formatTokenAmount(currentVariableDebt, decimals),
         totalDebt: formatTokenAmount(currentStableDebt + currentVariableDebt, decimals),
         usageAsCollateralEnabled,
-        supplyAPY,
-        borrowAPY: 0, // Would need separate call to get this
+        supplyAPY: Number(liquidityRate) / 1e27 * 100,
+        borrowAPY: 0,
       };
     });
   }, [assetDataResults, assets]);
 
-  // Convenience flags
   const isHealthy = position ? position.healthFactor > 1 : true;
   const isAtRisk = position ? position.healthFactor < 1.5 && position.healthFactor !== Infinity : false;
   const canBorrow = position ? position.availableBorrowsUSD > 0 : false;
