@@ -1,50 +1,210 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Wallet, ArrowRight, Loader2, Check, AlertCircle, RefreshCw, ExternalLink } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { 
+  Wallet, 
+  ArrowDown, 
+  Loader2, 
+  Check, 
+  AlertCircle, 
+  RefreshCw, 
+  ChevronDown,
+  Clock,
+  Fuel,
+  Route
+} from "lucide-react";
 import { useAccount, useChainId, useBalance, useSwitchChain } from "wagmi";
 import { formatUnits } from "viem";
-import { useLiFiBridge, TOKENS, SUPPORTED_SOURCE_CHAINS, ARBITRUM_CHAIN_ID } from "@/hooks/useLiFiBridge";
+import { useLiFiBridge, ARBITRUM_CHAIN_ID } from "@/hooks/useLiFiBridge";
 
-const supportedAssets = [
-  { 
-    symbol: "ETH", 
-    name: "Ethereum", 
-    icon: "Ξ",
-    decimals: 18,
-    tokenAddress: TOKENS.NATIVE,
-    targetAddress: TOKENS.WETH_ARB,
-    color: "from-blue-500 to-purple-500",
-  },
-  { 
-    symbol: "USDC", 
-    name: "USD Coin", 
-    icon: "$",
-    decimals: 6,
-    tokenAddress: "USDC",
-    targetAddress: TOKENS.USDC[ARBITRUM_CHAIN_ID],
-    color: "from-blue-400 to-cyan-400",
-  },
+// Chain definitions with metadata
+const CHAINS = [
+  { id: 1, name: "Ethereum", symbol: "ETH", icon: "⟠", color: "from-blue-500 to-purple-500" },
+  { id: 42161, name: "Arbitrum", symbol: "ARB", icon: "🔷", color: "from-blue-400 to-cyan-400" },
+  { id: 8453, name: "Base", symbol: "BASE", icon: "🔵", color: "from-blue-500 to-blue-600" },
+  { id: 10, name: "Optimism", symbol: "OP", icon: "🔴", color: "from-red-500 to-red-600" },
+  { id: 137, name: "Polygon", symbol: "POL", icon: "🟣", color: "from-purple-500 to-purple-600" },
+  { id: 56, name: "BSC", symbol: "BNB", icon: "🟡", color: "from-yellow-500 to-yellow-600" },
+  { id: 43114, name: "Avalanche", symbol: "AVAX", icon: "🔺", color: "from-red-500 to-orange-500" },
+] as const;
+
+// Token definitions per chain
+const TOKENS_BY_CHAIN: Record<number, Array<{
+  symbol: string;
+  name: string;
+  address: string;
+  decimals: number;
+  icon: string;
+  isNative?: boolean;
+}>> = {
+  1: [ // Ethereum
+    { symbol: "ETH", name: "Ethereum", address: "0x0000000000000000000000000000000000000000", decimals: 18, icon: "Ξ", isNative: true },
+    { symbol: "USDC", name: "USD Coin", address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", decimals: 6, icon: "$" },
+    { symbol: "USDT", name: "Tether", address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals: 6, icon: "₮" },
+    { symbol: "DAI", name: "Dai", address: "0x6B175474E89094C44Da98b954EescdeCB5BE3830", decimals: 18, icon: "◈" },
+    { symbol: "WBTC", name: "Wrapped BTC", address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals: 8, icon: "₿" },
+    { symbol: "WETH", name: "Wrapped ETH", address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", decimals: 18, icon: "Ξ" },
+  ],
+  42161: [ // Arbitrum
+    { symbol: "ETH", name: "Ethereum", address: "0x0000000000000000000000000000000000000000", decimals: 18, icon: "Ξ", isNative: true },
+    { symbol: "USDC", name: "USD Coin", address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", decimals: 6, icon: "$" },
+    { symbol: "USDT", name: "Tether", address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", decimals: 6, icon: "₮" },
+    { symbol: "DAI", name: "Dai", address: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1", decimals: 18, icon: "◈" },
+    { symbol: "WBTC", name: "Wrapped BTC", address: "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f", decimals: 8, icon: "₿" },
+    { symbol: "ARB", name: "Arbitrum", address: "0x912CE59144191C1204E64559FE8253a0e49E6548", decimals: 18, icon: "🔷" },
+  ],
+  8453: [ // Base
+    { symbol: "ETH", name: "Ethereum", address: "0x0000000000000000000000000000000000000000", decimals: 18, icon: "Ξ", isNative: true },
+    { symbol: "USDC", name: "USD Coin", address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", decimals: 6, icon: "$" },
+    { symbol: "DAI", name: "Dai", address: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb", decimals: 18, icon: "◈" },
+    { symbol: "WETH", name: "Wrapped ETH", address: "0x4200000000000000000000000000000000000006", decimals: 18, icon: "Ξ" },
+  ],
+  10: [ // Optimism
+    { symbol: "ETH", name: "Ethereum", address: "0x0000000000000000000000000000000000000000", decimals: 18, icon: "Ξ", isNative: true },
+    { symbol: "USDC", name: "USD Coin", address: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85", decimals: 6, icon: "$" },
+    { symbol: "USDT", name: "Tether", address: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", decimals: 6, icon: "₮" },
+    { symbol: "DAI", name: "Dai", address: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1", decimals: 18, icon: "◈" },
+    { symbol: "WBTC", name: "Wrapped BTC", address: "0x68f180fcCe6836688e9084f035309E29Bf0A2095", decimals: 8, icon: "₿" },
+  ],
+  137: [ // Polygon
+    { symbol: "MATIC", name: "Polygon", address: "0x0000000000000000000000000000000000000000", decimals: 18, icon: "🟣", isNative: true },
+    { symbol: "USDC", name: "USD Coin", address: "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359", decimals: 6, icon: "$" },
+    { symbol: "USDT", name: "Tether", address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", decimals: 6, icon: "₮" },
+    { symbol: "DAI", name: "Dai", address: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063", decimals: 18, icon: "◈" },
+    { symbol: "WBTC", name: "Wrapped BTC", address: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6", decimals: 8, icon: "₿" },
+  ],
+  56: [ // BSC
+    { symbol: "BNB", name: "BNB", address: "0x0000000000000000000000000000000000000000", decimals: 18, icon: "🟡", isNative: true },
+    { symbol: "USDC", name: "USD Coin", address: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", decimals: 18, icon: "$" },
+    { symbol: "USDT", name: "Tether", address: "0x55d398326f99059fF775485246999027B3197955", decimals: 18, icon: "₮" },
+    { symbol: "DAI", name: "Dai", address: "0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3", decimals: 18, icon: "◈" },
+    { symbol: "BTCB", name: "Bitcoin BEP2", address: "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c", decimals: 18, icon: "₿" },
+  ],
+  43114: [ // Avalanche
+    { symbol: "AVAX", name: "Avalanche", address: "0x0000000000000000000000000000000000000000", decimals: 18, icon: "🔺", isNative: true },
+    { symbol: "USDC", name: "USD Coin", address: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", decimals: 6, icon: "$" },
+    { symbol: "USDT", name: "Tether", address: "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7", decimals: 6, icon: "₮" },
+    { symbol: "DAI.e", name: "Dai", address: "0xd586E7F844cEa2F87f50152665BCbc2C279D8d70", decimals: 18, icon: "◈" },
+    { symbol: "WBTC.e", name: "Wrapped BTC", address: "0x50b7545627a5162F82A992c33b87aDc75187B218", decimals: 8, icon: "₿" },
+  ],
+};
+
+// Destination tokens (Arbitrum only)
+const DEST_TOKENS = [
+  { symbol: "ETH", name: "Ethereum", address: "0x0000000000000000000000000000000000000000", decimals: 18, icon: "Ξ" },
+  { symbol: "WBTC", name: "Wrapped BTC", address: "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f", decimals: 8, icon: "₿" },
+  { symbol: "USDC", name: "USD Coin", address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", decimals: 6, icon: "$" },
+  { symbol: "ARB", name: "Arbitrum", address: "0x912CE59144191C1204E64559FE8253a0e49E6548", decimals: 18, icon: "🔷" },
 ];
 
-function BridgeCard({ asset }: { asset: typeof supportedAssets[0] }) {
-  const [amount, setAmount] = useState("");
-  const { address, isConnected } = useAccount();
-  const chainId = useChainId();
-  
-  const getTokenAddress = () => {
-    if (asset.tokenAddress === "USDC") {
-      return TOKENS.USDC[chainId as keyof typeof TOKENS.USDC] || TOKENS.USDC[ARBITRUM_CHAIN_ID];
-    }
-    return asset.tokenAddress;
-  };
+// Dropdown component
+function Dropdown<T extends { symbol: string; name: string; icon: string }>({
+  items,
+  selected,
+  onSelect,
+  label,
+  disabled = false,
+}: {
+  items: T[];
+  selected: T | null;
+  onSelect: (item: T) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
 
-  const fromTokenAddress = getTokenAddress();
-  
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-navy-200 border border-white/10 hover:border-mint/30 transition-colors min-w-[140px] ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+      >
+        {selected ? (
+          <>
+            <span className="text-lg">{selected.icon}</span>
+            <span className="text-white font-medium">{selected.symbol}</span>
+          </>
+        ) : (
+          <span className="text-white/50">{label}</span>
+        )}
+        {!disabled && <ChevronDown size={16} className="text-white/50 ml-auto" />}
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+          <div className="absolute top-full left-0 mt-2 z-50 min-w-[180px] glass-card rounded-xl py-2 shadow-xl">
+            {items.map((item) => (
+              <button
+                key={item.symbol}
+                type="button"
+                onClick={() => {
+                  onSelect(item);
+                  setIsOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-mint/10 transition-colors text-left"
+              >
+                <span className="text-lg">{item.icon}</span>
+                <div>
+                  <div className="text-white font-medium">{item.symbol}</div>
+                  <div className="text-white/40 text-xs">{item.name}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function FundPage() {
+  const { address, isConnected } = useAccount();
+  const currentChainId = useChainId();
+  const { switchChain } = useSwitchChain();
+
+  // Source selection
+  const [selectedChain, setSelectedChain] = useState(CHAINS.find(c => c.id === currentChainId) || CHAINS[0]);
+  const [selectedFromToken, setSelectedFromToken] = useState<typeof TOKENS_BY_CHAIN[1][0] | null>(null);
+  const [amount, setAmount] = useState("");
+
+  // Destination selection
+  const [selectedToToken, setSelectedToToken] = useState(DEST_TOKENS[0]);
+
+  // Get available tokens for selected chain
+  const availableTokens = useMemo(() => {
+    return TOKENS_BY_CHAIN[selectedChain.id] || TOKENS_BY_CHAIN[1];
+  }, [selectedChain.id]);
+
+  // Update token when chain changes
+  useEffect(() => {
+    const tokens = TOKENS_BY_CHAIN[selectedChain.id];
+    if (tokens && tokens.length > 0) {
+      setSelectedFromToken(tokens[0]);
+    }
+  }, [selectedChain.id]);
+
+  // Switch network when chain selection changes
+  const handleChainChange = useCallback((chain: typeof CHAINS[number]) => {
+    setSelectedChain(chain);
+    if (chain.id !== currentChainId && switchChain) {
+      switchChain({ chainId: chain.id });
+    }
+  }, [currentChainId, switchChain]);
+
+  // Balance query
+  const { data: balance, isLoading: balanceLoading } = useBalance({
+    address,
+    token: selectedFromToken?.isNative ? undefined : selectedFromToken?.address as `0x${string}`,
+    chainId: selectedChain.id,
+  });
+
+  // Li.Fi bridge hook
   const {
     status,
     error,
-    isCrossChain,
     fetchQuote,
     executeBridge,
     reset,
@@ -53,26 +213,31 @@ function BridgeCard({ asset }: { asset: typeof supportedAssets[0] }) {
     estimatedTime,
     bridgePath,
   } = useLiFiBridge({
-    fromTokenAddress,
-    toTokenAddress: asset.targetAddress,
+    fromTokenAddress: selectedFromToken?.address || "0x0000000000000000000000000000000000000000",
+    toTokenAddress: selectedToToken.address,
     amount,
-    decimals: asset.decimals,
+    decimals: selectedFromToken?.decimals || 18,
   });
 
-  const { data: balance } = useBalance({
-    address,
-    token: asset.tokenAddress === TOKENS.NATIVE ? undefined : fromTokenAddress as `0x${string}`,
-  });
-
-  const currentChain = SUPPORTED_SOURCE_CHAINS.find(c => c.id === chainId);
-
+  // Reset quote when inputs change
   useEffect(() => {
     if (status === 'quoted' || status === 'error') {
       reset();
     }
-  }, [amount]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [amount, selectedFromToken, selectedToToken, selectedChain]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAction = async () => {
+  // Handle MAX button
+  const handleMaxClick = () => {
+    if (balance) {
+      const maxAmount = selectedFromToken?.isNative
+        ? Math.max(0, parseFloat(formatUnits(balance.value, balance.decimals)) - 0.01)
+        : parseFloat(formatUnits(balance.value, balance.decimals));
+      setAmount(maxAmount > 0 ? maxAmount.toString() : "0");
+    }
+  };
+
+  // Handle swap action
+  const handleSwap = async () => {
     if (status === 'quoted') {
       await executeBridge();
     } else {
@@ -80,196 +245,43 @@ function BridgeCard({ asset }: { asset: typeof supportedAssets[0] }) {
     }
   };
 
-  const handleMaxClick = () => {
-    if (balance) {
-      const maxAmount = asset.tokenAddress === TOKENS.NATIVE
-        ? Math.max(0, parseFloat(formatUnits(balance.value, balance.decimals)) - 0.01)
-        : parseFloat(formatUnits(balance.value, balance.decimals));
-      setAmount(maxAmount.toString());
-    }
-  };
+  // Check if swap is possible
+  const canSwap = isConnected && 
+    amount && 
+    parseFloat(amount) > 0 && 
+    selectedFromToken && 
+    (status === 'idle' || status === 'quoted');
 
+  const insufficientBalance = balance && 
+    amount && 
+    parseFloat(amount) > parseFloat(formatUnits(balance.value, balance.decimals));
+
+  // Get button text
   const getButtonText = () => {
+    if (!isConnected) return "Connect Wallet";
+    if (!amount || parseFloat(amount) <= 0) return "Enter Amount";
+    if (insufficientBalance) return "Insufficient Balance";
     switch (status) {
       case 'quoting': return 'Getting Quote...';
-      case 'quoted': return isCrossChain ? 'Bridge to Arbitrum' : 'Continue';
+      case 'quoted': return 'Swap & Fund';
       case 'executing': return 'Processing...';
       case 'success': return 'Success!';
-      default: return isCrossChain ? 'Get Quote' : 'Continue';
+      default: return 'Get Quote';
     }
   };
 
-  const getButtonIcon = () => {
-    switch (status) {
-      case 'quoting':
-      case 'executing':
-        return <Loader2 size={18} className="animate-spin" />;
-      case 'success':
-        return <Check size={18} />;
-      default:
-        return <ArrowRight size={18} />;
-    }
-  };
+  const isCrossChain = selectedChain.id !== ARBITRUM_CHAIN_ID;
 
   return (
-    <div className="glass-card p-6 hover:border-mint/20 transition-all duration-300">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${asset.color} flex items-center justify-center text-white font-bold text-xl shadow-lg`}>
-            {asset.icon}
-          </div>
-          <div>
-            <h3 className="text-xl font-semibold text-white">{asset.symbol}</h3>
-            <p className="text-white/50 text-sm">{asset.name}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Chain indicator */}
-      {isCrossChain && currentChain && (
-        <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
-          <div className="flex items-center gap-2 text-amber-400 text-sm">
-            <span className="font-medium">{currentChain.name}</span>
-            <ArrowRight size={14} />
-            <span className="font-medium">Arbitrum</span>
-            <span className="text-white/50 ml-auto text-xs">via Li.Fi</span>
-          </div>
-        </div>
-      )}
-      
-      <div className="space-y-3">
-        <div className="relative">
-          <input
-            type="number"
-            placeholder="0.00"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-full bg-navy-200 border border-white/10 rounded-xl px-4 py-4 text-white text-lg placeholder:text-white/30 focus:outline-none focus:border-mint/50 transition-colors"
-            disabled={status === 'executing'}
-          />
-          <button 
-            onClick={handleMaxClick}
-            disabled={!balance || status === 'executing'}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-mint text-sm hover:underline disabled:opacity-50"
-          >
-            MAX
-          </button>
-        </div>
-        
-        <div className="flex justify-between text-sm text-white/50 px-1">
-          <span>Balance: {balance ? parseFloat(formatUnits(balance.value, balance.decimals)).toFixed(4) : '0.00'} {asset.symbol}</span>
-        </div>
-
-        <button 
-          onClick={handleAction}
-          disabled={!isConnected || !amount || parseFloat(amount) <= 0 || status === 'quoting' || status === 'executing'}
-          className="w-full btn-primary flex items-center justify-center gap-2 py-4 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {getButtonIcon()}
-          {getButtonText()}
-        </button>
-      </div>
-
-      {/* Quote details */}
-      {status === 'quoted' && (
-        <div className="mt-4 p-4 rounded-xl bg-mint/5 border border-mint/20 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-white/60 text-sm">You receive</span>
-            <span className="text-mint font-semibold">{estimatedOutput} {asset.symbol}</span>
-          </div>
-          {isCrossChain && (
-            <>
-              <div className="flex items-center justify-between">
-                <span className="text-white/60 text-sm">Route</span>
-                <span className="text-white/80 text-sm">{bridgePath}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-white/60 text-sm">Time</span>
-                <span className="text-white/80 text-sm">{estimatedTime}</span>
-              </div>
-            </>
-          )}
-          <div className="flex items-center justify-between">
-            <span className="text-white/60 text-sm">Gas</span>
-            <span className="text-white/80 text-sm">{estimatedGas}</span>
-          </div>
-          <button
-            onClick={fetchQuote}
-            className="w-full mt-2 flex items-center justify-center gap-2 text-sm text-white/60 hover:text-mint transition-colors py-2"
-          >
-            <RefreshCw size={14} />
-            Refresh quote
-          </button>
-        </div>
-      )}
-
-      {error && (
-        <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-red-400 text-sm">
-          <AlertCircle size={16} />
-          {error}
-        </div>
-      )}
-
-      {status === 'success' && (
-        <div className="mt-4 p-3 rounded-xl bg-mint/10 border border-mint/20 flex items-center gap-2 text-mint text-sm">
-          <Check size={16} />
-          Funds bridged successfully!
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default function FundPage() {
-  const { isConnected } = useAccount();
-  const chainId = useChainId();
-  const { switchChain } = useSwitchChain();
-  
-  const currentChain = SUPPORTED_SOURCE_CHAINS.find(c => c.id === chainId);
-  const isOnArbitrum = chainId === ARBITRUM_CHAIN_ID;
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-xl mx-auto px-4 sm:px-6 py-8">
       {/* Header */}
-      <div className="mb-8">
+      <div className="text-center mb-8">
         <h1 className="text-3xl font-display font-bold text-white mb-2">Fund Your Account</h1>
-        <p className="text-white/60">Bridge assets from any chain to start earning on Arbitrum</p>
+        <p className="text-white/60">Swap any token to get started on Arbitrum</p>
       </div>
-
-      {/* Network Status */}
-      {isConnected && (
-        <div className="glass-card p-6 mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className={`w-3 h-3 rounded-full ${isOnArbitrum ? 'bg-mint' : 'bg-amber-400'} animate-pulse`} />
-              <div>
-                <p className="text-white font-medium">
-                  {isOnArbitrum ? "You're on Arbitrum" : `Connected to ${currentChain?.name || 'Unknown'}`}
-                </p>
-                <p className="text-white/50 text-sm">
-                  {isOnArbitrum 
-                    ? 'Ready to deposit directly' 
-                    : 'Bridge your assets to Arbitrum to get started'
-                  }
-                </p>
-              </div>
-            </div>
-            
-            {!isOnArbitrum && (
-              <button
-                onClick={() => switchChain?.({ chainId: ARBITRUM_CHAIN_ID })}
-                className="btn-secondary flex items-center gap-2 text-sm"
-              >
-                <ExternalLink size={16} />
-                Switch to Arbitrum
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {!isConnected ? (
-        <div className="glass-card p-12 text-center">
+        <div className="glass-card rounded-2xl p-12 text-center">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-mint/20 to-purple-500/20 flex items-center justify-center text-mint mx-auto mb-4">
             <Wallet size={32} />
           </div>
@@ -277,42 +289,165 @@ export default function FundPage() {
           <p className="text-white/60">Connect your wallet to fund your account and start earning.</p>
         </div>
       ) : (
-        <>
-          {/* Info banner */}
-          {!isOnArbitrum && (
-            <div className="mb-8 p-4 rounded-xl bg-gradient-to-r from-purple-500/10 to-mint/10 border border-purple-500/20">
-              <p className="text-white text-sm">
-                <span className="text-mint font-semibold">Cross-chain funding enabled!</span>
-                {" "}We use Li.Fi to automatically bridge your assets from {currentChain?.name} to Arbitrum. One transaction, no hassle.
-              </p>
+        <div className="glass-card rounded-2xl p-6 space-y-4">
+          {/* From Section */}
+          <div>
+            <label className="text-white/60 text-sm mb-2 block">From</label>
+            <div className="bg-navy-200/50 border border-white/10 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <Dropdown
+                  items={CHAINS as unknown as typeof CHAINS[number][]}
+                  selected={selectedChain}
+                  onSelect={handleChainChange}
+                  label="Chain"
+                />
+                <Dropdown
+                  items={availableTokens}
+                  selected={selectedFromToken}
+                  onSelect={setSelectedFromToken}
+                  label="Token"
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="flex-1 bg-transparent text-white text-2xl font-semibold placeholder:text-white/20 focus:outline-none"
+                  disabled={status === 'executing'}
+                />
+                <div className="text-right">
+                  <div className="text-white/40 text-sm">
+                    Balance: {balanceLoading ? "..." : balance ? parseFloat(formatUnits(balance.value, balance.decimals)).toFixed(4) : "0.00"}
+                  </div>
+                  <button
+                    onClick={handleMaxClick}
+                    disabled={!balance || status === 'executing'}
+                    className="text-mint text-sm hover:underline disabled:opacity-50"
+                  >
+                    MAX
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Swap Direction Indicator */}
+          <div className="flex justify-center">
+            <div className="w-10 h-10 rounded-xl bg-navy-200 border border-white/10 flex items-center justify-center">
+              <ArrowDown size={20} className="text-mint" />
+            </div>
+          </div>
+
+          {/* To Section */}
+          <div>
+            <label className="text-white/60 text-sm mb-2 block">To (Arbitrum)</label>
+            <div className="bg-navy-200/50 border border-white/10 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                {/* Arbitrum - Locked */}
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 min-w-[140px]">
+                  <span className="text-lg">🔷</span>
+                  <span className="text-blue-400 font-medium">Arbitrum</span>
+                </div>
+                <Dropdown
+                  items={DEST_TOKENS}
+                  selected={selectedToToken}
+                  onSelect={setSelectedToToken}
+                  label="Token"
+                />
+              </div>
+
+              <div className="flex items-center">
+                <div className="text-white/40 text-sm">You receive:</div>
+                <div className="ml-auto text-white text-xl font-semibold">
+                  {status === 'quoting' ? (
+                    <span className="text-white/40">Calculating...</span>
+                  ) : status === 'quoted' ? (
+                    `~${estimatedOutput} ${selectedToToken.symbol}`
+                  ) : (
+                    <span className="text-white/40">-</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quote Details */}
+          {status === 'quoted' && (
+            <div className="bg-mint/5 border border-mint/20 rounded-xl p-4 space-y-3">
+              {isCrossChain && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-white/60 text-sm">
+                    <Route size={14} />
+                    Route
+                  </div>
+                  <div className="text-white text-sm">
+                    {selectedChain.name} → {bridgePath} → Arbitrum
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-white/60 text-sm">
+                  <Clock size={14} />
+                  Est. time
+                </div>
+                <div className="text-white text-sm">{estimatedTime}</div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-white/60 text-sm">
+                  <Fuel size={14} />
+                  Gas
+                </div>
+                <div className="text-white text-sm">{estimatedGas}</div>
+              </div>
+              <button
+                onClick={fetchQuote}
+                className="w-full flex items-center justify-center gap-2 text-sm text-white/60 hover:text-mint transition-colors py-2 mt-2"
+              >
+                <RefreshCw size={14} />
+                Refresh quote
+              </button>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {supportedAssets.map((asset) => (
-              <BridgeCard key={asset.symbol} asset={asset} />
-            ))}
-          </div>
-
-          {/* Supported chains */}
-          <div className="mt-8 text-center">
-            <p className="text-white/40 text-sm mb-3">Supported source chains</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {SUPPORTED_SOURCE_CHAINS.map((chain) => (
-                <span 
-                  key={chain.id}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium ${
-                    chain.id === chainId 
-                      ? 'bg-mint/20 text-mint border border-mint/30' 
-                      : 'bg-white/5 text-white/50'
-                  }`}
-                >
-                  {chain.name}
-                </span>
-              ))}
+          {/* Error Display */}
+          {error && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-red-400 text-sm">
+              <AlertCircle size={16} />
+              {error}
             </div>
-          </div>
-        </>
+          )}
+
+          {/* Success Display */}
+          {status === 'success' && (
+            <div className="p-3 rounded-xl bg-mint/10 border border-mint/20 flex items-center gap-2 text-mint text-sm">
+              <Check size={16} />
+              Funds swapped and deposited successfully!
+            </div>
+          )}
+
+          {/* Swap Button */}
+          <button
+            onClick={handleSwap}
+            disabled={!canSwap || !!insufficientBalance}
+            className="w-full btn-primary flex items-center justify-center gap-2 py-4 text-lg font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {(status === 'quoting' || status === 'executing') && (
+              <Loader2 size={20} className="animate-spin" />
+            )}
+            {status === 'success' && <Check size={20} />}
+            {getButtonText()}
+          </button>
+
+          {/* Cross-chain info */}
+          {isCrossChain && status === 'idle' && (
+            <p className="text-center text-white/40 text-xs">
+              Powered by Li.Fi — automatically bridges from {selectedChain.name} to Arbitrum
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
