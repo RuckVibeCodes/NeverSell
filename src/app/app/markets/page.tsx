@@ -212,9 +212,9 @@ function StatsSummary({ pools }: { pools: GMPool[] }) {
 export default function MarketsPage() {
   const { pools, isLoading, isError, error, lastUpdated, refetch } = useAllGMXPools();
   
-  // Filter state - default to main pools only + $1M+ TVL to filter duplicates
+  // Filter state - default to main pools only + $100K+ TVL to filter tiny pools
   const [search, setSearch] = useState('');
-  const [minTvl, setMinTvl] = useState(1_000_000);
+  const [minTvl, setMinTvl] = useState(100_000);
   const [minApy, setMinApy] = useState(0);
   const [poolType, setPoolType] = useState<PoolTypeFilter>('all');
   const [mainOnly, setMainOnly] = useState(true); // Show only highest TVL per symbol
@@ -410,11 +410,11 @@ export default function MarketsPage() {
           Showing {filteredPools.length} of {pools.length} pools
           {mainOnly && <span className="text-mint ml-1">(main pools)</span>}
         </p>
-        {(search || minTvl !== 1_000_000 || minApy > 0 || poolType !== 'all' || !mainOnly) && (
+        {(search || minTvl !== 100_000 || minApy > 0 || poolType !== 'all' || !mainOnly) && (
           <button
             onClick={() => {
               setSearch('');
-              setMinTvl(1_000_000);
+              setMinTvl(100_000);
               setMinApy(0);
               setPoolType('all');
               setMainOnly(true);
