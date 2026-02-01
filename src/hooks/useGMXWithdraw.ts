@@ -3,9 +3,9 @@
 
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
-import { encodeFunctionData } from 'viem';
+import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useReadContract } from 'wagmi';
+import { encodeFunctionData, maxUint256 } from 'viem';
 import {
   GMX_CONTRACTS,
   GM_POOLS,
@@ -23,18 +23,34 @@ export interface UseGMXWithdrawParams {
   poolName: GMPoolName;
   marketTokenAmount: bigint;
   slippageBps?: number; // Basis points (100 = 1%)
-  preferLongToken?: boolean; // If true, prefer receiving long token
+  onApprovalSuccess?: () => void;
+  onWithdrawSuccess?: (hash: string) => void;
 }
 
 export interface UseGMXWithdrawResult {
-  withdraw: () => Promise<void>;
-  approveGMToken: (amount: bigint) => Promise<void>;
+  // Allowance checking
+  needsApproval: boolean;
+  isCheckingAllowance: boolean;
+  refetchAllowance: () => void;
+  
+  // Approval
+  approve: () => void;
   isApproving: boolean;
+  isApprovalPending: boolean;
+  isApprovalSuccess: boolean;
+  approvalError: Error | null;
+  approvalHash: `0x${string}` | undefined;
+  
+  // Withdrawal
+  withdraw: () => void;
   isWithdrawing: boolean;
-  isConfirming: boolean;
-  isSuccess: boolean;
-  error: Error | null;
+  isWithdrawPending: boolean;
+  isWithdrawSuccess: boolean;
+  withdrawError: Error | null;
   withdrawHash: `0x${string}` | undefined;
+  
+  // General
+  isPending: boolean;
   reset: () => void;
 }
 
@@ -42,77 +58,102 @@ export function useGMXWithdraw({
   poolName,
   marketTokenAmount,
   slippageBps = 100, // 1% default slippage
+  onApprovalSuccess,
+  onWithdrawSuccess,
 }: UseGMXWithdrawParams): UseGMXWithdrawResult {
   const { address } = useAccount();
-  
-  const [isApproving, setIsApproving] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [localError, setLocalError] = useState<Error | null>(null);
 
   const pool = useMemo(() => GM_POOLS[poolName], [poolName]);
 
-  // Write contract for GM token approval
+  // Check GM token allowance
+  const { 
+    data: allowance, 
+    isLoading: isCheckingAllowance,
+    refetch: refetchAllowance,
+  } = useReadContract({
+    address: pool.marketToken,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: address ? [address, GMX_CONTRACTS.router] : undefined,
+    query: { enabled: !!address && marketTokenAmount > BigInt(0) },
+  });
+
+  const needsApproval = useMemo(() => {
+    if (marketTokenAmount === BigInt(0)) return false;
+    if (!allowance) return true;
+    return allowance < marketTokenAmount;
+  }, [allowance, marketTokenAmount]);
+
+  // Approval transaction
   const {
     writeContract: writeApprove,
-    isPending: isApproveWritePending,
+    data: approvalHash,
+    isPending: isApproving,
+    error: approvalWriteError,
+    reset: resetApproval,
   } = useWriteContract();
 
-  // Write contract for withdrawal
+  const { 
+    isLoading: isApprovalPending,
+    isSuccess: isApprovalSuccess,
+    error: approvalReceiptError,
+  } = useWaitForTransactionReceipt({ hash: approvalHash });
+
+  // Refetch allowance when approval succeeds
+  useEffect(() => {
+    if (isApprovalSuccess) {
+      refetchAllowance();
+      onApprovalSuccess?.();
+    }
+  }, [isApprovalSuccess, refetchAllowance, onApprovalSuccess]);
+
+  const approve = useCallback(() => {
+    if (!address) return;
+    writeApprove({
+      address: pool.marketToken,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [GMX_CONTRACTS.router, maxUint256],
+    });
+  }, [address, pool.marketToken, writeApprove]);
+
+  // Withdrawal transaction
   const {
     data: withdrawHash,
     writeContract: writeWithdraw,
-    isPending: isWithdrawWritePending,
+    isPending: isWithdrawing,
+    error: withdrawWriteError,
     reset: resetWithdraw,
   } = useWriteContract();
 
-  // Wait for withdrawal transaction
   const {
-    isLoading: isConfirming,
-    isSuccess,
-  } = useWaitForTransactionReceipt({
-    hash: withdrawHash,
-  });
+    isLoading: isWithdrawPending,
+    isSuccess: isWithdrawSuccess,
+    error: withdrawReceiptError,
+  } = useWaitForTransactionReceipt({ hash: withdrawHash });
 
-  // Approve GM token for Router spending
-  const approveGMToken = useCallback(async (amount: bigint) => {
-    if (!address) {
-      setError(new Error('Wallet not connected'));
-      return;
+  // Call onWithdrawSuccess callback
+  useEffect(() => {
+    if (isWithdrawSuccess && withdrawHash) {
+      onWithdrawSuccess?.(withdrawHash);
     }
+  }, [isWithdrawSuccess, withdrawHash, onWithdrawSuccess]);
 
-    setIsApproving(true);
-    setError(null);
-
-    try {
-      writeApprove({
-        address: pool.marketToken,
-        abi: ERC20_ABI,
-        functionName: 'approve',
-        args: [GMX_CONTRACTS.router, amount],
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Approval failed'));
-    } finally {
-      setIsApproving(false);
-    }
-  }, [address, pool.marketToken, writeApprove]);
-
-  // Create withdrawal
-  const withdraw = useCallback(async () => {
+  const withdraw = useCallback(() => {
     if (!address) {
-      setError(new Error('Wallet not connected'));
+      setLocalError(new Error('Wallet not connected'));
       return;
     }
 
     if (marketTokenAmount === BigInt(0)) {
-      setError(new Error('Must specify amount to withdraw'));
+      setLocalError(new Error('Must specify amount to withdraw'));
       return;
     }
 
-    setError(null);
+    setLocalError(null);
 
     try {
-      // Calculate minimum tokens to receive (with slippage)
-      // In production, calculate based on current pool value
       const minLongTokenAmount = BigInt(0);
       const minShortTokenAmount = BigInt(0);
 
@@ -125,15 +166,13 @@ export function useGMXWithdraw({
         shortTokenSwapPath: [],
         minLongTokenAmount: calculateMinOutput(minLongTokenAmount, slippageBps),
         minShortTokenAmount: calculateMinOutput(minShortTokenAmount, slippageBps),
-        shouldUnwrapNativeToken: false, // Keep as wrapped token
+        shouldUnwrapNativeToken: false,
         executionFee: DEFAULT_EXECUTION_FEE,
         callbackGasLimit: DEFAULT_CALLBACK_GAS_LIMIT,
       };
 
-      // Build multicall data
       const calls: `0x${string}`[] = [];
 
-      // Send ETH for execution fee
       calls.push(
         encodeFunctionData({
           abi: EXCHANGE_ROUTER_ABI,
@@ -142,7 +181,6 @@ export function useGMXWithdraw({
         })
       );
 
-      // Send GM tokens to vault
       calls.push(
         encodeFunctionData({
           abi: EXCHANGE_ROUTER_ABI,
@@ -151,7 +189,6 @@ export function useGMXWithdraw({
         })
       );
 
-      // Create withdrawal
       calls.push(
         encodeFunctionData({
           abi: EXCHANGE_ROUTER_ABI,
@@ -160,7 +197,6 @@ export function useGMXWithdraw({
         })
       );
 
-      // Execute multicall
       writeWithdraw({
         address: GMX_CONTRACTS.exchangeRouter,
         abi: EXCHANGE_ROUTER_ABI,
@@ -169,24 +205,36 @@ export function useGMXWithdraw({
         value: DEFAULT_EXECUTION_FEE,
       });
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Withdrawal failed'));
+      setLocalError(err instanceof Error ? err : new Error('Withdrawal failed'));
     }
   }, [address, pool, marketTokenAmount, slippageBps, writeWithdraw]);
 
   const reset = useCallback(() => {
-    setError(null);
+    setLocalError(null);
+    resetApproval();
     resetWithdraw();
-  }, [resetWithdraw]);
+  }, [resetApproval, resetWithdraw]);
+
+  const approvalError = approvalWriteError || approvalReceiptError;
+  const withdrawError = withdrawWriteError || withdrawReceiptError || localError;
 
   return {
+    needsApproval,
+    isCheckingAllowance,
+    refetchAllowance: () => refetchAllowance(),
+    approve,
+    isApproving,
+    isApprovalPending,
+    isApprovalSuccess,
+    approvalError,
+    approvalHash,
     withdraw,
-    approveGMToken,
-    isApproving: isApproving || isApproveWritePending,
-    isWithdrawing: isWithdrawWritePending,
-    isConfirming,
-    isSuccess,
-    error,
+    isWithdrawing,
+    isWithdrawPending,
+    isWithdrawSuccess,
+    withdrawError,
     withdrawHash,
+    isPending: isApproving || isApprovalPending || isWithdrawing || isWithdrawPending,
     reset,
   };
 }

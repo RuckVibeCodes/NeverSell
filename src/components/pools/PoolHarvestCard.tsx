@@ -193,17 +193,22 @@ function PoolHarvestModal({ positions, earningsUSD, onClose, onComplete }: PoolH
   const {
     withdraw,
     isWithdrawing,
-    isConfirming,
-    isSuccess,
-    error,
+    isWithdrawPending,
+    isWithdrawSuccess: isSuccess,
+    withdrawError: error,
     withdrawHash,
     reset: resetWithdraw,
+    needsApproval,
+    approve,
+    isApproving,
+    isApprovalPending,
   } = useGMXWithdraw({
     poolName: selectedPool,
     marketTokenAmount: currentPoolData?.withdrawAmount ?? BigInt(0),
   });
   
-  const isPending = isWithdrawing || isConfirming;
+  const isPending = isWithdrawing || isWithdrawPending || isApproving || isApprovalPending;
+  void needsApproval; void approve; // TODO: Wire up approval flow if needed
   
   const handleHarvest = async () => {
     try {

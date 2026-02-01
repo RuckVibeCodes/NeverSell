@@ -284,16 +284,22 @@ function StrategyModal({
   const {
     deposit,
     isDepositing,
-    isConfirming,
-    isSuccess,
-    error: depositError,
+    isDepositPending,
+    isDepositSuccess: isSuccess,
+    depositError,
     reset: resetDeposit,
+    // TODO: Wire up approval flow when needed
+    needsShortTokenApproval: _needsApproval1,
+    approveShortToken: _approve1,
+    isApproving,
+    isApprovalPending,
   } = useGMXDeposit({
     poolName: currentAllocation?.pool || "BTC/USD",
     shortTokenAmount: depositAmountWei,
   });
 
-  const isPending = isDepositing || isConfirming;
+  const isPending = isDepositing || isDepositPending || isApproving || isApprovalPending;
+  void _needsApproval1; void _approve1; // Silence lint - approval flow TODO
   const allStepsComplete = completedSteps.length === strategy.allocations.length;
 
   // Handle deposit for current step
@@ -664,12 +670,24 @@ function DepositModal({ pool, apy, onClose }: DepositModalProps) {
   const depositAmount = parseFloat(amount) || 0;
   const depositAmountWei = BigInt(Math.floor(depositAmount * 1e6));
 
-  const { deposit, isDepositing, isConfirming, isSuccess, error } = useGMXDeposit({
+  const { 
+    deposit, 
+    isDepositing, 
+    isDepositPending, 
+    isDepositSuccess: isSuccess, 
+    depositError: error,
+    // TODO: Wire up approval flow when needed
+    needsShortTokenApproval: _needsApproval2,
+    approveShortToken: _approve2,
+    isApproving,
+    isApprovalPending,
+  } = useGMXDeposit({
     poolName: pool.name,
     shortTokenAmount: depositAmountWei,
   });
 
-  const isPending = isDepositing || isConfirming;
+  const isPending = isDepositing || isDepositPending || isApproving || isApprovalPending;
+  void _needsApproval2; void _approve2; // Silence lint - approval flow TODO
 
   const handleMaxClick = () => {
     if (balance) {

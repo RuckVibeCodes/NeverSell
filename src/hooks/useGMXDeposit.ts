@@ -3,10 +3,9 @@
 
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
-import { encodeFunctionData } from 'viem';
-import type { Address } from 'viem';
+import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useReadContract } from 'wagmi';
+import { encodeFunctionData, maxUint256 } from 'viem';
 import {
   GMX_CONTRACTS,
   GM_POOLS,
@@ -25,17 +24,35 @@ export interface UseGMXDepositParams {
   longTokenAmount?: bigint;
   shortTokenAmount?: bigint;
   slippageBps?: number; // Basis points (100 = 1%)
+  onApprovalSuccess?: () => void;
+  onDepositSuccess?: (hash: string) => void;
 }
 
 export interface UseGMXDepositResult {
-  deposit: () => Promise<void>;
-  approveToken: (token: Address, amount: bigint) => Promise<void>;
+  // Allowance checking
+  needsLongTokenApproval: boolean;
+  needsShortTokenApproval: boolean;
+  isCheckingAllowance: boolean;
+  refetchAllowances: () => void;
+  
+  // Approval
+  approveLongToken: () => void;
+  approveShortToken: () => void;
   isApproving: boolean;
+  isApprovalPending: boolean;
+  isApprovalSuccess: boolean;
+  approvalError: Error | null;
+  
+  // Deposit
+  deposit: () => void;
   isDepositing: boolean;
-  isConfirming: boolean;
-  isSuccess: boolean;
-  error: Error | null;
+  isDepositPending: boolean;
+  isDepositSuccess: boolean;
+  depositError: Error | null;
   depositHash: `0x${string}` | undefined;
+  
+  // General
+  isPending: boolean;
   reset: () => void;
 }
 
@@ -44,77 +61,158 @@ export function useGMXDeposit({
   longTokenAmount = BigInt(0),
   shortTokenAmount = BigInt(0),
   slippageBps = 100, // 1% default slippage
+  onApprovalSuccess,
+  onDepositSuccess,
 }: UseGMXDepositParams): UseGMXDepositResult {
   const { address } = useAccount();
-  
-  const [isApproving, setIsApproving] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [localError, setLocalError] = useState<Error | null>(null);
 
   const pool = useMemo(() => GM_POOLS[poolName], [poolName]);
 
-  // Write contract for token approvals
+  // Check long token allowance
+  const { 
+    data: longTokenAllowance, 
+    isLoading: isCheckingLongAllowance,
+    refetch: refetchLongAllowance,
+  } = useReadContract({
+    address: pool.longToken,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: address ? [address, GMX_CONTRACTS.router] : undefined,
+    query: { enabled: !!address && longTokenAmount > BigInt(0) },
+  });
+
+  // Check short token allowance
+  const { 
+    data: shortTokenAllowance, 
+    isLoading: isCheckingShortAllowance,
+    refetch: refetchShortAllowance,
+  } = useReadContract({
+    address: pool.shortToken,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: address ? [address, GMX_CONTRACTS.router] : undefined,
+    query: { enabled: !!address && shortTokenAmount > BigInt(0) },
+  });
+
+  const needsLongTokenApproval = useMemo(() => {
+    if (longTokenAmount === BigInt(0)) return false;
+    if (!longTokenAllowance) return true;
+    return longTokenAllowance < longTokenAmount;
+  }, [longTokenAllowance, longTokenAmount]);
+
+  const needsShortTokenApproval = useMemo(() => {
+    if (shortTokenAmount === BigInt(0)) return false;
+    if (!shortTokenAllowance) return true;
+    return shortTokenAllowance < shortTokenAmount;
+  }, [shortTokenAllowance, shortTokenAmount]);
+
+  // Approval transactions
   const {
-    writeContract: writeApprove,
-    isPending: isApproveWritePending,
+    writeContract: writeApproveLong,
+    data: approveLongHash,
+    isPending: isApprovingLong,
+    error: approveLongError,
+    reset: resetApproveLong,
   } = useWriteContract();
 
-  // Write contract for deposit
+  const {
+    writeContract: writeApproveShort,
+    data: approveShortHash,
+    isPending: isApprovingShort,
+    error: approveShortError,
+    reset: resetApproveShort,
+  } = useWriteContract();
+
+  const { 
+    isLoading: isLongApprovalPending,
+    isSuccess: isLongApprovalSuccess,
+    error: longApprovalReceiptError,
+  } = useWaitForTransactionReceipt({ hash: approveLongHash });
+
+  const { 
+    isLoading: isShortApprovalPending,
+    isSuccess: isShortApprovalSuccess,
+    error: shortApprovalReceiptError,
+  } = useWaitForTransactionReceipt({ hash: approveShortHash });
+
+  // Refetch allowances when approval succeeds
+  useEffect(() => {
+    if (isLongApprovalSuccess) {
+      refetchLongAllowance();
+    }
+  }, [isLongApprovalSuccess, refetchLongAllowance]);
+
+  useEffect(() => {
+    if (isShortApprovalSuccess) {
+      refetchShortAllowance();
+    }
+  }, [isShortApprovalSuccess, refetchShortAllowance]);
+
+  // Notify on any approval success
+  const isApprovalSuccess = isLongApprovalSuccess || isShortApprovalSuccess;
+  useEffect(() => {
+    if (isApprovalSuccess) {
+      onApprovalSuccess?.();
+    }
+  }, [isApprovalSuccess, onApprovalSuccess]);
+
+  const approveLongToken = useCallback(() => {
+    if (!address) return;
+    writeApproveLong({
+      address: pool.longToken,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [GMX_CONTRACTS.router, maxUint256],
+    });
+  }, [address, pool.longToken, writeApproveLong]);
+
+  const approveShortToken = useCallback(() => {
+    if (!address) return;
+    writeApproveShort({
+      address: pool.shortToken,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [GMX_CONTRACTS.router, maxUint256],
+    });
+  }, [address, pool.shortToken, writeApproveShort]);
+
+  // Deposit transaction
   const {
     data: depositHash,
     writeContract: writeDeposit,
-    isPending: isDepositWritePending,
+    isPending: isDepositing,
+    error: depositWriteError,
     reset: resetDeposit,
   } = useWriteContract();
 
-  // Wait for deposit transaction
   const {
-    isLoading: isConfirming,
-    isSuccess,
-  } = useWaitForTransactionReceipt({
-    hash: depositHash,
-  });
+    isLoading: isDepositPending,
+    isSuccess: isDepositSuccess,
+    error: depositReceiptError,
+  } = useWaitForTransactionReceipt({ hash: depositHash });
 
-  // Approve token for Router spending
-  const approveToken = useCallback(async (token: Address, amount: bigint) => {
-    if (!address) {
-      setError(new Error('Wallet not connected'));
-      return;
+  // Call onDepositSuccess callback
+  useEffect(() => {
+    if (isDepositSuccess && depositHash) {
+      onDepositSuccess?.(depositHash);
     }
+  }, [isDepositSuccess, depositHash, onDepositSuccess]);
 
-    setIsApproving(true);
-    setError(null);
-
-    try {
-      writeApprove({
-        address: token,
-        abi: ERC20_ABI,
-        functionName: 'approve',
-        args: [GMX_CONTRACTS.router, amount],
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Approval failed'));
-    } finally {
-      setIsApproving(false);
-    }
-  }, [address, writeApprove]);
-
-  // Create deposit
-  const deposit = useCallback(async () => {
+  const deposit = useCallback(() => {
     if (!address) {
-      setError(new Error('Wallet not connected'));
+      setLocalError(new Error('Wallet not connected'));
       return;
     }
 
     if (longTokenAmount === BigInt(0) && shortTokenAmount === BigInt(0)) {
-      setError(new Error('Must deposit at least one token'));
+      setLocalError(new Error('Must deposit at least one token'));
       return;
     }
 
-    setError(null);
+    setLocalError(null);
 
     try {
-      // Calculate minimum GM tokens to receive (with slippage)
-      // For simplicity, we use 0 here - in production, calculate based on price
       const minMarketTokens = BigInt(0);
 
       const depositParams: DepositParams = {
@@ -132,10 +230,8 @@ export function useGMXDeposit({
         callbackGasLimit: DEFAULT_CALLBACK_GAS_LIMIT,
       };
 
-      // Build multicall data
       const calls: `0x${string}`[] = [];
 
-      // Send ETH for execution fee
       calls.push(
         encodeFunctionData({
           abi: EXCHANGE_ROUTER_ABI,
@@ -144,7 +240,6 @@ export function useGMXDeposit({
         })
       );
 
-      // Send long tokens if any
       if (longTokenAmount > BigInt(0)) {
         calls.push(
           encodeFunctionData({
@@ -155,7 +250,6 @@ export function useGMXDeposit({
         );
       }
 
-      // Send short tokens if any
       if (shortTokenAmount > BigInt(0)) {
         calls.push(
           encodeFunctionData({
@@ -166,7 +260,6 @@ export function useGMXDeposit({
         );
       }
 
-      // Create deposit
       calls.push(
         encodeFunctionData({
           abi: EXCHANGE_ROUTER_ABI,
@@ -175,7 +268,6 @@ export function useGMXDeposit({
         })
       );
 
-      // Execute multicall
       writeDeposit({
         address: GMX_CONTRACTS.exchangeRouter,
         abi: EXCHANGE_ROUTER_ABI,
@@ -184,24 +276,45 @@ export function useGMXDeposit({
         value: DEFAULT_EXECUTION_FEE,
       });
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Deposit failed'));
+      setLocalError(err instanceof Error ? err : new Error('Deposit failed'));
     }
   }, [address, pool, longTokenAmount, shortTokenAmount, slippageBps, writeDeposit]);
 
   const reset = useCallback(() => {
-    setError(null);
+    setLocalError(null);
+    resetApproveLong();
+    resetApproveShort();
     resetDeposit();
-  }, [resetDeposit]);
+  }, [resetApproveLong, resetApproveShort, resetDeposit]);
+
+  const refetchAllowances = useCallback(() => {
+    refetchLongAllowance();
+    refetchShortAllowance();
+  }, [refetchLongAllowance, refetchShortAllowance]);
+
+  const isApproving = isApprovingLong || isApprovingShort;
+  const isApprovalPending = isLongApprovalPending || isShortApprovalPending;
+  const approvalError = approveLongError || approveShortError || longApprovalReceiptError || shortApprovalReceiptError;
+  const depositError = depositWriteError || depositReceiptError || localError;
 
   return {
+    needsLongTokenApproval,
+    needsShortTokenApproval,
+    isCheckingAllowance: isCheckingLongAllowance || isCheckingShortAllowance,
+    refetchAllowances,
+    approveLongToken,
+    approveShortToken,
+    isApproving,
+    isApprovalPending,
+    isApprovalSuccess,
+    approvalError,
     deposit,
-    approveToken,
-    isApproving: isApproving || isApproveWritePending,
-    isDepositing: isDepositWritePending,
-    isConfirming,
-    isSuccess,
-    error,
+    isDepositing,
+    isDepositPending,
+    isDepositSuccess,
+    depositError,
     depositHash,
+    isPending: isApproving || isApprovalPending || isDepositing || isDepositPending,
     reset,
   };
 }
