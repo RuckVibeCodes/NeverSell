@@ -12,16 +12,26 @@ import {
   ArrowRight,
   Info,
   Banknote,
-  TrendingUp
+  TrendingUp,
+  ArrowDownToLine,
+  ExternalLink
 } from "lucide-react";
 import { useAccount, useBalance } from "wagmi";
 import { formatUnits } from "viem";
 import { useAaveBorrow } from "@/hooks/useAaveBorrow";
 import { useAavePosition } from "@/hooks/useAavePosition";
 import { useAaveRepay } from "@/hooks/useAaveRepay";
+import { useAaveWithdraw } from "@/hooks/useAaveWithdraw";
 import { useAaveBorrowRate } from "@/hooks/useAaveBorrowRate";
 import { AAVE_V3_ADDRESSES } from "@/lib/aave";
 import type { Address } from "viem";
+
+type ActionMode = 'borrow' | 'repay' | 'withdraw';
+
+// Platform fee for withdrawals
+const PLATFORM_FEE_PERCENT = 0.1;
+const SAFE_HEALTH_FACTOR = 1.5;
+const MIN_HEALTH_FACTOR = 1.0;
 
 // Health Factor color coding
 function getHealthFactorColor(hf: number): { 
@@ -43,6 +53,43 @@ function getHealthFactorColor(hf: number): {
     return { text: 'text-orange-400', bg: 'bg-orange-400', label: 'At Risk', emoji: '🟠' };
   }
   return { text: 'text-red-500', bg: 'bg-red-500', label: 'Liquidation', emoji: '🔴' };
+}
+
+// Calculate max withdrawable amount that maintains a target health factor
+function calculateMaxWithdrawable(
+  totalCollateral: number,
+  totalDebt: number,
+  liquidationThreshold: number,
+  targetHealthFactor: number = SAFE_HEALTH_FACTOR
+): number {
+  // If no debt, can withdraw everything
+  if (totalDebt <= 0) return totalCollateral;
+  
+  // Health Factor = (Collateral * LiquidationThreshold) / Debt
+  // We want: targetHF = ((Collateral - Withdraw) * LiqThreshold) / Debt
+  // Solving for Withdraw:
+  // targetHF * Debt = (Collateral - Withdraw) * LiqThreshold
+  // (targetHF * Debt) / LiqThreshold = Collateral - Withdraw
+  // Withdraw = Collateral - (targetHF * Debt) / LiqThreshold
+  
+  const liqThresholdDecimal = liquidationThreshold / 100;
+  const minCollateralRequired = (targetHealthFactor * totalDebt) / liqThresholdDecimal;
+  const maxWithdraw = totalCollateral - minCollateralRequired;
+  
+  return Math.max(0, maxWithdraw);
+}
+
+// Calculate new health factor after a withdrawal
+function calculateNewHealthFactor(
+  totalCollateral: number,
+  totalDebt: number,
+  withdrawAmount: number,
+  liquidationThreshold: number
+): number {
+  if (totalDebt <= 0) return Infinity;
+  const newCollateral = totalCollateral - withdrawAmount;
+  if (newCollateral <= 0) return 0;
+  return (newCollateral * (liquidationThreshold / 100)) / totalDebt;
 }
 
 // Position Summary Card
@@ -276,7 +323,7 @@ function LoanDetailsCard({
   );
 }
 
-// Borrow/Repay Action Card
+// Borrow/Repay/Withdraw Action Card
 function ActionCard({
   mode,
   setMode,
@@ -286,8 +333,8 @@ function ActionCard({
   totalCollateral,
   liquidationThreshold,
 }: {
-  mode: 'borrow' | 'repay';
-  setMode: (mode: 'borrow' | 'repay') => void;
+  mode: ActionMode;
+  setMode: (mode: ActionMode) => void;
   availableToBorrow: number;
   currentDebt: number;
   healthFactor: number;
@@ -327,65 +374,147 @@ function ActionCard({
     amount: parseFloat(amount) || 0,
   });
 
+  // For withdraw, we use WETH as the default asset (main collateral)
+  const {
+    withdraw,
+    isWithdrawing,
+    isPending: isWithdrawPending,
+    isSuccess: isWithdrawSuccess,
+    error: withdrawError,
+  } = useAaveWithdraw({
+    asset: AAVE_V3_ADDRESSES.WETH as Address,
+    amount: parseFloat(amount) || 0,
+  });
+
   const inputAmount = parseFloat(amount) || 0;
+
+  // Calculate max withdrawable (safe = HF > 1.5, absolute = HF > 1.0)
+  const safeMaxWithdrawable = useMemo(() => {
+    return calculateMaxWithdrawable(totalCollateral, currentDebt, liquidationThreshold, SAFE_HEALTH_FACTOR);
+  }, [totalCollateral, currentDebt, liquidationThreshold]);
+
+  const absoluteMaxWithdrawable = useMemo(() => {
+    return calculateMaxWithdrawable(totalCollateral, currentDebt, liquidationThreshold, MIN_HEALTH_FACTOR);
+  }, [totalCollateral, currentDebt, liquidationThreshold]);
 
   // Calculate new health factor preview
   const newHealthFactor = useMemo(() => {
     if (inputAmount <= 0) return healthFactor;
     
-    let newDebt = currentDebt;
     if (mode === 'borrow') {
-      newDebt = currentDebt + inputAmount;
+      const newDebt = currentDebt + inputAmount;
+      if (newDebt === 0) return Infinity;
+      return (totalCollateral * (liquidationThreshold / 100)) / newDebt;
+    } else if (mode === 'repay') {
+      const newDebt = Math.max(0, currentDebt - inputAmount);
+      if (newDebt === 0) return Infinity;
+      return (totalCollateral * (liquidationThreshold / 100)) / newDebt;
     } else {
-      newDebt = Math.max(0, currentDebt - inputAmount);
+      // Withdraw
+      return calculateNewHealthFactor(totalCollateral, currentDebt, inputAmount, liquidationThreshold);
     }
-    
-    if (newDebt === 0) return Infinity;
-    return (totalCollateral * (liquidationThreshold / 100)) / newDebt;
   }, [mode, inputAmount, currentDebt, totalCollateral, liquidationThreshold, healthFactor]);
+
+  // Calculate withdrawal summary
+  const withdrawSummary = useMemo(() => {
+    if (mode !== 'withdraw' || inputAmount <= 0) return null;
+    const platformFee = inputAmount * (PLATFORM_FEE_PERCENT / 100);
+    const youReceive = inputAmount - platformFee;
+    return {
+      withdrawAmount: inputAmount,
+      platformFee,
+      youReceive,
+      newHealthFactor,
+    };
+  }, [mode, inputAmount, newHealthFactor]);
 
   const hfChange = healthFactor !== Infinity && newHealthFactor !== Infinity
     ? newHealthFactor - healthFactor
     : null;
 
+  // Withdraw warnings
+  const withdrawWarning = useMemo(() => {
+    if (mode !== 'withdraw' || inputAmount <= 0 || currentDebt <= 0) return null;
+    
+    if (newHealthFactor < MIN_HEALTH_FACTOR) {
+      const maxAllowed = absoluteMaxWithdrawable;
+      return {
+        severity: 'error' as const,
+        message: `Cannot withdraw this amount. Maximum withdrawable is $${maxAllowed.toFixed(2)} to maintain health factor above 1.0`,
+      };
+    }
+    
+    if (newHealthFactor < SAFE_HEALTH_FACTOR) {
+      const repayAmount = ((currentDebt * SAFE_HEALTH_FACTOR) / (liquidationThreshold / 100)) - (totalCollateral - inputAmount);
+      return {
+        severity: 'warning' as const,
+        message: `Withdrawing this amount will put your health factor at ${newHealthFactor.toFixed(2)}. Consider repaying $${Math.max(0, repayAmount).toFixed(2)} first or withdraw less.`,
+      };
+    }
+    
+    return null;
+  }, [mode, inputAmount, currentDebt, newHealthFactor, absoluteMaxWithdrawable, totalCollateral, liquidationThreshold]);
+
   const handleMaxClick = () => {
     if (mode === 'borrow') {
       setAmount(availableToBorrow.toFixed(2));
-    } else if (usdcBalance) {
+    } else if (mode === 'repay' && usdcBalance) {
       const balanceNum = parseFloat(formatUnits(usdcBalance.value, 6));
       const maxRepay = Math.min(balanceNum, currentDebt);
       setAmount(maxRepay.toFixed(2));
+    } else if (mode === 'withdraw') {
+      // Use safe max by default
+      setAmount(safeMaxWithdrawable.toFixed(2));
     }
   };
 
   const handleAction = () => {
     if (mode === 'borrow') {
       borrow();
-    } else if (needsApproval) {
-      approve();
+    } else if (mode === 'repay') {
+      if (needsApproval) {
+        approve();
+      } else {
+        repay();
+      }
     } else {
-      repay();
+      withdraw();
     }
   };
 
   const isPending = mode === 'borrow' 
     ? isBorrowPending 
-    : (isApproving || isApprovalPending || isRepaying || isRepayPending);
+    : mode === 'repay'
+    ? (isApproving || isApprovalPending || isRepaying || isRepayPending)
+    : (isWithdrawing || isWithdrawPending);
 
-  const isSuccess = mode === 'borrow' ? isBorrowSuccess : isRepaySuccess;
-  const error = mode === 'borrow' ? borrowError : (repayError || approvalError);
+  const isSuccess = mode === 'borrow' 
+    ? isBorrowSuccess 
+    : mode === 'repay'
+    ? isRepaySuccess
+    : isWithdrawSuccess;
+
+  const error = mode === 'borrow' 
+    ? borrowError 
+    : mode === 'repay'
+    ? (repayError || approvalError)
+    : withdrawError;
 
   const getButtonText = () => {
     if (mode === 'borrow') {
       if (isBorrowPending) return 'Borrowing...';
       if (isBorrowSuccess) return 'Success!';
       return 'Borrow USDC';
-    } else {
+    } else if (mode === 'repay') {
       if (isApproving || isApprovalPending) return 'Approving...';
       if (isRepaying || isRepayPending) return 'Repaying...';
       if (isRepaySuccess) return 'Success!';
       if (needsApproval) return 'Approve USDC';
       return 'Repay USDC';
+    } else {
+      if (isWithdrawing || isWithdrawPending) return 'Withdrawing...';
+      if (isWithdrawSuccess) return 'Success!';
+      return 'Withdraw';
     }
   };
 
@@ -394,11 +523,15 @@ function ActionCard({
     if (!amount || inputAmount <= 0) return true;
     if (mode === 'borrow' && inputAmount > availableToBorrow) return true;
     if (mode === 'repay' && inputAmount > currentDebt) return true;
+    if (mode === 'withdraw') {
+      if (inputAmount > totalCollateral) return true;
+      if (withdrawWarning?.severity === 'error') return true;
+    }
     return false;
   };
 
   // Reset amount when switching modes
-  const handleModeChange = (newMode: 'borrow' | 'repay') => {
+  const handleModeChange = (newMode: ActionMode) => {
     setMode(newMode);
     setAmount("");
   };
@@ -407,7 +540,7 @@ function ActionCard({
 
   return (
     <div className="glass-card p-6">
-      {/* Tab Toggle */}
+      {/* Tab Toggle - 3 tabs */}
       <div className="flex mb-6 bg-white/5 rounded-xl p-1">
         <button
           onClick={() => handleModeChange('borrow')}
@@ -430,9 +563,20 @@ function ActionCard({
         >
           Repay
         </button>
+        <button
+          onClick={() => handleModeChange('withdraw')}
+          disabled={totalCollateral === 0}
+          className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
+            mode === 'withdraw'
+              ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white'
+              : 'text-white/60 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed'
+          }`}
+        >
+          Withdraw
+        </button>
       </div>
 
-      {/* Info Banner */}
+      {/* Info Banner - Mode-specific */}
       <div className="mb-4 p-3 rounded-xl bg-white/5 border border-white/10">
         {mode === 'borrow' ? (
           <div className="flex justify-between text-sm">
@@ -441,7 +585,7 @@ function ActionCard({
               ${availableToBorrow.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC
             </span>
           </div>
-        ) : (
+        ) : mode === 'repay' ? (
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-white/60">Current Debt</span>
@@ -453,6 +597,28 @@ function ActionCard({
               <span className="text-white/60">USDC Balance</span>
               <span className="text-white font-medium">
                 {usdcBalance ? parseFloat(formatUnits(usdcBalance.value, 6)).toFixed(2) : '0.00'} USDC
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-white/60">Total Collateral</span>
+              <span className="text-white font-medium">
+                ${totalCollateral.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-white/60">Currently Borrowed</span>
+              <span className="text-orange-400 font-medium">
+                ${currentDebt.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-white/60">Available to Withdraw</span>
+              <span className="text-purple-400 font-medium">
+                ${safeMaxWithdrawable.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                <span className="text-white/40 text-xs ml-1">(safe)</span>
               </span>
             </div>
           </div>
@@ -478,9 +644,27 @@ function ActionCard({
             >
               MAX
             </button>
-            <span className="text-white/50">USDC</span>
+            <span className="text-white/50">{mode === 'withdraw' ? 'USD' : 'USDC'}</span>
           </div>
         </div>
+
+        {/* Withdraw Warning */}
+        {withdrawWarning && (
+          <div className={`p-3 rounded-xl flex items-start gap-2 ${
+            withdrawWarning.severity === 'error' 
+              ? 'bg-red-500/10 border border-red-500/20' 
+              : 'bg-amber-500/10 border border-amber-500/20'
+          }`}>
+            <AlertTriangle size={16} className={`mt-0.5 flex-shrink-0 ${
+              withdrawWarning.severity === 'error' ? 'text-red-400' : 'text-amber-400'
+            }`} />
+            <span className={`text-sm ${
+              withdrawWarning.severity === 'error' ? 'text-red-400' : 'text-amber-400'
+            }`}>
+              {withdrawWarning.message}
+            </span>
+          </div>
+        )}
 
         {/* Health Factor Preview */}
         {inputAmount > 0 && (
@@ -512,6 +696,43 @@ function ActionCard({
           </div>
         )}
 
+        {/* Withdraw Summary */}
+        {mode === 'withdraw' && withdrawSummary && (
+          <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 space-y-2">
+            <h4 className="text-white font-medium text-sm mb-3">Withdrawal Summary</h4>
+            <div className="flex justify-between text-sm">
+              <span className="text-white/60">You withdraw</span>
+              <span className="text-white">${withdrawSummary.withdrawAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-white/60">Platform fee ({PLATFORM_FEE_PERCENT}%)</span>
+              <span className="text-white/70">-${withdrawSummary.platformFee.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="border-t border-white/10 pt-2 mt-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-white/60">You receive</span>
+                <span className="text-purple-400 font-bold">~{withdrawSummary.youReceive.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Destination selector for withdraw (future feature placeholder) */}
+        {mode === 'withdraw' && inputAmount > 0 && (
+          <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+            <div className="flex items-center justify-between">
+              <span className="text-white/60 text-sm">Receive on</span>
+              <div className="flex items-center gap-2 text-white text-sm">
+                <div className="w-5 h-5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
+                  <span className="text-[10px] font-bold">A</span>
+                </div>
+                Arbitrum
+                <ExternalLink size={12} className="text-white/40" />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Action Button */}
         <button 
           onClick={handleAction}
@@ -519,10 +740,18 @@ function ActionCard({
           className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
             mode === 'borrow'
               ? 'btn-primary'
-              : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white'
+              : mode === 'repay'
+              ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white'
+              : 'bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white'
           }`}
         >
-          {isPending ? <Loader2 size={18} className="animate-spin" /> : isSuccess ? <Check size={18} /> : null}
+          {isPending ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : isSuccess ? (
+            <Check size={18} />
+          ) : mode === 'withdraw' ? (
+            <ArrowDownToLine size={18} />
+          ) : null}
           {getButtonText()}
         </button>
 
@@ -538,7 +767,7 @@ function ActionCard({
         {isSuccess && (
           <div className="p-3 rounded-xl bg-mint/10 border border-mint/20 flex items-center gap-2 text-mint text-sm">
             <Check size={16} />
-            Successfully {mode === 'borrow' ? 'borrowed' : 'repaid'} {amount} USDC!
+            Successfully {mode === 'borrow' ? 'borrowed' : mode === 'repay' ? 'repaid' : 'withdrew'} {amount} {mode === 'withdraw' ? 'USD' : 'USDC'}!
           </div>
         )}
       </div>
@@ -596,6 +825,15 @@ function SafetyEducationCard() {
             You lose collateral + pay 5% liquidation penalty
           </p>
         </div>
+
+        <div className="flex items-start gap-3">
+          <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <ArrowDownToLine size={12} className="text-purple-400" />
+          </div>
+          <p className="text-white/70">
+            <span className="text-white font-medium">Withdrawals</span> reduce your collateral, which can lower your health factor if you have outstanding debt
+          </p>
+        </div>
       </div>
 
       <div className="mt-4 p-3 rounded-xl bg-white/5 border border-white/10">
@@ -611,7 +849,7 @@ function SafetyEducationCard() {
 // Main Page Component
 export default function BorrowPage() {
   const { isConnected } = useAccount();
-  const [mode, setMode] = useState<'borrow' | 'repay'>('borrow');
+  const [mode, setMode] = useState<ActionMode>('borrow');
   
   const { position, isLoading } = useAavePosition();
   const { variableBorrowRate, isLoading: isLoadingRate } = useAaveBorrowRate();
@@ -635,10 +873,12 @@ export default function BorrowPage() {
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-display font-bold text-white mb-2">
-          Borrow Against Your Collateral
+          {mode === 'withdraw' ? 'Withdraw Your Collateral' : 'Borrow Against Your Collateral'}
         </h1>
         <p className="text-white/60">
-          Access liquidity without selling your assets
+          {mode === 'withdraw' 
+            ? 'Convert your collateral back to USDC' 
+            : 'Access liquidity without selling your assets'}
         </p>
       </div>
 
@@ -660,7 +900,7 @@ export default function BorrowPage() {
             <AlertTriangle size={32} />
           </div>
           <h2 className="text-xl font-semibold text-white mb-2">No Collateral Supplied</h2>
-          <p className="text-white/60 mb-4">You need to supply collateral before you can borrow.</p>
+          <p className="text-white/60 mb-4">You need to supply collateral before you can borrow or withdraw.</p>
           <a href="/app/lend" className="btn-primary inline-block">
             Supply Collateral
           </a>
@@ -693,7 +933,7 @@ export default function BorrowPage() {
             />
           )}
 
-          {/* Borrow/Repay Action */}
+          {/* Borrow/Repay/Withdraw Action */}
           <ActionCard
             mode={mode}
             setMode={setMode}
