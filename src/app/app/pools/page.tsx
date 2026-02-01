@@ -9,8 +9,17 @@ import { useGMXDeposit } from "@/hooks/useGMXDeposit";
 import { useGMXPosition } from "@/hooks/useGMXPosition";
 import { AAVE_V3_ADDRESSES } from "@/lib/aave";
 import { PoolHarvestCard } from "@/components/pools/PoolHarvestCard";
+import { HarvestCard } from "@/components/dashboard";
 import type { Address } from "viem";
 import type { GMPoolName } from "@/lib/gmx";
+
+// Mock data for demo mode
+const MOCK_POOL_DATA = {
+  availableUsdc: 5000,
+  inPools: 8500,
+  poolEarnings: 425.75,
+  dailyEarnings: 14.19,
+};
 
 // ========== Types ==========
 interface StrategyAllocation {
@@ -804,8 +813,19 @@ export default function PoolsPage() {
   const totalUsdcBalance = usdcBalance ? parseFloat(formatUnits(usdcBalance.value, 6)) : 0;
   
   // Calculate pool earnings (estimate deposited as 95% of current value)
-  const poolDepositedUsd = poolValueUsd > 0 ? poolValueUsd * 0.95 : 0;
-  const poolEarningsUsd = poolValueUsd - poolDepositedUsd;
+  const hasRealPosition = poolValueUsd > 0;
+  const poolDepositedUsd = hasRealPosition ? poolValueUsd * 0.95 : 0;
+  const poolEarningsUsd = hasRealPosition ? poolValueUsd - poolDepositedUsd : 0;
+  
+  // Demo mode when connected but no real pool positions
+  const isDemoMode = isConnected && !hasRealPosition;
+  
+  // Use mock or real data
+  const displayData = hasRealPosition ? {
+    availableUsdc: totalUsdcBalance,
+    inPools: poolValueUsd,
+    poolEarnings: poolEarningsUsd,
+  } : MOCK_POOL_DATA;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -821,6 +841,21 @@ export default function PoolsPage() {
         )}
       </div>
 
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-purple-500/20 to-mint/20 border border-purple-500/30">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+              <span className="text-xl">🎭</span>
+            </div>
+            <div>
+              <p className="text-white font-medium">Demo Mode</p>
+              <p className="text-white/60 text-sm">Showing mock data. Deploy a strategy to see your real positions.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats summary */}
       {isConnected && (
         <div className="glass-card p-6 mb-8">
@@ -829,28 +864,28 @@ export default function PoolsPage() {
               <p className="text-white/40 text-sm mb-1">Available USDC</p>
               <p className="text-2xl font-bold text-white">
                 $
-                {totalUsdcBalance.toLocaleString(undefined, {
+                {displayData.availableUsdc.toLocaleString(undefined, {
                   maximumFractionDigits: 2,
                 })}
               </p>
             </div>
             <div>
               <p className="text-white/40 text-sm mb-1">In Pools</p>
-              {positionsLoading ? (
+              {positionsLoading && !isDemoMode ? (
                 <div className="h-8 w-24 bg-white/10 rounded animate-pulse" />
               ) : (
                 <p className="text-2xl font-bold text-mint">
-                  ${poolValueUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  ${displayData.inPools.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </p>
               )}
             </div>
             <div>
               <p className="text-white/40 text-sm mb-1">Pool Earnings</p>
-              {positionsLoading ? (
+              {positionsLoading && !isDemoMode ? (
                 <div className="h-8 w-24 bg-white/10 rounded animate-pulse" />
               ) : (
                 <p className="text-2xl font-bold text-green-400">
-                  ${poolEarningsUsd > 0 ? poolEarningsUsd.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0.00'}
+                  ${displayData.poolEarnings > 0 ? displayData.poolEarnings.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0.00'}
                 </p>
               )}
             </div>
@@ -881,9 +916,17 @@ export default function PoolsPage() {
             ))}
           </div>
 
-          {/* Pool Harvest Card - always shows when user has pool positions (handles disabled state internally) */}
+          {/* Pool Harvest Card - shows real data or demo mode */}
           <div className="mb-8">
-            <PoolHarvestCard onHarvestComplete={refetchPositions} />
+            {hasRealPosition ? (
+              <PoolHarvestCard onHarvestComplete={refetchPositions} />
+            ) : (
+              <HarvestCard
+                earningsUSD={MOCK_POOL_DATA.poolEarnings}
+                depositedUSD={MOCK_POOL_DATA.inPools}
+                dailyEarnings={MOCK_POOL_DATA.dailyEarnings}
+              />
+            )}
           </div>
 
           {/* How it works banner */}

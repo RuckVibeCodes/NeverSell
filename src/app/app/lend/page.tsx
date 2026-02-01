@@ -10,8 +10,18 @@ import { useAavePosition } from "@/hooks/useAavePosition";
 import { useGMXApy, formatAPY, formatLastUpdated } from "@/hooks/useGMXApy";
 import { useAaveSupplyRates, FALLBACK_AAVE_SUPPLY_APY } from "@/hooks/useAaveSupplyRate";
 import { AAVE_V3_ADDRESSES } from "@/lib/aave";
+import { HarvestCard } from "@/components/dashboard";
 import type { Address } from "viem";
 import type { GMPoolName } from "@/lib/gmx";
+
+// Mock data for demo mode
+const MOCK_LEND_DATA = {
+  totalSupplied: 15000,
+  availableToBorrow: 9000,
+  ltv: 60,
+  earningsUSD: 125.50,
+  dailyEarnings: 4.18,
+};
 
 // Asset logo URLs from CoinGecko
 const ASSET_LOGOS = {
@@ -400,6 +410,17 @@ export default function LendPage() {
   const { supplyRates, isLoading: aaveApyLoading } = useAaveSupplyRates();
   
   const apyLoading = gmxApyLoading || aaveApyLoading;
+  
+  // Demo mode when connected but no real position
+  const hasRealPosition = position && position.totalCollateralUSD > 0;
+  const isDemoMode = isConnected && !hasRealPosition;
+  
+  // Use mock or real data
+  const displayData = hasRealPosition ? {
+    totalSupplied: position.totalCollateralUSD,
+    availableToBorrow: position.availableBorrowsUSD,
+    ltv: position.ltv,
+  } : MOCK_LEND_DATA;
 
   // Calculate blended APY for each asset
   // Formula: (Aave Supply APY × 0.6) + (GM Pool Total APY × 0.4)
@@ -468,23 +489,49 @@ export default function LendPage() {
         </div>
       </div>
 
-      {/* Stats summary */}
-      {isConnected && position && position.totalCollateralUSD > 0 && (
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-purple-500/20 to-mint/20 border border-purple-500/30">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+              <span className="text-xl">🎭</span>
+            </div>
+            <div>
+              <p className="text-white font-medium">Demo Mode</p>
+              <p className="text-white/60 text-sm">Showing mock data. Deposit assets to see your real position.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stats summary - show for real position OR demo mode */}
+      {isConnected && (hasRealPosition || isDemoMode) && (
         <div className="glass-card p-6 mb-8">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div>
               <p className="text-white/40 text-sm mb-1">Total Supplied</p>
-              <p className="text-2xl font-bold text-white">${position.totalCollateralUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+              <p className="text-2xl font-bold text-white">${displayData.totalSupplied.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
             </div>
             <div>
               <p className="text-white/40 text-sm mb-1">Available to Borrow</p>
-              <p className="text-2xl font-bold text-mint">${position.availableBorrowsUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+              <p className="text-2xl font-bold text-mint">${displayData.availableToBorrow.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
             </div>
             <div>
               <p className="text-white/40 text-sm mb-1">LTV</p>
-              <p className="text-2xl font-bold text-white">{position.ltv}%</p>
+              <p className="text-2xl font-bold text-white">{displayData.ltv}%</p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Harvest Card */}
+      {isConnected && (
+        <div className="mb-8">
+          <HarvestCard
+            earningsUSD={hasRealPosition ? 0 : MOCK_LEND_DATA.earningsUSD}
+            depositedUSD={displayData.totalSupplied}
+            dailyEarnings={hasRealPosition ? 0 : MOCK_LEND_DATA.dailyEarnings}
+          />
         </div>
       )}
 
