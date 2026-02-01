@@ -38,5 +38,4 @@ export function setGmxSdkAccount(account: string): void {
   sdk.setAccount(account as `0x${string}`);
 }
 
-// Re-export types
-export type { GmxSdk };
+// Note: For GmxSdk type, import directly from '@gmx-io/sdk'

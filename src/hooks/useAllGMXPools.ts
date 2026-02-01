@@ -44,8 +44,9 @@ export interface UseAllGMXPoolsResult {
   refetch: () => void;
 }
 
-// Token symbol mappings
-const TOKEN_SYMBOLS: Record<string, string> = {
+// Fallback token symbol mappings (used when SDK tokens data is unavailable)
+// Last updated: 2026-02-01
+const FALLBACK_TOKEN_SYMBOLS: Record<string, string> = {
   '0x82af49447d8a07e3bd95bd0d56f35241523fbab1': 'ETH',
   '0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f': 'WBTC',
   '0xaf88d065e77c8cc2239327c5edb3a432268e5831': 'USDC',
@@ -62,14 +63,28 @@ const TOKEN_SYMBOLS: Record<string, string> = {
 
 /**
  * Get token symbol from address
+ * Uses SDK tokens data first, falls back to hardcoded mappings
  */
-function getTokenSymbol(address: string, fallback?: string): string {
-  const symbol = TOKEN_SYMBOLS[address.toLowerCase()];
-  if (symbol) return symbol;
+function getTokenSymbol(
+  address: string, 
+  tokensData: Record<string, { symbol: string }>,
+  fallbackName?: string
+): string {
+  const lowerAddress = address.toLowerCase();
   
-  // Try to extract from fallback (often name contains symbol)
-  if (fallback && fallback.includes('/')) {
-    const parts = fallback.split('/');
+  // Try SDK tokens data first (most up-to-date)
+  const tokenData = tokensData[lowerAddress];
+  if (tokenData?.symbol) {
+    return tokenData.symbol;
+  }
+  
+  // Try fallback mapping
+  const fallbackSymbol = FALLBACK_TOKEN_SYMBOLS[lowerAddress];
+  if (fallbackSymbol) return fallbackSymbol;
+  
+  // Try to extract from market name (often contains symbols)
+  if (fallbackName && fallbackName.includes('/')) {
+    const parts = fallbackName.split('/');
     if (parts[0]) return parts[0];
   }
   
@@ -96,12 +111,15 @@ function parseRate(rateStr: string | undefined): number {
 /**
  * Convert MarketInfo to GMPool
  */
-function marketToPool(market: MarketInfo): GMPool {
+function marketToPool(
+  market: MarketInfo, 
+  tokensData: Record<string, { symbol: string }>
+): GMPool {
   const { feeApy, performanceApy, totalApy } = calculateTotalApy(market);
   const tvlUsd = getPoolTvlUsd(market);
   
-  const longSymbol = getTokenSymbol(market.longToken, market.name);
-  const shortSymbol = getTokenSymbol(market.shortToken, market.name);
+  const longSymbol = getTokenSymbol(market.longToken, tokensData, market.name);
+  const shortSymbol = getTokenSymbol(market.shortToken, tokensData, market.name);
   
   // Determine pool type
   const isSingleSided = market.longToken.toLowerCase() === market.shortToken.toLowerCase();
@@ -140,6 +158,7 @@ function marketToPool(market: MarketInfo): GMPool {
 export function useAllGMXPools(): UseAllGMXPoolsResult {
   const { 
     markets, 
+    tokens,
     isLoading, 
     isError, 
     error, 
@@ -148,13 +167,19 @@ export function useAllGMXPools(): UseAllGMXPoolsResult {
   } = useGMXMarketsInfo();
 
   const pools = useMemo(() => {
+    // Convert tokens to the format expected by marketToPool
+    const tokensMap: Record<string, { symbol: string }> = {};
+    for (const [address, token] of Object.entries(tokens)) {
+      tokensMap[address] = { symbol: token.symbol };
+    }
+    
     const poolList = Object.values(markets)
-      .map(marketToPool)
+      .map(market => marketToPool(market, tokensMap))
       .filter(pool => !pool.isDisabled) // Only show active pools
       .sort((a, b) => b.tvlUsd - a.tvlUsd); // Sort by TVL desc
     
     return poolList;
-  }, [markets]);
+  }, [markets, tokens]);
 
   const lastUpdated = useMemo(() => {
     if (pricesUpdatedAt) {

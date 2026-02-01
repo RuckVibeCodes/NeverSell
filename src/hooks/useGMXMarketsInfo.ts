@@ -1,5 +1,6 @@
 // Hook for fetching GMX markets info using the official SDK
 // Provides real-time pool data, APYs, and token prices
+// Last updated: 2026-02-01
 
 'use client';
 
@@ -7,7 +8,22 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getGmxSdk } from '@/lib/gmxSdk';
 import { GMX_CACHE_CONFIG, GMX_REST_API } from '@/lib/gmxConfig';
 
-// Types from SDK (re-exported for convenience)
+// Request timeout for REST API calls (10 seconds)
+const REQUEST_TIMEOUT_MS = 10000;
+
+/**
+ * Market information from GMX SDK/API
+ * @property marketToken - The GM token address for this market
+ * @property indexToken - The index token being traded (e.g., BTC, ETH)
+ * @property longToken - Token used for long positions
+ * @property shortToken - Token used for short positions (usually USDC)
+ * @property name - Human-readable market name
+ * @property isDisabled - Whether the market is currently disabled
+ * @property longPoolAmount - Amount of long tokens in the pool
+ * @property shortPoolAmount - Amount of short tokens in the pool
+ * @property poolValueMax - Maximum pool value in USD (30 decimals)
+ * @property poolValueMin - Minimum pool value in USD (30 decimals)
+ */
 export interface MarketInfo {
   marketToken: string;
   indexToken: string;
@@ -23,7 +39,7 @@ export interface MarketInfo {
   borrowingFactorShort: bigint;
   fundingFactor: bigint;
   totalBorrowingFees: bigint;
-  // Rates from REST API
+  // Rates from REST API (annualized, 30 decimal precision)
   fundingRateLong?: string;
   fundingRateShort?: string;
   borrowingRateLong?: string;
@@ -32,12 +48,20 @@ export interface MarketInfo {
   netRateShort?: string;
 }
 
+/**
+ * Token data from GMX SDK
+ * @property address - Token contract address
+ * @property symbol - Token symbol (e.g., "ETH", "USDC")
+ * @property decimals - Token decimals
+ * @property name - Token name
+ * @property priceMin - Minimum oracle price (30 decimals)
+ * @property priceMax - Maximum oracle price (30 decimals)
+ */
 export interface TokenData {
   address: string;
   symbol: string;
   decimals: number;
   name: string;
-  price?: bigint;
   priceMin?: bigint;
   priceMax?: bigint;
 }
@@ -45,7 +69,6 @@ export interface TokenData {
 export interface GMXMarketsInfoResult {
   markets: Record<string, MarketInfo>;
   tokens: Record<string, TokenData>;
-  prices: Record<string, { min: bigint; max: bigint }>;
   pricesUpdatedAt: number | null;
   isLoading: boolean;
   isError: boolean;
@@ -81,19 +104,115 @@ interface RESTMarketsResponse {
 }
 
 /**
- * Fetch markets data from GMX REST API as fallback/supplement
+ * Safely get a string property from an unknown object
+ */
+function safeString(obj: unknown, ...path: string[]): string {
+  let current: unknown = obj;
+  for (const key of path) {
+    if (current === null || current === undefined || typeof current !== 'object') {
+      return '';
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+  return typeof current === 'string' ? current : '';
+}
+
+/**
+ * Safely get a bigint property from an unknown object
+ */
+function safeBigInt(obj: unknown, key: string): bigint {
+  if (obj === null || obj === undefined || typeof obj !== 'object') {
+    return BigInt(0);
+  }
+  const value = (obj as Record<string, unknown>)[key];
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number') return BigInt(Math.floor(value));
+  if (typeof value === 'string') {
+    try {
+      return BigInt(value);
+    } catch {
+      return BigInt(0);
+    }
+  }
+  return BigInt(0);
+}
+
+/**
+ * Safely get a boolean property from an unknown object
+ */
+function safeBoolean(obj: unknown, key: string): boolean {
+  if (obj === null || obj === undefined || typeof obj !== 'object') {
+    return false;
+  }
+  return Boolean((obj as Record<string, unknown>)[key]);
+}
+
+/**
+ * Fetch markets data from GMX REST API with timeout
  */
 async function fetchRESTMarketsInfo(): Promise<RESTMarketInfo[]> {
-  const response = await fetch(GMX_REST_API.marketsInfo, {
-    cache: 'no-cache',
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   
-  if (!response.ok) {
-    throw new Error(`REST API error: ${response.status}`);
+  try {
+    const response = await fetch(GMX_REST_API.marketsInfo, {
+      cache: 'no-cache',
+      signal: controller.signal,
+    });
+    
+    if (!response.ok) {
+      throw new Error(`REST API error: ${response.status}`);
+    }
+    
+    const data: RESTMarketsResponse = await response.json();
+    return data.markets || [];
+  } finally {
+    clearTimeout(timeoutId);
   }
+}
+
+/**
+ * Convert SDK market info to our MarketInfo type safely
+ */
+function convertSdkMarket(address: string, marketInfo: unknown): MarketInfo {
+  return {
+    marketToken: address,
+    indexToken: safeString(marketInfo, 'indexToken', 'address'),
+    longToken: safeString(marketInfo, 'longToken', 'address'),
+    shortToken: safeString(marketInfo, 'shortToken', 'address'),
+    name: safeString(marketInfo, 'name'),
+    isDisabled: safeBoolean(marketInfo, 'isDisabled'),
+    longPoolAmount: safeBigInt(marketInfo, 'longPoolAmount'),
+    shortPoolAmount: safeBigInt(marketInfo, 'shortPoolAmount'),
+    poolValueMax: safeBigInt(marketInfo, 'poolValueMax'),
+    poolValueMin: safeBigInt(marketInfo, 'poolValueMin'),
+    borrowingFactorLong: safeBigInt(marketInfo, 'borrowingFactorLong'),
+    borrowingFactorShort: safeBigInt(marketInfo, 'borrowingFactorShort'),
+    fundingFactor: safeBigInt(marketInfo, 'fundingFactor'),
+    totalBorrowingFees: safeBigInt(marketInfo, 'totalBorrowingFees'),
+  };
+}
+
+/**
+ * Convert SDK token info to our TokenData type safely
+ */
+function convertSdkToken(address: string, tokenInfo: unknown): TokenData {
+  const prices = tokenInfo && typeof tokenInfo === 'object' 
+    ? (tokenInfo as Record<string, unknown>).prices 
+    : undefined;
   
-  const data: RESTMarketsResponse = await response.json();
-  return data.markets || [];
+  return {
+    address,
+    symbol: safeString(tokenInfo, 'symbol'),
+    decimals: typeof tokenInfo === 'object' && tokenInfo !== null
+      ? (typeof (tokenInfo as Record<string, unknown>).decimals === 'number' 
+          ? (tokenInfo as Record<string, unknown>).decimals as number 
+          : 18)
+      : 18,
+    name: safeString(tokenInfo, 'name'),
+    priceMin: prices && typeof prices === 'object' ? safeBigInt(prices, 'minPrice') : undefined,
+    priceMax: prices && typeof prices === 'object' ? safeBigInt(prices, 'maxPrice') : undefined,
+  };
 }
 
 /**
@@ -104,7 +223,6 @@ async function fetchRESTMarketsInfo(): Promise<RESTMarketInfo[]> {
 export function useGMXMarketsInfo(): GMXMarketsInfoResult {
   const [markets, setMarkets] = useState<Record<string, MarketInfo>>({});
   const [tokens, setTokens] = useState<Record<string, TokenData>>({});
-  const [prices] = useState<Record<string, { min: bigint; max: bigint }>>({});
   const [pricesUpdatedAt, setPricesUpdatedAt] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
@@ -121,26 +239,11 @@ export function useGMXMarketsInfo(): GMXMarketsInfoResult {
       const result = await sdk.markets.getMarketsInfo();
       
       if (result.marketsInfoData) {
-        // Convert SDK data to our format
+        // Convert SDK data to our format using safe accessors
         const marketsMap: Record<string, MarketInfo> = {};
         
         for (const [address, marketInfo] of Object.entries(result.marketsInfoData)) {
-          marketsMap[address.toLowerCase()] = {
-            marketToken: address,
-            indexToken: (marketInfo as { indexToken: { address: string } }).indexToken?.address || '',
-            longToken: (marketInfo as { longToken: { address: string } }).longToken?.address || '',
-            shortToken: (marketInfo as { shortToken: { address: string } }).shortToken?.address || '',
-            name: (marketInfo as { name: string }).name || '',
-            isDisabled: (marketInfo as { isDisabled: boolean }).isDisabled || false,
-            longPoolAmount: (marketInfo as { longPoolAmount: bigint }).longPoolAmount || BigInt(0),
-            shortPoolAmount: (marketInfo as { shortPoolAmount: bigint }).shortPoolAmount || BigInt(0),
-            poolValueMax: (marketInfo as { poolValueMax: bigint }).poolValueMax || BigInt(0),
-            poolValueMin: (marketInfo as { poolValueMin: bigint }).poolValueMin || BigInt(0),
-            borrowingFactorLong: (marketInfo as { borrowingFactorLong: bigint }).borrowingFactorLong || BigInt(0),
-            borrowingFactorShort: (marketInfo as { borrowingFactorShort: bigint }).borrowingFactorShort || BigInt(0),
-            fundingFactor: (marketInfo as { fundingFactor: bigint }).fundingFactor || BigInt(0),
-            totalBorrowingFees: (marketInfo as { totalBorrowingFees: bigint }).totalBorrowingFees || BigInt(0),
-          };
+          marketsMap[address.toLowerCase()] = convertSdkMarket(address, marketInfo);
         }
         
         setMarkets(marketsMap);
@@ -148,15 +251,7 @@ export function useGMXMarketsInfo(): GMXMarketsInfoResult {
         if (result.tokensData) {
           const tokensMap: Record<string, TokenData> = {};
           for (const [address, tokenInfo] of Object.entries(result.tokensData)) {
-            tokensMap[address.toLowerCase()] = {
-              address,
-              symbol: (tokenInfo as { symbol: string }).symbol || '',
-              decimals: (tokenInfo as { decimals: number }).decimals || 18,
-              name: (tokenInfo as { name: string }).name || '',
-              price: (tokenInfo as { prices?: { minPrice: bigint } }).prices?.minPrice,
-              priceMin: (tokenInfo as { prices?: { minPrice: bigint } }).prices?.minPrice,
-              priceMax: (tokenInfo as { prices?: { maxPrice: bigint } }).prices?.maxPrice,
-            };
+            tokensMap[address.toLowerCase()] = convertSdkToken(address, tokenInfo);
           }
           setTokens(tokensMap);
         }
@@ -212,14 +307,19 @@ export function useGMXMarketsInfo(): GMXMarketsInfoResult {
           return updated;
         });
       } catch (restErr) {
-        console.warn('REST API fallback failed:', restErr);
-        // Continue with SDK data only
+        // REST fallback failed - continue with SDK data only
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('REST API supplement failed:', restErr);
+        }
       }
       
     } catch (err) {
-      console.error('Failed to fetch GMX markets info:', err);
       setIsError(true);
       setError(err instanceof Error ? err : new Error('Failed to fetch markets'));
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to fetch GMX markets info:', err);
+      }
       
       // Try REST API as full fallback
       try {
@@ -256,7 +356,9 @@ export function useGMXMarketsInfo(): GMXMarketsInfoResult {
         setIsError(false);
         setError(null);
       } catch (fallbackErr) {
-        console.error('REST API fallback also failed:', fallbackErr);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('REST API fallback also failed:', fallbackErr);
+        }
       }
     } finally {
       setIsLoading(false);
@@ -277,7 +379,6 @@ export function useGMXMarketsInfo(): GMXMarketsInfoResult {
   return {
     markets,
     tokens,
-    prices,
     pricesUpdatedAt,
     isLoading,
     isError,
