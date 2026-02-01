@@ -6,9 +6,12 @@ import { useState } from "react";
 
 const navLinks = [
   { href: "/app", label: "Dashboard" },
-  { href: "/app/deposit", label: "Deposit" },
+  { href: "/app/fund", label: "Fund" },
+  { href: "/app/lend", label: "Lend" },
   { href: "/app/borrow", label: "Borrow" },
+  { href: "/app/pools", label: "Pools" },
   { href: "/app/vaults", label: "Portfolios" },
+  { href: "/app/profile", label: "Profile" },
 ];
 
 export function Navbar() {
