@@ -7,7 +7,7 @@ import { formatUnits } from "viem";
 import Image from "next/image";
 import { useAaveDeposit } from "@/hooks/useAaveDeposit";
 import { useAavePosition } from "@/hooks/useAavePosition";
-import { useGMXApy, formatAPY } from "@/hooks/useGMXApy";
+import { useGMXApy, formatAPY, formatLastUpdated } from "@/hooks/useGMXApy";
 import { AAVE_V3_ADDRESSES } from "@/lib/aave";
 import type { Address } from "viem";
 import type { GMPoolName } from "@/lib/gmx";
@@ -381,7 +381,7 @@ export default function LendPage() {
   const [selectedAsset, setSelectedAsset] = useState<typeof lendableAssets[0] | null>(null);
   
   const { position } = useAavePosition();
-  const { apyData, isLoading: apyLoading } = useGMXApy();
+  const { apyData, isLoading: apyLoading, lastUpdated } = useGMXApy();
 
   // Get APY for each asset from their mapped GM pool
   const getAssetApy = useMemo(() => {
@@ -389,8 +389,7 @@ export default function LendPage() {
       const poolName = ASSET_GM_POOL[symbol];
       if (!poolName) return 0;
       const poolApy = apyData[poolName];
-      // Use 7-day APY as the primary display metric
-      return poolApy?.apy7d ?? 0;
+      return poolApy?.totalApy ?? 0;
     };
   }, [apyData]);
 
@@ -402,6 +401,11 @@ export default function LendPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-display font-bold text-white mb-2">Lend & Earn</h1>
         <p className="text-white/60">Deposit assets to earn yield on GM pools and unlock borrowing capacity</p>
+        {lastUpdated && (
+          <p className="text-white/40 text-xs mt-2">
+            APY data updated: {formatLastUpdated(lastUpdated)}
+          </p>
+        )}
       </div>
 
       {/* Strategy explanation */}

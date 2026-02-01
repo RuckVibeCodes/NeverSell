@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { Layers, TrendingUp, Loader2, Check, AlertCircle, X, DollarSign, Droplets, ChevronDown, Shield, Scale, Flame } from "lucide-react";
 import { useAccount, useBalance } from "wagmi";
 import { formatUnits } from "viem";
-import { useGMXApy, formatAPY, getAPYColorClass } from "@/hooks/useGMXApy";
+import { useGMXApy, formatAPY, getAPYColorClass, formatLastUpdated } from "@/hooks/useGMXApy";
 import { useGMXDeposit } from "@/hooks/useGMXDeposit";
 import { AAVE_V3_ADDRESSES } from "@/lib/aave";
 import type { Address } from "viem";
@@ -540,12 +540,16 @@ function StrategyModal({
 function PoolCard({
   pool,
   apy,
+  feeApy,
+  perfApy,
   tvl,
   isLoading,
   onDeposit,
 }: {
   pool: (typeof pools)[0];
   apy: number;
+  feeApy: number;
+  perfApy: number;
   tvl: number;
   isLoading: boolean;
   onDeposit: () => void;
@@ -569,11 +573,11 @@ function PoolCard({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp size={16} className="text-mint" />
-            <p className="text-white/40 text-xs">APY</p>
+            <p className="text-white/40 text-xs">Total APY</p>
           </div>
           {isLoading ? (
             <div className="h-8 w-20 bg-white/10 rounded animate-pulse" />
@@ -593,6 +597,21 @@ function PoolCard({
           )}
         </div>
       </div>
+
+      {/* APY Breakdown */}
+      {!isLoading && (
+        <div className="mb-6 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+          <p className="text-white/40 text-xs mb-2">APY Breakdown</p>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-white/60">Fee APY</span>
+            <span className="text-white">{formatAPY(feeApy)}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-white/60">Performance</span>
+            <span className="text-white">{formatAPY(perfApy)}</span>
+          </div>
+        </div>
+      )}
 
       {/* Pool composition */}
       <div className="mb-6 p-3 rounded-xl bg-white/[0.02] border border-white/5">
@@ -766,7 +785,7 @@ export default function PoolsPage() {
   const [selectedPool, setSelectedPool] = useState<(typeof pools)[0] | null>(null);
   const [showIndividualPools, setShowIndividualPools] = useState(false);
 
-  const { apyData, isLoading } = useGMXApy();
+  const { apyData, isLoading, lastUpdated } = useGMXApy();
 
   const { data: usdcBalance } = useBalance({
     address: useAccount().address,
@@ -781,6 +800,12 @@ export default function PoolsPage() {
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-display font-bold text-white mb-2">Choose Your Strategy</h1>
         <p className="text-white/60">Deploy your USDC into yield-generating pools</p>
+        {/* Last Updated indicator */}
+        {lastUpdated && (
+          <p className="text-white/40 text-xs mt-2">
+            APY data updated: {formatLastUpdated(lastUpdated)}
+          </p>
+        )}
       </div>
 
       {/* Stats summary */}
@@ -868,7 +893,9 @@ export default function PoolsPage() {
                     <PoolCard
                       key={pool.name}
                       pool={pool}
-                      apy={poolApy?.apy7d || 0}
+                      apy={poolApy?.totalApy || 0}
+                      feeApy={poolApy?.feeApy || 0}
+                      perfApy={poolApy?.perfApy || 0}
                       tvl={poolApy?.tvlUsd || 0}
                       isLoading={isLoading}
                       onDeposit={() => setSelectedPool(pool)}
@@ -903,7 +930,7 @@ export default function PoolsPage() {
       {selectedPool && (
         <DepositModal
           pool={selectedPool}
-          apy={apyData[selectedPool.name]?.apy7d || 0}
+          apy={apyData[selectedPool.name]?.totalApy || 0}
           onClose={() => setSelectedPool(null)}
         />
       )}
