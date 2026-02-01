@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const vaults = [
+const portfolios = [
   {
     name: 'CryptoCobain',
     handle: '@cobie',
@@ -37,7 +37,7 @@ const vaults = [
     avatar: 'TB',
   },
   {
-    name: 'Your Vault',
+    name: 'Your Portfolio',
     handle: 'Launch yours',
     apy: 0,
     tvl: 0,
@@ -59,7 +59,7 @@ const formatFollowers = (num: number) => {
   return num.toString();
 };
 
-const CreatorVaults = () => {
+const CreatorPortfolios = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
@@ -106,7 +106,7 @@ const CreatorVaults = () => {
 
   return (
     <section
-      id="vaults"
+      id="portfolios"
       ref={sectionRef}
       className="relative w-full py-24 lg:py-32"
     >
@@ -119,26 +119,26 @@ const CreatorVaults = () => {
               <span className="text-sm font-mono text-electric-purple uppercase tracking-wider">Featured</span>
             </div>
             <h2 className="font-display text-display-2 text-text-primary mb-3">
-              Creator Vaults
+              Creator Portfolios
             </h2>
             <p className="text-text-secondary text-lg max-w-md">
-              Launch your own vault. Let your community earn with you.
+              Launch your own portfolio. Let your community earn with you.
             </p>
           </div>
           <Button className="btn-secondary text-white hover:opacity-90 px-6 py-3 rounded-full text-sm font-semibold transition-all flex items-center gap-2 group w-fit">
-            Launch Vault
+            Launch Portfolio
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Button>
         </div>
 
-        {/* Vault Cards */}
+        {/* Portfolio Cards */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 max-w-6xl mx-auto">
-          {vaults.map((vault, index) => (
+          {portfolios.map((portfolio, index) => (
             <div
-              key={vault.name}
+              key={portfolio.name}
               ref={(el) => { cardsRef.current[index] = el; }}
               className={`glass-card rounded-2xl p-6 transition-all duration-300 group hover:border-mint/30 ${
-                vault.isPlaceholder ? 'border-dashed border-white/20' : ''
+                portfolio.isPlaceholder ? 'border-dashed border-white/20' : ''
               }`}
             >
               {/* Avatar & Name */}
@@ -146,23 +146,23 @@ const CreatorVaults = () => {
                 <div 
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold"
                   style={{ 
-                    backgroundColor: vault.isPlaceholder ? 'rgba(255,255,255,0.05)' : `${vault.color}20`,
-                    color: vault.isPlaceholder ? '#94A3B8' : vault.color,
-                    border: `1px solid ${vault.isPlaceholder ? 'rgba(255,255,255,0.1)' : vault.color + '40'}`
+                    backgroundColor: portfolio.isPlaceholder ? 'rgba(255,255,255,0.05)' : `${portfolio.color}20`,
+                    color: portfolio.isPlaceholder ? '#94A3B8' : portfolio.color,
+                    border: `1px solid ${portfolio.isPlaceholder ? 'rgba(255,255,255,0.1)' : portfolio.color + '40'}`
                   }}
                 >
-                  {vault.avatar}
+                  {portfolio.avatar}
                 </div>
                 <div>
                   <h3 className="font-display font-semibold text-text-primary">
-                    {vault.name}
+                    {portfolio.name}
                   </h3>
-                  <p className="text-sm text-text-muted">{vault.handle}</p>
+                  <p className="text-sm text-text-muted">{portfolio.handle}</p>
                 </div>
               </div>
 
               {/* Stats */}
-              {!vault.isPlaceholder ? (
+              {!portfolio.isPlaceholder ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-text-muted text-sm">
@@ -171,9 +171,9 @@ const CreatorVaults = () => {
                     </div>
                     <span 
                       className="font-mono font-bold text-lg"
-                      style={{ color: vault.color }}
+                      style={{ color: portfolio.color }}
                     >
-                      {vault.apy}%
+                      {portfolio.apy}%
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -181,7 +181,7 @@ const CreatorVaults = () => {
                       <span className="font-mono text-xs">TVL</span>
                     </div>
                     <span className="font-mono text-text-primary">
-                      {formatNumber(vault.tvl)}
+                      {formatNumber(portfolio.tvl)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -189,7 +189,7 @@ const CreatorVaults = () => {
                       <Users className="w-4 h-4" />
                     </div>
                     <span className="font-mono text-text-primary">
-                      {formatFollowers(vault.followers)}
+                      {formatFollowers(portfolio.followers)}
                     </span>
                   </div>
                 </div>
@@ -214,4 +214,4 @@ const CreatorVaults = () => {
   );
 };
 
-export default CreatorVaults;
+export default CreatorPortfolios;

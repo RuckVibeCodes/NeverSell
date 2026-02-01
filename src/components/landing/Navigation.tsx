@@ -20,7 +20,7 @@ const Navigation = () => {
 
   const navLinks = [
     { label: 'How it Works', href: '#yield-loop' },
-    { label: 'Vaults', href: '#vaults' },
+    { label: 'Portfolios', href: '#portfolios' },
     { label: 'Assets', href: '#assets' },
     { label: 'Security', href: '#security' },
   ];
@@ -64,7 +64,7 @@ const Navigation = () => {
               </div>
               <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
                 <TrendingUp className="w-3.5 h-3.5 text-mint" />
-                <span className="font-mono text-xs text-text-secondary">USDC APY <span className="text-mint">8.24%</span></span>
+                <span className="font-mono text-xs text-text-secondary">USDC APY <span className="text-mint">7.5%</span></span>
               </div>
             </div>
 
@@ -103,35 +103,33 @@ const Navigation = () => {
         </div>
       </nav>
 
-      {/* Mobile Menu */}
-      <div
-        className={`fixed inset-0 z-40 lg:hidden transition-all duration-300 ${
-          isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
-        }`}
-      >
-        <div
-          className="absolute inset-0 bg-navy/98 backdrop-blur-xl"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-        <div className="relative flex flex-col items-center justify-center h-full gap-8">
-          {navLinks.map((link) => (
-            <button
-              key={link.label}
-              onClick={() => scrollToSection(link.href)}
-              className="text-2xl font-display text-text-primary hover:text-mint transition-colors"
-            >
-              {link.label}
-            </button>
-          ))}
-          <Link href="/app" onClick={() => setIsMobileMenuOpen(false)}>
-            <Button
-              className="mt-4 btn-primary text-navy px-8 py-3 rounded-full text-lg font-semibold"
-            >
-              Launch App →
-            </Button>
-          </Link>
+      {/* Mobile Menu - Only render when open */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div
+            className="absolute inset-0 bg-navy/98 backdrop-blur-xl"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative flex flex-col items-center justify-center h-full gap-8">
+            {navLinks.map((link) => (
+              <button
+                key={link.label}
+                onClick={() => scrollToSection(link.href)}
+                className="text-2xl font-display text-text-primary hover:text-mint transition-colors"
+              >
+                {link.label}
+              </button>
+            ))}
+            <Link href="/app" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button
+                className="mt-4 btn-primary text-navy px-8 py-3 rounded-full text-lg font-semibold"
+              >
+                Launch App →
+              </Button>
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 };

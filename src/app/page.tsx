@@ -8,7 +8,7 @@ import Navigation from '@/components/landing/Navigation';
 import Hero from '@/components/landing/Hero';
 import LiveStats from '@/components/landing/LiveStats';
 import YieldLoop from '@/components/landing/YieldLoop';
-import CreatorVaults from '@/components/landing/CreatorVaults';
+import CreatorPortfolios from '@/components/landing/CreatorPortfolios';
 import Strategy from '@/components/landing/Strategy';
 import Method from '@/components/landing/Method';
 import Security from '@/components/landing/Security';
@@ -76,7 +76,7 @@ export default function Home() {
         <Hero />
         <LiveStats />
         <YieldLoop />
-        <CreatorVaults />
+        <CreatorPortfolios />
         <Strategy />
         <Method />
         <Security />

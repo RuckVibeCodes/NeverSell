@@ -16,12 +16,12 @@ const faqs = [
   {
     question: 'How does the yield loop work?',
     answer:
-      'It\'s simple: 1) Deposit crypto and earn 7-15% APY. 2) Borrow up to 70% of your deposit value without selling. 3) Deploy borrowed funds into yield pools or Creator Vaults. 4) Earn yield on your borrowed capital while your original deposit keeps earning. Your money works twice.',
+      'It\'s simple: 1) Deposit crypto and earn 7-15% APY. 2) Borrow up to 70% of your deposit value without selling. 3) Deploy borrowed funds into yield pools or Creator Portfolios. 4) Earn yield on your borrowed capital while your original deposit keeps earning. Your money works twice.',
   },
   {
-    question: 'What are Creator Vaults?',
+    question: 'What are Creator Portfolios?',
     answer:
-      'Creator Vaults let influencers, traders, and community leaders launch their own yield strategies. Followers can deposit into these vaults and earn alongside their favorite creators. It\'s a way to earn together while supporting the creators you trust.',
+      'Creator Portfolios let influencers, traders, and community leaders launch their own yield strategies. Followers can deposit into these portfolios and earn alongside their favorite creators. It\'s a way to earn together while supporting the creators you trust.',
   },
   {
     question: 'Is my money safe?',

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, TrendingUp, Shield, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -11,8 +12,8 @@ gsap.registerPlugin(ScrollTrigger);
 const FinalCTA = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
+  const pillarsRef = useRef<HTMLDivElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
-  const subtextRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -35,17 +36,17 @@ const FinalCTA = () => {
       );
 
       scrollTl.fromTo(
-        ctaRef.current,
+        pillarsRef.current,
         { y: 40, opacity: 0 },
         { y: 0, opacity: 1, ease: 'none' },
         0.1
       );
 
       scrollTl.fromTo(
-        subtextRef.current,
-        { opacity: 0 },
-        { opacity: 1, ease: 'none' },
-        0.18
+        ctaRef.current,
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, ease: 'none' },
+        0.2
       );
 
       // Phase 3: EXIT (70% - 100%)
@@ -57,14 +58,14 @@ const FinalCTA = () => {
       );
 
       scrollTl.fromTo(
-        ctaRef.current,
+        pillarsRef.current,
         { opacity: 1 },
         { opacity: 0, ease: 'power2.in' },
         0.88
       );
 
       scrollTl.fromTo(
-        subtextRef.current,
+        ctaRef.current,
         { opacity: 1 },
         { opacity: 0, ease: 'power2.in' },
         0.9
@@ -73,6 +74,24 @@ const FinalCTA = () => {
 
     return () => ctx.revert();
   }, []);
+
+  const pillars = [
+    {
+      icon: TrendingUp,
+      title: 'Earn',
+      desc: 'Your crypto works 24/7',
+    },
+    {
+      icon: Zap,
+      title: 'Borrow',
+      desc: 'Access liquidity instantly',
+    },
+    {
+      icon: Shield,
+      title: 'Keep',
+      desc: 'Never sell your bags',
+    },
+  ];
 
   return (
     <section
@@ -87,24 +106,37 @@ const FinalCTA = () => {
       <div className="relative z-10 w-full px-6 lg:px-10 text-center">
         <h2
           ref={headlineRef}
-          className="font-display text-display-2 lg:text-display-1 text-text-primary mb-8 max-w-4xl mx-auto"
+          className="font-display text-display-2 lg:text-display-1 text-text-primary mb-10 max-w-4xl mx-auto"
         >
-          Your crypto could be earning{' '}
-          <span className="text-gradient-mint">$2.14/day.</span>
-          <br />
-          <span className="text-text-secondary">Right now.</span>
+          The <span className="text-gradient-mint">NeverSell</span> Method
         </h2>
 
-        <div ref={ctaRef} className="mb-6">
-          <Button className="btn-primary text-navy hover:opacity-90 px-10 py-5 rounded-full text-lg font-semibold transition-all flex items-center gap-3 group mx-auto animate-pulse-glow">
-            Start Earning
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </Button>
+        {/* Three Pillars */}
+        <div ref={pillarsRef} className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 lg:gap-16 mb-12">
+          {pillars.map((pillar, index) => (
+            <div key={index} className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-mint/10 border border-mint/20 flex items-center justify-center">
+                <pillar.icon className="w-5 h-5 text-mint" />
+              </div>
+              <div className="text-left">
+                <p className="font-display font-semibold text-text-primary">{pillar.title}</p>
+                <p className="text-sm text-text-secondary">{pillar.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
 
-        <p ref={subtextRef} className="text-text-secondary text-lg">
-          Join 1,200+ depositors <span className="text-mint">stacking yield.</span>
-        </p>
+        <div ref={ctaRef}>
+          <Link href="/app">
+            <Button className="btn-primary text-navy hover:opacity-90 px-10 py-5 rounded-full text-lg font-semibold transition-all flex items-center gap-3 group mx-auto animate-pulse-glow">
+              Start Earning
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
+          <p className="text-text-muted text-sm mt-4">
+            No lock-ups • No selling • No banks
+          </p>
+        </div>
       </div>
     </section>
   );

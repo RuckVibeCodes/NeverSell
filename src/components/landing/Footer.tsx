@@ -10,7 +10,7 @@ import { Twitter, MessageCircle, Send } from 'lucide-react';
 gsap.registerPlugin(ScrollTrigger);
 
 const footerLinks = {
-  Product: ['Launch App', 'How it Works', 'Creator Vaults', 'Security'],
+  Product: ['Launch App', 'How it Works', 'Creator Portfolios', 'Security'],
   Resources: ['Docs', 'FAQ', 'Blog', 'Audit Report'],
   Community: [
     { name: 'Twitter', icon: Twitter },

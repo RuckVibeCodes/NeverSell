@@ -96,7 +96,7 @@ const LiveStats = () => {
     { value: '4.2', label: 'Total Value Locked', prefix: '$', suffix: 'M', isCurrency: true },
     { value: '340', label: 'Yield Distributed', prefix: '$', suffix: 'K', isCurrency: true },
     { value: '1200', label: 'Active Depositors', suffix: '+' },
-    { value: '48', label: 'Creator Vaults' },
+    { value: '48', label: 'Creator Portfolios' },
   ];
 
   return (
