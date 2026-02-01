@@ -96,7 +96,8 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
   });
 
   // Handle successful deposit
-  const handleDepositSuccess = useCallback((hash: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleDepositSuccess = useCallback((_hash: string) => {
     refetchBalance();
     onSuccess?.();
   }, [refetchBalance, onSuccess]);
