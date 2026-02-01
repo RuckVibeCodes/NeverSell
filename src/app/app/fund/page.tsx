@@ -315,23 +315,23 @@ export default function FundPage() {
       </div>
 
       {/* Coinbase Onramp - Buy with Card */}
-      {isConnected && address && (
-        <div className="glass-card rounded-2xl p-6 mb-6 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/5 to-mint/10" />
-          <div className="relative">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                <CreditCard size={24} className="text-white" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                  No crypto? No problem
-                  <span className="px-2 py-0.5 rounded-full bg-mint/20 text-mint text-xs">Easiest</span>
-                </h2>
-                <p className="text-white/60 text-sm">Buy USDC instantly with Apple Pay, card, or bank</p>
-              </div>
+      <div className="glass-card rounded-2xl p-6 mb-6 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/5 to-mint/10" />
+        <div className="relative">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+              <CreditCard size={24} className="text-white" />
             </div>
-            
+            <div>
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                No crypto? No problem
+                <span className="px-2 py-0.5 rounded-full bg-mint/20 text-mint text-xs">Easiest</span>
+              </h2>
+              <p className="text-white/60 text-sm">Buy USDC instantly with Apple Pay, card, or bank</p>
+            </div>
+          </div>
+          
+          {isConnected && address ? (
             <button
               onClick={() => {
                 // Coinbase Onramp URL - opens in new tab
@@ -349,33 +349,31 @@ export default function FundPage() {
               <Sparkles size={20} />
               Buy with Card
             </button>
-            
-            <p className="text-center text-white/40 text-xs mt-3">
-              Powered by Coinbase • Instant delivery to your wallet
-            </p>
-          </div>
+          ) : (
+            <button
+              disabled
+              className="w-full flex items-center justify-center gap-3 py-4 rounded-xl bg-white/10 text-white/50 font-semibold cursor-not-allowed"
+            >
+              <Wallet size={20} />
+              Connect Wallet to Buy
+            </button>
+          )}
+          
+          <p className="text-center text-white/40 text-xs mt-3">
+            Powered by Coinbase • Instant delivery to your wallet
+          </p>
         </div>
-      )}
+      </div>
 
       {/* Divider */}
-      {isConnected && (
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex-1 border-t border-white/10" />
-          <span className="text-white/40 text-sm">or swap existing crypto</span>
-          <div className="flex-1 border-t border-white/10" />
-        </div>
-      )}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex-1 border-t border-white/10" />
+        <span className="text-white/40 text-sm">or swap existing crypto</span>
+        <div className="flex-1 border-t border-white/10" />
+      </div>
 
-      {!isConnected ? (
-        <div className="glass-card rounded-2xl p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-mint/20 to-purple-500/20 flex items-center justify-center text-mint mx-auto mb-4">
-            <Wallet size={32} />
-          </div>
-          <h2 className="text-xl font-semibold text-white mb-2">Connect Your Wallet</h2>
-          <p className="text-white/60">Connect your wallet to fund your account and start earning.</p>
-        </div>
-      ) : (
-        <div className="glass-card rounded-2xl p-6 space-y-4">
+      {/* Swap Interface - Always visible */}
+      <div className={`glass-card rounded-2xl p-6 space-y-4 ${!isConnected ? 'opacity-75' : ''}`}>
           {/* From Section */}
           <div>
             <label className="text-white/60 text-sm mb-2 block">From</label>
@@ -386,12 +384,14 @@ export default function FundPage() {
                   selected={selectedChain}
                   onSelect={handleChainChange}
                   label="Chain"
+                  disabled={!isConnected}
                 />
                 <Dropdown
                   items={availableTokens}
                   selected={selectedFromToken}
                   onSelect={setSelectedFromToken}
                   label="Token"
+                  disabled={!isConnected}
                 />
               </div>
 
@@ -402,7 +402,7 @@ export default function FundPage() {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   className="flex-1 bg-transparent text-white text-2xl font-semibold placeholder:text-white/20 focus:outline-none"
-                  disabled={status === 'executing'}
+                  disabled={status === 'executing' || !isConnected}
                 />
                 <div className="text-right">
                   <div className="text-white/40 text-sm">
@@ -410,7 +410,7 @@ export default function FundPage() {
                   </div>
                   <button
                     onClick={handleMaxClick}
-                    disabled={!balance || status === 'executing'}
+                    disabled={!balance || status === 'executing' || !isConnected}
                     className="text-mint text-sm hover:underline disabled:opacity-50"
                   >
                     MAX
@@ -442,6 +442,7 @@ export default function FundPage() {
                   selected={selectedToToken}
                   onSelect={setSelectedToToken}
                   label="Token"
+                  disabled={!isConnected}
                 />
               </div>
 
@@ -566,13 +567,19 @@ export default function FundPage() {
           </button>
 
           {/* Cross-chain info */}
-          {isCrossChain && status === 'idle' && (
+          {isCrossChain && status === 'idle' && isConnected && (
             <p className="text-center text-white/40 text-xs">
               Powered by Li.Fi — automatically bridges from {selectedChain.name} to Arbitrum
             </p>
           )}
+
+          {/* Connect wallet prompt when not connected */}
+          {!isConnected && (
+            <p className="text-center text-white/40 text-xs">
+              Connect your wallet to swap tokens from any chain to Arbitrum
+            </p>
+          )}
         </div>
-      )}
     </div>
   );
 }
