@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 7%;
+    --foreground: 0 0% 98%;
+    --card: 222 40% 10%;
+    --card-foreground: 0 0% 98%;
+    --popover: 222 40% 10%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 154 100% 62%;
+    --primary-foreground: 222 47% 7%;
+    --secondary: 222 30% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 222 30% 15%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 154 100% 62%;
+    --accent-foreground: 222 47% 7%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 222 30% 18%;
+    --input: 222 30% 18%;
+    --ring: 154 100% 62%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-navy text-foreground antialiased;
+    background: linear-gradient(135deg, #0a0f1a 0%, #111827 50%, #0a0f1a 100%);
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-navy-100/40 backdrop-blur-xl border border-white/10 rounded-xl shadow-glass;
+  }
+  
+  .btn-primary {
+    @apply bg-mint text-navy font-semibold px-6 py-3 rounded-lg hover:bg-mint-600 transition-all duration-200 hover:shadow-mint-glow;
+  }
+  
+  .btn-secondary {
+    @apply bg-transparent border border-mint/50 text-mint px-6 py-3 rounded-lg hover:bg-mint/10 transition-all duration-200;
+  }
+  
+  .text-gradient {
+    @apply bg-gradient-to-r from-mint to-mint-300 bg-clip-text text-transparent;
+  }
+  
+  .nav-link {
+    @apply text-white/70 hover:text-mint transition-colors duration-200;
+  }
+  
+  .stat-card {
+    @apply glass-card p-6 flex flex-col gap-2;
+  }
+}
