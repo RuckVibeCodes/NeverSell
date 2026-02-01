@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Twitter, Github, MessageCircle } from 'lucide-react';
 
 const footerLinks = {
@@ -30,15 +31,14 @@ const Footer = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10 lg:gap-16 mb-12">
           {/* Logo & Description */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-mint flex items-center justify-center">
-                <svg viewBox="0 0 24 24" className="w-5 h-5 text-navy">
-                  <path
-                    fill="currentColor"
-                    d="M12 2L4 7v10l8 5 8-5V7l-8-5zm0 2.18l6 3.75v7.14l-6 3.75-6-3.75V7.93l6-3.75z"
-                  />
-                </svg>
-              </div>
+            <Link href="/" className="flex items-center gap-3 mb-4">
+              <Image
+                src="/logo.png"
+                alt="NeverSell"
+                width={36}
+                height={36}
+                className="w-9 h-9"
+              />
               <span className="font-display text-xl font-bold text-text-primary">
                 NeverSell
               </span>

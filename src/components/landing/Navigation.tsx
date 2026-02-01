@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowRight, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -35,15 +36,14 @@ const Navigation = () => {
     >
       <div className="max-w-[1600px] mx-auto px-6 lg:px-10 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-mint flex items-center justify-center">
-            <svg viewBox="0 0 24 24" className="w-5 h-5 text-navy">
-              <path
-                fill="currentColor"
-                d="M12 2L4 7v10l8 5 8-5V7l-8-5zm0 2.18l6 3.75v7.14l-6 3.75-6-3.75V7.93l6-3.75z"
-              />
-            </svg>
-          </div>
+        <Link href="/" className="flex items-center gap-3">
+          <Image
+            src="/logo.png"
+            alt="NeverSell"
+            width={40}
+            height={40}
+            className="w-10 h-10"
+          />
           <span className="font-display text-xl font-bold text-text-primary">
             NeverSell
           </span>

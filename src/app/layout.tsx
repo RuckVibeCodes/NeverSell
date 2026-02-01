@@ -21,6 +21,15 @@ export const metadata: Metadata = {
   title: "NeverSell | DeFi Yield Without Selling",
   description: "Earn yield on your crypto without selling. Deposit, borrow, and grow your assets on Arbitrum.",
   keywords: ["DeFi", "yield", "Arbitrum", "crypto", "lending", "borrowing"],
+  icons: {
+    icon: "/favicon.png",
+    apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "NeverSell | DeFi Yield Without Selling",
+    description: "Earn yield on your crypto without selling. Deposit, borrow, and grow your assets on Arbitrum.",
+    images: ["/logo.png"],
+  },
 };
 
 export default function RootLayout({
