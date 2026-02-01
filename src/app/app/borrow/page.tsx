@@ -846,6 +846,16 @@ function SafetyEducationCard() {
   );
 }
 
+// Mock data for demo mode
+const MOCK_DATA = {
+  totalCollateral: 10000,
+  currentDebt: 2500,
+  availableToBorrow: 3500,
+  healthFactor: 1.85,
+  liquidationThreshold: 82.5,
+  borrowRate: 5.2,
+};
+
 // Main Page Component
 export default function BorrowPage() {
   const { isConnected } = useAccount();
@@ -854,11 +864,15 @@ export default function BorrowPage() {
   const { position, isLoading } = useAavePosition();
   const { variableBorrowRate, isLoading: isLoadingRate } = useAaveBorrowRate();
 
-  const totalCollateral = position?.totalCollateralUSD || 0;
-  const currentDebt = position?.totalDebtUSD || 0;
-  const availableToBorrow = position?.availableBorrowsUSD || 0;
-  const healthFactor = position?.healthFactor || Infinity;
-  const liquidationThreshold = position?.liquidationThreshold || 82.5;
+  const hasRealPosition = (position?.totalCollateralUSD || 0) > 0;
+  
+  // Use mock data when no real position
+  const totalCollateral = hasRealPosition ? (position?.totalCollateralUSD || 0) : MOCK_DATA.totalCollateral;
+  const currentDebt = hasRealPosition ? (position?.totalDebtUSD || 0) : MOCK_DATA.currentDebt;
+  const availableToBorrow = hasRealPosition ? (position?.availableBorrowsUSD || 0) : MOCK_DATA.availableToBorrow;
+  const healthFactor = hasRealPosition ? (position?.healthFactor || Infinity) : MOCK_DATA.healthFactor;
+  const liquidationThreshold = hasRealPosition ? (position?.liquidationThreshold || 82.5) : MOCK_DATA.liquidationThreshold;
+  const displayBorrowRate = hasRealPosition ? variableBorrowRate : MOCK_DATA.borrowRate;
 
   // Borrow capacity based on LTV (show as 60%)
   const borrowCapacity = totalCollateral * 0.6;
@@ -868,8 +882,26 @@ export default function BorrowPage() {
     ? (currentDebt / borrowCapacity) * 100
     : 0;
 
+  // Demo mode indicator
+  const isDemoMode = isConnected && !hasRealPosition;
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-purple-500/20 to-mint/20 border border-purple-500/30">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+              <span className="text-xl">🎭</span>
+            </div>
+            <div>
+              <p className="text-white font-medium">Demo Mode</p>
+              <p className="text-white/60 text-sm">Showing mock data. Supply collateral to see your real position.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-display font-bold text-white mb-2">
@@ -894,17 +926,6 @@ export default function BorrowPage() {
         <div className="glass-card p-12 flex items-center justify-center">
           <Loader2 size={32} className="animate-spin text-mint" />
         </div>
-      ) : totalCollateral === 0 ? (
-        <div className="glass-card p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center text-amber-400 mx-auto mb-4">
-            <AlertTriangle size={32} />
-          </div>
-          <h2 className="text-xl font-semibold text-white mb-2">No Collateral Supplied</h2>
-          <p className="text-white/60 mb-4">You need to supply collateral before you can borrow or withdraw.</p>
-          <a href="/app/lend" className="btn-primary inline-block">
-            Supply Collateral
-          </a>
-        </div>
       ) : (
         <div className="space-y-6">
           {/* Position Summary */}
@@ -928,8 +949,8 @@ export default function BorrowPage() {
           {currentDebt > 0 && (
             <LoanDetailsCard
               totalOwed={currentDebt}
-              borrowRate={variableBorrowRate}
-              isLoadingRate={isLoadingRate}
+              borrowRate={displayBorrowRate}
+              isLoadingRate={hasRealPosition ? isLoadingRate : false}
             />
           )}
 
