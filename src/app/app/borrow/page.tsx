@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { 
   Landmark, 
   AlertTriangle, 
@@ -24,6 +24,7 @@ import { useAaveRepay } from "@/hooks/useAaveRepay";
 import { useAaveWithdraw } from "@/hooks/useAaveWithdraw";
 import { useAaveBorrowRate } from "@/hooks/useAaveBorrowRate";
 import { AAVE_V3_ADDRESSES } from "@/lib/aave";
+import { getArbiscanTxUrl, parseTransactionError } from "@/lib/arbiscan";
 import type { Address } from "viem";
 
 type ActionMode = 'borrow' | 'repay' | 'withdraw';
@@ -332,6 +333,7 @@ function ActionCard({
   healthFactor,
   totalCollateral,
   liquidationThreshold,
+  onSuccess,
 }: {
   mode: ActionMode;
   setMode: (mode: ActionMode) => void;
@@ -340,22 +342,34 @@ function ActionCard({
   healthFactor: number;
   totalCollateral: number;
   liquidationThreshold: number;
+  onSuccess?: () => void;
 }) {
   const { address } = useAccount();
   const [amount, setAmount] = useState("");
+  const [txHash, setTxHash] = useState<string | null>(null);
   
-  const { data: usdcBalance } = useBalance({
+  const { data: usdcBalance, refetch: refetchUsdcBalance } = useBalance({
     address,
     token: AAVE_V3_ADDRESSES.USDC as Address,
   });
+
+  // Handle successful transactions
+  const handleTxSuccess = useCallback((hash: string) => {
+    setTxHash(hash);
+    refetchUsdcBalance();
+    onSuccess?.();
+  }, [refetchUsdcBalance, onSuccess]);
 
   const {
     borrow,
     isPending: isBorrowPending,
     isSuccess: isBorrowSuccess,
     error: borrowError,
+    hash: borrowHash,
+    reset: resetBorrow,
   } = useAaveBorrow({
     amount: parseFloat(amount) || 0,
+    onSuccess: handleTxSuccess,
   });
 
   const {
@@ -364,15 +378,26 @@ function ActionCard({
     repay,
     isApproving,
     isApprovalPending,
+    isApprovalSuccess,
     isRepaying,
     isRepayPending,
     isRepaySuccess,
     repayError,
     approvalError,
+    repayHash,
+    reset: resetRepay,
   } = useAaveRepay({
     asset: AAVE_V3_ADDRESSES.USDC as Address,
     amount: parseFloat(amount) || 0,
+    onRepaySuccess: handleTxSuccess,
   });
+
+  // Auto-proceed from approval to repay
+  useEffect(() => {
+    if (isApprovalSuccess && !needsApproval && !isRepaying && !isRepayPending && !isRepaySuccess) {
+      repay();
+    }
+  }, [isApprovalSuccess, needsApproval, isRepaying, isRepayPending, isRepaySuccess, repay]);
 
   // For withdraw, we use WETH as the default asset (main collateral)
   const {
@@ -381,9 +406,12 @@ function ActionCard({
     isPending: isWithdrawPending,
     isSuccess: isWithdrawSuccess,
     error: withdrawError,
+    hash: withdrawHash,
+    reset: resetWithdraw,
   } = useAaveWithdraw({
     asset: AAVE_V3_ADDRESSES.WETH as Address,
     amount: parseFloat(amount) || 0,
+    onSuccess: handleTxSuccess,
   });
 
   const inputAmount = parseFloat(amount) || 0;
@@ -530,10 +558,14 @@ function ActionCard({
     return false;
   };
 
-  // Reset amount when switching modes
+  // Reset amount and state when switching modes
   const handleModeChange = (newMode: ActionMode) => {
     setMode(newMode);
     setAmount("");
+    setTxHash(null);
+    resetBorrow();
+    resetRepay();
+    resetWithdraw();
   };
 
   const newHfColor = getHealthFactorColor(newHealthFactor);
@@ -759,15 +791,30 @@ function ActionCard({
         {error && (
           <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-red-400 text-sm">
             <AlertCircle size={16} />
-            {error.message || 'Transaction failed'}
+            {parseTransactionError(error)}
           </div>
         )}
 
         {/* Success Message */}
         {isSuccess && (
-          <div className="p-3 rounded-xl bg-mint/10 border border-mint/20 flex items-center gap-2 text-mint text-sm">
-            <Check size={16} />
-            Successfully {mode === 'borrow' ? 'borrowed' : mode === 'repay' ? 'repaid' : 'withdrew'} {amount} {mode === 'withdraw' ? 'USD' : 'USDC'}!
+          <div className="p-4 rounded-xl bg-mint/10 border border-mint/20 space-y-3">
+            <div className="flex items-center gap-2 text-mint">
+              <Check size={18} />
+              <span className="font-medium">
+                Successfully {mode === 'borrow' ? 'borrowed' : mode === 'repay' ? 'repaid' : 'withdrew'} {amount} {mode === 'withdraw' ? 'USD' : 'USDC'}!
+              </span>
+            </div>
+            {(txHash || borrowHash || repayHash || withdrawHash) && (
+              <a 
+                href={getArbiscanTxUrl(txHash || borrowHash || repayHash || withdrawHash || '')} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-mint/80 hover:text-mint text-sm transition-colors"
+              >
+                <ExternalLink size={14} />
+                View on Arbiscan
+              </a>
+            )}
           </div>
         )}
       </div>
@@ -861,7 +908,7 @@ export default function BorrowPage() {
   const { isConnected } = useAccount();
   const [mode, setMode] = useState<ActionMode>('borrow');
   
-  const { position, isLoading } = useAavePosition();
+  const { position, isLoading, refetch: refetchPosition } = useAavePosition();
   const { variableBorrowRate, isLoading: isLoadingRate } = useAaveBorrowRate();
 
   const hasRealPosition = (position?.totalCollateralUSD || 0) > 0;
@@ -963,6 +1010,7 @@ export default function BorrowPage() {
             healthFactor={healthFactor}
             totalCollateral={totalCollateral}
             liquidationThreshold={liquidationThreshold}
+            onSuccess={() => refetchPosition()}
           />
 
           {/* Safety Education */}
