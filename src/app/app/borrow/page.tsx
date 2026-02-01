@@ -10,13 +10,16 @@ import {
   Shield,
   Lightbulb,
   ArrowRight,
-  Info
+  Info,
+  Banknote,
+  TrendingUp
 } from "lucide-react";
 import { useAccount, useBalance } from "wagmi";
 import { formatUnits } from "viem";
 import { useAaveBorrow } from "@/hooks/useAaveBorrow";
 import { useAavePosition } from "@/hooks/useAavePosition";
 import { useAaveRepay } from "@/hooks/useAaveRepay";
+import { useAaveBorrowRate } from "@/hooks/useAaveBorrowRate";
 import { AAVE_V3_ADDRESSES } from "@/lib/aave";
 import type { Address } from "viem";
 
@@ -206,6 +209,69 @@ function HealthFactorCard({
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+// Loan Details Card - shows when user has active loan
+function LoanDetailsCard({
+  totalOwed,
+  borrowRate,
+  isLoadingRate,
+}: {
+  totalOwed: number;
+  borrowRate: number | null;
+  isLoadingRate: boolean;
+}) {
+  return (
+    <div className="glass-card p-6">
+      <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500/20 to-amber-500/20 flex items-center justify-center">
+          <Banknote size={16} className="text-orange-400" />
+        </div>
+        Your Loan
+      </h2>
+
+      <div className="space-y-4">
+        {/* Total Owed */}
+        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+          <div className="flex justify-between items-center">
+            <p className="text-white/40 text-sm">Total Owed</p>
+            <p className="text-2xl font-bold text-orange-400">
+              ${totalOwed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </div>
+          <p className="text-white/30 text-xs mt-1">Includes accrued interest</p>
+        </div>
+
+        {/* Borrow Rate */}
+        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={14} className="text-white/40" />
+              <p className="text-white/40 text-sm">Borrow Rate</p>
+            </div>
+            {isLoadingRate ? (
+              <Loader2 size={16} className="animate-spin text-white/40" />
+            ) : borrowRate !== null ? (
+              <div className="text-right">
+                <p className="text-xl font-bold text-white">
+                  {borrowRate.toFixed(2)}% <span className="text-sm font-normal text-white/40">APR</span>
+                </p>
+                <p className="text-white/30 text-xs">Variable rate</p>
+              </div>
+            ) : (
+              <p className="text-white/40">--</p>
+            )}
+          </div>
+        </div>
+
+        {/* Info note */}
+        <div className="flex items-start gap-2 text-white/40 text-xs">
+          <Info size={12} className="mt-0.5 flex-shrink-0" />
+          <p>Interest accrues continuously. Variable rate may change based on market conditions.</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -548,6 +614,7 @@ export default function BorrowPage() {
   const [mode, setMode] = useState<'borrow' | 'repay'>('borrow');
   
   const { position, isLoading } = useAavePosition();
+  const { variableBorrowRate, isLoading: isLoadingRate } = useAaveBorrowRate();
 
   const totalCollateral = position?.totalCollateralUSD || 0;
   const currentDebt = position?.totalDebtUSD || 0;
@@ -616,6 +683,15 @@ export default function BorrowPage() {
             totalDebt={currentDebt}
             liquidationThreshold={liquidationThreshold}
           />
+
+          {/* Loan Details - only show when user has active loan */}
+          {currentDebt > 0 && (
+            <LoanDetailsCard
+              totalOwed={currentDebt}
+              borrowRate={variableBorrowRate}
+              isLoadingRate={isLoadingRate}
+            />
+          )}
 
           {/* Borrow/Repay Action */}
           <ActionCard
