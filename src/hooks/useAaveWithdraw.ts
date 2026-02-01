@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useEffect } from "react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { type Address, maxUint256 } from "viem";
 import {
@@ -15,6 +15,7 @@ interface UseAaveWithdrawParams {
   amount: number;
   withdrawMax?: boolean;
   to?: Address;
+  onSuccess?: (hash: string) => void;
 }
 
 interface UseAaveWithdrawReturn {
@@ -24,6 +25,7 @@ interface UseAaveWithdrawReturn {
   isSuccess: boolean;
   error: Error | null;
   hash: `0x${string}` | undefined;
+  reset: () => void;
 }
 
 export function useAaveWithdraw({
@@ -31,6 +33,7 @@ export function useAaveWithdraw({
   amount,
   withdrawMax = false,
   to,
+  onSuccess,
 }: UseAaveWithdrawParams): UseAaveWithdrawReturn {
   const { address } = useAccount();
   
@@ -47,6 +50,7 @@ export function useAaveWithdraw({
     data: hash,
     isPending: isWithdrawing,
     error: writeError,
+    reset,
   } = useWriteContract();
 
   const { 
@@ -54,6 +58,13 @@ export function useAaveWithdraw({
     isSuccess,
     error: receiptError,
   } = useWaitForTransactionReceipt({ hash });
+
+  // Call onSuccess callback when withdraw succeeds
+  useEffect(() => {
+    if (isSuccess && hash) {
+      onSuccess?.(hash);
+    }
+  }, [isSuccess, hash, onSuccess]);
 
   const withdraw = useCallback(() => {
     if (!address || !recipient) return;
@@ -72,5 +83,6 @@ export function useAaveWithdraw({
     isSuccess,
     error: writeError || receiptError,
     hash,
+    reset,
   };
 }

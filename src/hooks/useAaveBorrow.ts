@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useEffect } from "react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { type Address } from "viem";
 import {
@@ -16,6 +16,7 @@ interface UseAaveBorrowParams {
   amount: number;
   interestRateMode?: typeof INTEREST_RATE_MODE[keyof typeof INTEREST_RATE_MODE];
   onBehalfOf?: Address;
+  onSuccess?: (hash: string) => void;
 }
 
 interface UseAaveBorrowReturn {
@@ -25,6 +26,7 @@ interface UseAaveBorrowReturn {
   isSuccess: boolean;
   error: Error | null;
   hash: `0x${string}` | undefined;
+  reset: () => void;
 }
 
 export function useAaveBorrow({
@@ -32,6 +34,7 @@ export function useAaveBorrow({
   amount,
   interestRateMode = INTEREST_RATE_MODE.VARIABLE,
   onBehalfOf,
+  onSuccess,
 }: UseAaveBorrowParams): UseAaveBorrowReturn {
   const { address } = useAccount();
   
@@ -48,6 +51,7 @@ export function useAaveBorrow({
     data: hash,
     isPending: isBorrowing,
     error: writeError,
+    reset,
   } = useWriteContract();
 
   const { 
@@ -55,6 +59,13 @@ export function useAaveBorrow({
     isSuccess,
     error: receiptError,
   } = useWaitForTransactionReceipt({ hash });
+
+  // Call onSuccess callback when borrow succeeds
+  useEffect(() => {
+    if (isSuccess && hash) {
+      onSuccess?.(hash);
+    }
+  }, [isSuccess, hash, onSuccess]);
 
   const borrow = useCallback(() => {
     if (!address || !borrower) return;
@@ -73,5 +84,6 @@ export function useAaveBorrow({
     isSuccess,
     error: writeError || receiptError,
     hash,
+    reset,
   };
 }

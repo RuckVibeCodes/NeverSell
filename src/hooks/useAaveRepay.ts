@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useEffect } from "react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
 import { type Address, maxUint256 } from "viem";
 import {
@@ -18,15 +18,20 @@ interface UseAaveRepayParams {
   repayMax?: boolean;
   interestRateMode?: typeof INTEREST_RATE_MODE[keyof typeof INTEREST_RATE_MODE];
   onBehalfOf?: Address;
+  onApprovalSuccess?: () => void;
+  onRepaySuccess?: (hash: string) => void;
 }
 
 interface UseAaveRepayReturn {
   needsApproval: boolean;
   isCheckingAllowance: boolean;
+  refetchAllowance: () => void;
   approve: () => void;
   isApproving: boolean;
   isApprovalPending: boolean;
+  isApprovalSuccess: boolean;
   approvalError: Error | null;
+  approvalHash: `0x${string}` | undefined;
   repay: () => void;
   isRepaying: boolean;
   isRepayPending: boolean;
@@ -34,6 +39,7 @@ interface UseAaveRepayReturn {
   repayHash: `0x${string}` | undefined;
   isRepaySuccess: boolean;
   isPending: boolean;
+  reset: () => void;
 }
 
 export function useAaveRepay({
@@ -42,6 +48,8 @@ export function useAaveRepay({
   repayMax = false,
   interestRateMode = INTEREST_RATE_MODE.VARIABLE,
   onBehalfOf,
+  onApprovalSuccess,
+  onRepaySuccess,
 }: UseAaveRepayParams): UseAaveRepayReturn {
   const { address } = useAccount();
   
@@ -53,7 +61,12 @@ export function useAaveRepay({
   
   const debtor = onBehalfOf ?? address;
 
-  const { data: allowance, isLoading: isCheckingAllowance } = useReadContract({
+  // Check allowance with refetch capability
+  const { 
+    data: allowance, 
+    isLoading: isCheckingAllowance,
+    refetch: refetchAllowance,
+  } = useReadContract({
     address: asset,
     abi: ERC20_ABI,
     functionName: "allowance",
@@ -67,16 +80,30 @@ export function useAaveRepay({
     return allowance < amountInWei;
   }, [allowance, amountInWei, repayMax]);
 
+  // Approval transaction
   const {
     writeContract: writeApprove,
     data: approvalHash,
     isPending: isApproving,
     error: approvalWriteError,
+    reset: resetApproval,
   } = useWriteContract();
 
-  const { isLoading: isApprovalPending, error: approvalReceiptError } = useWaitForTransactionReceipt({
+  const { 
+    isLoading: isApprovalPending, 
+    isSuccess: isApprovalSuccess,
+    error: approvalReceiptError,
+  } = useWaitForTransactionReceipt({
     hash: approvalHash,
   });
+
+  // Refetch allowance when approval succeeds
+  useEffect(() => {
+    if (isApprovalSuccess) {
+      refetchAllowance();
+      onApprovalSuccess?.();
+    }
+  }, [isApprovalSuccess, refetchAllowance, onApprovalSuccess]);
 
   const approve = useCallback(() => {
     if (!address) return;
@@ -88,11 +115,13 @@ export function useAaveRepay({
     });
   }, [address, asset, writeApprove]);
 
+  // Repay transaction
   const {
     writeContract: writeRepay,
     data: repayHash,
     isPending: isRepaying,
     error: repayWriteError,
+    reset: resetRepay,
   } = useWriteContract();
 
   const { 
@@ -100,6 +129,13 @@ export function useAaveRepay({
     isSuccess: isRepaySuccess,
     error: repayReceiptError,
   } = useWaitForTransactionReceipt({ hash: repayHash });
+
+  // Call onRepaySuccess callback when repay succeeds
+  useEffect(() => {
+    if (isRepaySuccess && repayHash) {
+      onRepaySuccess?.(repayHash);
+    }
+  }, [isRepaySuccess, repayHash, onRepaySuccess]);
 
   const repay = useCallback(() => {
     if (!address || !debtor) return;
@@ -111,13 +147,22 @@ export function useAaveRepay({
     });
   }, [address, debtor, asset, amountInWei, interestRateMode, writeRepay]);
 
+  // Reset all transaction state
+  const reset = useCallback(() => {
+    resetApproval();
+    resetRepay();
+  }, [resetApproval, resetRepay]);
+
   return {
     needsApproval,
     isCheckingAllowance,
+    refetchAllowance: () => refetchAllowance(),
     approve,
     isApproving,
     isApprovalPending,
+    isApprovalSuccess,
     approvalError: approvalWriteError || approvalReceiptError,
+    approvalHash,
     repay,
     isRepaying,
     isRepayPending,
@@ -125,5 +170,6 @@ export function useAaveRepay({
     repayHash,
     isRepaySuccess,
     isPending: isApproving || isApprovalPending || isRepaying || isRepayPending,
+    reset,
   };
 }
