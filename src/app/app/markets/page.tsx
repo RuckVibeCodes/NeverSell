@@ -138,25 +138,43 @@ function PoolCard({ pool }: { pool: GMPool }) {
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Action CTAs */}
           <div className="flex gap-2">
+            <a
+              href="/app/pools"
+              className="flex-1 py-2 rounded-lg bg-mint/10 border border-mint/30 text-mint text-sm text-center hover:bg-mint/20 transition-colors flex items-center justify-center gap-1.5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Quick Start →
+            </a>
+            <a
+              href="/app/vaults"
+              className="flex-1 py-2 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400 text-sm text-center hover:bg-purple-500/20 transition-colors flex items-center justify-center gap-1.5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Add to Portfolio →
+            </a>
+          </div>
+
+          {/* External links (smaller) */}
+          <div className="flex gap-2 pt-2">
             <a
               href={`https://app.gmx.io/#/earn?market=${pool.longToken}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-white/70 text-sm text-center hover:bg-white/10 hover:text-white transition-colors flex items-center justify-center gap-1.5"
+              className="flex-1 py-1.5 text-white/40 text-xs text-center hover:text-white/60 transition-colors flex items-center justify-center gap-1"
               onClick={(e) => e.stopPropagation()}
             >
-              View on GMX <ExternalLink size={12} />
+              GMX <ExternalLink size={10} />
             </a>
             <a
               href={`https://arbiscan.io/address/${pool.marketToken}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-white/70 text-sm text-center hover:bg-white/10 hover:text-white transition-colors flex items-center justify-center gap-1.5"
+              className="flex-1 py-1.5 text-white/40 text-xs text-center hover:text-white/60 transition-colors flex items-center justify-center gap-1"
               onClick={(e) => e.stopPropagation()}
             >
-              Arbiscan <ExternalLink size={12} />
+              Arbiscan <ExternalLink size={10} />
             </a>
           </div>
         </div>
@@ -252,8 +270,8 @@ export default function MarketsPage() {
               <BarChart3 size={20} className="text-mint" />
             </div>
             <div>
-              <h1 className="text-2xl font-display font-bold text-white">GM Markets</h1>
-              <p className="text-white/50 text-sm">Explore all GMX liquidity pools on Arbitrum</p>
+              <h1 className="text-2xl font-display font-bold text-white">Research</h1>
+              <p className="text-white/50 text-sm">Analyze GM liquidity pools. Find your edge.</p>
             </div>
           </div>
           <button
@@ -270,6 +288,35 @@ export default function MarketsPage() {
             Last updated: {lastUpdated.toLocaleTimeString()}
           </p>
         )}
+      </div>
+
+      {/* Ready to earn? CTA Banner */}
+      <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-mint/10 via-purple-500/10 to-orange-500/10 border border-mint/20">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-mint/20 flex items-center justify-center">
+              <span className="text-xl">🚀</span>
+            </div>
+            <div>
+              <p className="text-white font-medium">Ready to earn?</p>
+              <p className="text-white/60 text-sm">Research complete? Start earning yield now.</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <a
+              href="/app/pools"
+              className="px-4 py-2 rounded-lg bg-mint text-navy font-medium text-sm hover:bg-mint/90 transition-colors"
+            >
+              Quick Start →
+            </a>
+            <a
+              href="/app/vaults"
+              className="px-4 py-2 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-400 font-medium text-sm hover:bg-purple-500/30 transition-colors"
+            >
+              Create Portfolio →
+            </a>
+          </div>
+        </div>
       </div>
 
       {/* Stats summary */}

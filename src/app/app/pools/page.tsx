@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Layers, TrendingUp, Loader2, Check, AlertCircle, X, DollarSign, Droplets, ChevronDown, Shield, Scale, Flame } from "lucide-react";
-import { StackedTokenLogos } from "@/components/ui/TokenLogo";
+import { Layers, Loader2, Check, AlertCircle, X, DollarSign, Shield, Scale, Flame } from "lucide-react";
 import { useAccount, useBalance } from "wagmi";
 import { formatUnits } from "viem";
 import { useGMXApy, formatAPY, getAPYColorClass, formatLastUpdated } from "@/hooks/useGMXApy";
@@ -46,8 +45,8 @@ interface Strategy {
 // ========== Strategy Presets ==========
 const strategies: Strategy[] = [
   {
-    id: "conservative",
-    name: "Conservative",
+    id: "safe",
+    name: "Safe Yield",
     icon: <Shield size={24} />,
     emoji: "🛡️",
     description: "100% BTC Pool",
@@ -61,11 +60,11 @@ const strategies: Strategy[] = [
   },
   {
     id: "balanced",
-    name: "Balanced",
+    name: "Balanced Growth",
     icon: <Scale size={24} />,
     emoji: "⚖️",
     description: "50% BTC / 30% ETH / 20% ARB",
-    riskLevel: "Balanced",
+    riskLevel: "Medium risk",
     bestFor: "Diversified yield seekers",
     estimatedApy: 14,
     allocations: [
@@ -78,8 +77,8 @@ const strategies: Strategy[] = [
     glowColor: "shadow-purple-500/20",
   },
   {
-    id: "growth",
-    name: "Growth",
+    id: "aggressive",
+    name: "Aggressive",
     icon: <Flame size={24} />,
     emoji: "🔥",
     description: "30% ETH / 40% ARB / 30% BTC",
@@ -554,272 +553,10 @@ function StrategyModal({
   );
 }
 
-// ========== Individual Pool Card Component ==========
-function PoolCard({
-  pool,
-  apy,
-  feeApy,
-  perfApy,
-  tvl,
-  isLoading,
-  onDeposit,
-}: {
-  pool: (typeof pools)[0];
-  apy: number;
-  feeApy: number;
-  perfApy: number;
-  tvl: number;
-  isLoading: boolean;
-  onDeposit: () => void;
-}) {
-  const { isConnected } = useAccount();
-
-  return (
-    <div className="glass-card p-6 hover:border-mint/20 transition-all duration-300 group">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div className="group-hover:scale-105 transition-transform">
-            <StackedTokenLogos 
-              tokens={[
-                { symbol: pool.longAsset },
-                { symbol: pool.shortAsset }
-              ]}
-              size={48}
-            />
-          </div>
-          <div>
-            <h3 className="text-xl font-semibold text-white">{pool.name}</h3>
-            <p className="text-white/50 text-sm">{pool.description}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp size={16} className="text-mint" />
-            <p className="text-white/40 text-xs">Total APY</p>
-          </div>
-          {isLoading ? (
-            <div className="h-8 w-20 bg-white/10 rounded animate-pulse" />
-          ) : (
-            <p className={`text-2xl font-bold ${getAPYColorClass(apy)}`}>{formatAPY(apy)}</p>
-          )}
-        </div>
-        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-          <div className="flex items-center gap-2 mb-2">
-            <Droplets size={16} className="text-purple-400" />
-            <p className="text-white/40 text-xs">TVL</p>
-          </div>
-          {isLoading ? (
-            <div className="h-8 w-24 bg-white/10 rounded animate-pulse" />
-          ) : (
-            <p className="text-2xl font-bold text-white">${(tvl / 1_000_000).toFixed(1)}M</p>
-          )}
-        </div>
-      </div>
-
-      {/* APY Breakdown */}
-      {!isLoading && (
-        <div className="mb-6 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-          <p className="text-white/40 text-xs mb-2">APY Breakdown</p>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-white/60">Fee APY</span>
-            <span className="text-white">{formatAPY(feeApy)}</span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-white/60">Performance</span>
-            <span className="text-white">{formatAPY(perfApy)}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Pool composition */}
-      <div className="mb-6 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-        <p className="text-white/40 text-xs mb-2">Pool Composition</p>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-white">{pool.longAsset}</span>
-          <span className="text-white/30">/</span>
-          <span className="text-white">{pool.shortAsset}</span>
-        </div>
-      </div>
-
-      <button
-        onClick={onDeposit}
-        disabled={!isConnected}
-        className="w-full btn-primary py-3 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Deposit USDC
-      </button>
-    </div>
-  );
-}
-
-// ========== Individual Pool Deposit Modal ==========
-interface DepositModalProps {
-  pool: (typeof pools)[0];
-  apy: number;
-  onClose: () => void;
-}
-
-function DepositModal({ pool, apy, onClose }: DepositModalProps) {
-  const [amount, setAmount] = useState("");
-  const { address } = useAccount();
-
-  const { data: balance } = useBalance({
-    address,
-    token: AAVE_V3_ADDRESSES.USDC as Address,
-  });
-
-  const depositAmount = parseFloat(amount) || 0;
-  const depositAmountWei = BigInt(Math.floor(depositAmount * 1e6));
-
-  const { 
-    deposit, 
-    isDepositing, 
-    isDepositPending, 
-    isDepositSuccess: isSuccess, 
-    depositError: error,
-    // TODO: Wire up approval flow when needed
-    needsShortTokenApproval: _needsApproval2,
-    approveShortToken: _approve2,
-    isApproving,
-    isApprovalPending,
-  } = useGMXDeposit({
-    poolName: pool.name,
-    shortTokenAmount: depositAmountWei,
-  });
-
-  const isPending = isDepositing || isDepositPending || isApproving || isApprovalPending;
-  void _needsApproval2; void _approve2; // Silence lint - approval flow TODO
-
-  const handleMaxClick = () => {
-    if (balance) {
-      setAmount(formatUnits(balance.value, 6));
-    }
-  };
-
-  const dailyEarnings = (depositAmount * apy) / 100 / 365;
-  const monthlyEarnings = dailyEarnings * 30;
-  const yearlyEarnings = (depositAmount * apy) / 100;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="glass-card w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
-        >
-          <X size={20} />
-        </button>
-
-        <div className="flex items-center gap-4 mb-6">
-          <StackedTokenLogos 
-            tokens={[
-              { symbol: pool.longAsset },
-              { symbol: pool.shortAsset }
-            ]}
-            size={48}
-          />
-          <div>
-            <h3 className="text-xl font-semibold text-white">{pool.name} Pool</h3>
-            <p className="text-mint text-sm">{formatAPY(apy)} APY</p>
-          </div>
-        </div>
-
-        <div className="mb-4 p-4 rounded-xl bg-white/5 border border-white/10">
-          <p className="text-white/60 text-sm">
-            Deposit USDC to provide liquidity and earn trading fees from the {pool.name}{" "}
-            perpetuals market.
-          </p>
-        </div>
-
-        <div className="space-y-3 mb-6">
-          <div className="relative">
-            <input
-              type="number"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full bg-navy-light border border-white/10 rounded-xl px-4 py-4 text-white text-lg placeholder:text-white/30 focus:outline-none focus:border-mint/50 transition-colors"
-              disabled={isPending}
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-              <button
-                onClick={handleMaxClick}
-                disabled={!balance || isPending}
-                className="text-mint text-sm hover:underline disabled:opacity-50"
-              >
-                MAX
-              </button>
-              <span className="text-white/50">USDC</span>
-            </div>
-          </div>
-
-          <div className="flex justify-between text-sm text-white/50 px-1">
-            <span>
-              Balance: {balance ? parseFloat(formatUnits(balance.value, 6)).toFixed(2) : "0.00"}{" "}
-              USDC
-            </span>
-          </div>
-        </div>
-
-        {depositAmount > 0 && (
-          <div className="mb-6 p-4 rounded-xl bg-mint/5 border border-mint/20 space-y-2">
-            <p className="text-white/60 text-sm font-medium mb-3">Estimated Earnings</p>
-            <div className="flex items-center justify-between">
-              <span className="text-white/60 text-sm">Daily</span>
-              <span className="text-mint font-medium">+${dailyEarnings.toFixed(2)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-white/60 text-sm">Monthly</span>
-              <span className="text-mint font-medium">+${monthlyEarnings.toFixed(2)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-white/60 text-sm">Yearly</span>
-              <span className="text-mint font-medium">+${yearlyEarnings.toFixed(2)}</span>
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={() => deposit()}
-          disabled={!amount || parseFloat(amount) <= 0 || isPending || isSuccess}
-          className="w-full btn-primary flex items-center justify-center gap-2 py-4 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isPending ? (
-            <Loader2 size={18} className="animate-spin" />
-          ) : isSuccess ? (
-            <Check size={18} />
-          ) : null}
-          {isPending ? "Processing..." : isSuccess ? "Success!" : "Deposit to Pool"}
-        </button>
-
-        {error && (
-          <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-red-400 text-sm">
-            <AlertCircle size={16} />
-            {error.message || "Transaction failed"}
-          </div>
-        )}
-
-        {isSuccess && (
-          <div className="mt-4 p-3 rounded-xl bg-mint/10 border border-mint/20 flex items-center gap-2 text-mint text-sm">
-            <Check size={16} />
-            Successfully deposited {amount} USDC!
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ========== Main Page Component ==========
 export default function PoolsPage() {
   const { isConnected, address } = useAccount();
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
-  const [selectedPool, setSelectedPool] = useState<(typeof pools)[0] | null>(null);
-  const [showIndividualPools, setShowIndividualPools] = useState(false);
 
   const { apyData, isLoading, lastUpdated } = useGMXApy();
   
@@ -856,8 +593,8 @@ export default function PoolsPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-display font-bold text-white mb-2">Choose Your Strategy</h1>
-        <p className="text-white/60">Deploy your USDC into yield-generating pools</p>
+        <h1 className="text-3xl font-display font-bold text-white mb-2">Quick Start</h1>
+        <p className="text-white/60">Pick a strategy. Deposit. Done. (Under 2 minutes)</p>
         {/* Last Updated indicator */}
         {lastUpdated && (
           <p className="text-white/40 text-xs mt-2">
@@ -970,38 +707,30 @@ export default function PoolsPage() {
             </div>
           </div>
 
-          {/* Individual Pools Section */}
+          {/* Advanced Users CTA */}
           <div className="border-t border-white/10 pt-8">
-            <button
-              onClick={() => setShowIndividualPools(!showIndividualPools)}
-              className="flex items-center gap-2 text-white/60 hover:text-white transition-colors mb-6"
-            >
-              <ChevronDown
-                size={20}
-                className={`transition-transform ${showIndividualPools ? "rotate-180" : ""}`}
-              />
-              <span>Or choose individual pools</span>
-            </button>
-
-            {showIndividualPools && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {pools.map((pool) => {
-                  const poolApy = apyData[pool.name];
-                  return (
-                    <PoolCard
-                      key={pool.name}
-                      pool={pool}
-                      apy={poolApy?.totalApy || 0}
-                      feeApy={poolApy?.feeApy || 0}
-                      perfApy={poolApy?.perfApy || 0}
-                      tvl={poolApy?.tvlUsd || 0}
-                      isLoading={isLoading}
-                      onDeposit={() => setSelectedPool(pool)}
-                    />
-                  );
-                })}
+            <div className="glass-card p-6 bg-gradient-to-br from-purple-500/10 via-mint/5 to-blue-500/10 border border-purple-500/20">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-mint flex items-center justify-center">
+                    <span className="text-2xl">🎯</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Want more control?</h3>
+                    <p className="text-white/60 text-sm">
+                      Create a custom portfolio with any pool allocation. Share it and earn 20% of followers' gains.
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href="/app/vaults"
+                  className="btn-primary px-6 py-3 whitespace-nowrap flex items-center gap-2"
+                >
+                  Create Portfolio
+                  <span>→</span>
+                </a>
               </div>
-            )}
+            </div>
           </div>
         </>
       )}
@@ -1021,15 +750,6 @@ export default function PoolsPage() {
           strategy={selectedStrategy}
           apyData={apyData}
           onClose={() => setSelectedStrategy(null)}
-        />
-      )}
-
-      {/* Individual Pool Deposit Modal */}
-      {selectedPool && (
-        <DepositModal
-          pool={selectedPool}
-          apy={apyData[selectedPool.name]?.totalApy || 0}
-          onClose={() => setSelectedPool(null)}
         />
       )}
     </div>

@@ -7,9 +7,9 @@ import {
   Wallet, 
   PiggyBank, 
   Landmark, 
-  Layers,
+  Zap,
   BarChart3,
-  Sparkles,
+  Users,
   User,
   type LucideIcon,
 } from 'lucide-react';
@@ -20,16 +20,17 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: string;
+  description?: string;
 }
 
 const navItems: NavItem[] = [
   { href: '/app', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/app/fund', label: 'Fund', icon: Wallet },
+  { href: '/app/pools', label: 'Quick Start', icon: Zap, description: '3 simple strategies' },
+  { href: '/app/markets', label: 'Research', icon: BarChart3, description: 'Analyze GM pools' },
+  { href: '/app/vaults', label: 'Social Trading', icon: Users, description: 'Copy top traders' },
   { href: '/app/lend', label: 'Lend', icon: PiggyBank },
   { href: '/app/borrow', label: 'Borrow', icon: Landmark },
-  { href: '/app/pools', label: 'Pools', icon: Layers },
-  { href: '/app/markets', label: 'Markets', icon: BarChart3 },
-  { href: '/app/vaults', label: 'Portfolios', icon: Sparkles, badge: 'NEW' },
   { href: '/app/profile', label: 'Profile', icon: User },
 ];
 

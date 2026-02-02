@@ -986,36 +986,91 @@ export default function VaultsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header with gradient text */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-4xl font-display font-bold mb-2">
           <span className="bg-gradient-to-r from-purple-400 via-pink-500 to-orange-400 bg-clip-text text-transparent">
             Follow Top Traders
           </span>
         </h1>
         <p className="text-white/60 text-lg">Copy strategies from the best. Earn together.</p>
+      </div>
+
+      {/* Creator Hero Banner - Earn 20% */}
+      <div className="mb-8 relative overflow-hidden">
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/30 via-pink-500/30 to-orange-500/30 rounded-2xl animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-br from-mint/10 to-transparent rounded-2xl" />
         
-        {/* Fee structure tooltip */}
-        <div className="mt-3 inline-flex items-center gap-2 group relative">
-          <Info size={16} className="text-white/40" />
-          <span className="text-white/40 text-sm">How earnings are split</span>
-          <div className="absolute left-0 top-full mt-2 p-4 bg-navy-100 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 min-w-[280px]">
-            <p className="text-white font-medium mb-3">Yield Distribution</p>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-white/60">🎯 Depositors</span>
-                <span className="text-mint font-medium">70%</span>
+        <div className="relative glass-card p-6 md:p-8 border border-purple-500/30 rounded-2xl">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            {/* Left content */}
+            <div className="flex items-center gap-6">
+              <div className="relative">
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 flex items-center justify-center text-5xl shadow-2xl shadow-purple-500/30">
+                  💰
+                </div>
+                <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-mint flex items-center justify-center text-navy font-bold text-sm animate-bounce">
+                  20%
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-white/60">👑 Vault Creator</span>
-                <span className="text-purple-400 font-medium">20%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/60">⚡ Platform Fee</span>
-                <span className="text-white/60 font-medium">10%</span>
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Create & Earn</h2>
+                <p className="text-white/70 text-sm md:text-base max-w-md">
+                  Build your portfolio strategy. Share your link. <span className="text-mint font-semibold">Earn 20% of your followers' gains.</span>
+                </p>
+                <div className="flex flex-wrap gap-4 mt-4 text-sm">
+                  <div className="flex items-center gap-2 text-white/60">
+                    <Zap size={16} className="text-mint" />
+                    <span>Instant payouts</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60">
+                    <Users size={16} className="text-purple-400" />
+                    <span>Unlimited followers</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-white/60">
+                    <TrendingUp size={16} className="text-orange-400" />
+                    <span>Build your rep</span>
+                  </div>
+                </div>
               </div>
             </div>
-            <p className="text-white/40 text-xs mt-3">Creators earn when their followers profit!</p>
+            
+            {/* Right CTA */}
+            <button
+              onClick={() => setShowCreateVault(true)}
+              className="relative group px-8 py-4 rounded-xl font-semibold text-white overflow-hidden whitespace-nowrap"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 group-hover:scale-105 transition-transform" />
+              <span className="relative flex items-center gap-2">
+                Start Earning
+                <ArrowUpRight size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+              </span>
+            </button>
           </div>
+        </div>
+      </div>
+
+      {/* Fee structure info */}
+      <div className="mb-6 flex items-center gap-2 group relative">
+        <Info size={16} className="text-white/40" />
+        <span className="text-white/40 text-sm">How earnings are split</span>
+        <div className="absolute left-0 top-full mt-2 p-4 bg-navy-100 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 min-w-[280px]">
+          <p className="text-white font-medium mb-3">Yield Distribution</p>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-white/60">🎯 Depositors</span>
+              <span className="text-mint font-medium">70%</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/60">👑 Vault Creator</span>
+              <span className="text-purple-400 font-medium">20%</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/60">⚡ Platform Fee</span>
+              <span className="text-white/60 font-medium">10%</span>
+            </div>
+          </div>
+          <p className="text-white/40 text-xs mt-3">Creators earn when their followers profit!</p>
         </div>
       </div>
 
