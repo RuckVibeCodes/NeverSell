@@ -180,21 +180,22 @@
   pointer-events: auto !important;
 }
 
-/* Section z-index stacking */
-main > div {
+/* Section z-index stacking - target section elements (not div) */
+main > section {
   position: relative;
+  background-color: #05070A;
 }
 
-main > div:nth-child(1) { z-index: 10; }
-main > div:nth-child(2) { z-index: 20; }
-main > div:nth-child(3) { z-index: 30; }
-main > div:nth-child(4) { z-index: 40; }
-main > div:nth-child(5) { z-index: 50; }
-main > div:nth-child(6) { z-index: 60; }
-main > div:nth-child(7) { z-index: 70; }
-main > div:nth-child(8) { z-index: 80; }
-main > div:nth-child(9) { z-index: 90; }
-main > div:nth-child(10) { z-index: 100; }
+main > section:nth-child(1) { z-index: 10; }
+main > section:nth-child(2) { z-index: 20; }
+main > section:nth-child(3) { z-index: 30; }
+main > section:nth-child(4) { z-index: 40; }
+main > section:nth-child(5) { z-index: 50; }
+main > section:nth-child(6) { z-index: 60; }
+main > section:nth-child(7) { z-index: 70; }
+main > section:nth-child(8) { z-index: 80; }
+main > section:nth-child(9) { z-index: 90; }
+main > section:nth-child(10) { z-index: 100; }
 
 /* Hero line animation helper */
 .hero-line {
