@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { 
   LayoutDashboard, 
   Wallet, 
@@ -14,7 +15,6 @@ import {
   User,
   Menu,
   X,
-  ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -24,22 +24,21 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: string;
-  description?: string;
 }
 
 const navItems: NavItem[] = [
   { href: '/app', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/app/fund', label: 'Fund', icon: Wallet },
-  { href: '/app/pools', label: 'Quick Start', icon: Zap, description: '3 simple strategies' },
-  { href: '/app/markets', label: 'Research', icon: BarChart3, description: 'Analyze GM pools' },
-  { href: '/app/vaults', label: 'Social Trading', icon: Users, description: 'Copy top traders' },
+  { href: '/app/pools', label: 'Quick Start', icon: Zap },
+  { href: '/app/markets', label: 'Research', icon: BarChart3 },
+  { href: '/app/vaults', label: 'Social Trading', icon: Users },
   { href: '/app/lend', label: 'Lend', icon: PiggyBank },
   { href: '/app/borrow', label: 'Borrow', icon: Landmark },
   { href: '/app/profile', label: 'Profile', icon: User },
 ];
 
 /**
- * HamburgerMenu - Slide-out drawer menu for mobile
+ * HamburgerMenu - Fullscreen overlay menu for mobile (matches landing page style)
  * Contains all navigation items with wallet connect at bottom
  */
 export function HamburgerMenu() {
@@ -74,96 +73,151 @@ export function HamburgerMenu() {
         {isOpen ? <X size={24} className="text-white" /> : <Menu size={24} className="text-white" />}
       </button>
 
-      {/* Overlay */}
+      {/* Fullscreen Mobile Menu - Matches landing page style */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-
-      {/* Slide-out Drawer */}
-      <div className={cn(
-        'fixed top-0 right-0 z-50 h-full w-80 max-w-[85vw] bg-navy border-l border-white/5 transform transition-transform duration-300 ease-out lg:hidden',
-        isOpen ? 'translate-x-0' : 'translate-x-full'
-      )}>
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-between h-16 px-4 border-b border-white/5">
-            <span className="font-display font-bold text-lg text-white">Menu</span>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-2 rounded-lg hover:bg-white/5 transition-colors"
-            >
-              <X size={20} className="text-white/60" />
-            </button>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="flex-1 overflow-y-auto py-4">
-            <ul className="space-y-1 px-3">
+        <div className="fixed inset-0 z-40 lg:hidden">
+          {/* Background overlay */}
+          <div
+            className="absolute inset-0 bg-navy/98 backdrop-blur-xl"
+            onClick={() => setIsOpen(false)}
+          />
+          
+          {/* Close button */}
+          <button
+            onClick={() => setIsOpen(false)}
+            className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/5 transition-colors z-50"
+          >
+            <X size={24} className="text-white/60" />
+          </button>
+          
+          {/* Centered navigation links */}
+          <div className="relative flex flex-col items-center justify-center h-full gap-4 px-6">
+            {/* Nav links */}
+            <nav className="flex flex-col items-center gap-3">
               {navItems.map((item) => {
                 const isActive = pathname === item.href || 
                   (item.href !== '/app' && pathname.startsWith(item.href));
                 
                 return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 px-6 py-3 rounded-2xl text-xl font-display transition-all duration-200',
+                      isActive
+                        ? 'bg-mint/10 text-mint border border-mint/20'
+                        : 'text-white/80 hover:text-mint hover:bg-white/5'
+                    )}
+                  >
+                    <item.icon 
+                      size={22} 
                       className={cn(
-                        'flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200',
-                        isActive
-                          ? 'bg-mint/10 text-mint'
-                          : 'text-white/60 hover:text-white hover:bg-white/5'
-                      )}
-                    >
-                      <item.icon 
-                        size={20} 
-                        className={cn(
-                          'transition-colors flex-shrink-0',
-                          isActive ? 'text-mint' : 'text-white/40'
-                        )} 
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span>{item.label}</span>
-                          {item.badge && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full">
-                              {item.badge}
-                            </span>
-                          )}
-                        </div>
-                        {item.description && (
-                          <p className={cn(
-                            'text-[11px] mt-0.5',
-                            isActive ? 'text-mint/60' : 'text-white/40'
-                          )}>
-                            {item.description}
-                          </p>
-                        )}
-                      </div>
-                      <ChevronRight 
-                        size={16} 
-                        className={cn(
-                          'transition-transform flex-shrink-0',
-                          isActive ? 'text-mint' : 'text-white/30 group-hover:text-white/50'
-                        )} 
-                      />
-                    </Link>
-                  </li>
+                        'transition-colors',
+                        isActive ? 'text-mint' : 'text-white/50'
+                      )} 
+                    />
+                    <span>{item.label}</span>
+                    {item.badge && (
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full">
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
                 );
               })}
-            </ul>
-          </nav>
+            </nav>
+            
+            {/* Wallet connect button at bottom */}
+            <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-4 px-6">
+              <div className="w-full max-w-xs">
+                <ConnectButton.Custom>
+                  {({
+                    account,
+                    chain,
+                    openAccountModal,
+                    openChainModal,
+                    openConnectModal,
+                    mounted,
+                  }) => {
+                    const ready = mounted;
+                    const connected = ready && account && chain;
 
-          {/* Bottom Section - Version */}
-          <div className="border-t border-white/5 p-4 bg-navy/50 backdrop-blur-xl">
-            <p className="text-[10px] text-white/30 text-center">
-              NeverSell v1.0 • DeFi Made Simple
-            </p>
+                    return (
+                      <div
+                        {...(!ready && {
+                          'aria-hidden': true,
+                          style: {
+                            opacity: 0,
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                          },
+                        })}
+                        className="w-full"
+                      >
+                        {(() => {
+                          if (!connected) {
+                            return (
+                              <button
+                                onClick={openConnectModal}
+                                className="w-full btn-primary text-navy hover:opacity-90 px-8 py-4 rounded-2xl text-lg font-semibold transition-all flex items-center justify-center gap-2"
+                              >
+                                <Wallet size={20} />
+                                Connect Wallet
+                              </button>
+                            );
+                          }
+
+                          if (chain.unsupported) {
+                            return (
+                              <button
+                                onClick={openChainModal}
+                                className="w-full bg-red-500 text-white px-8 py-4 rounded-2xl text-lg font-semibold transition-all"
+                              >
+                                Wrong Network
+                              </button>
+                            );
+                          }
+
+                          return (
+                            <div className="flex flex-col gap-3 w-full">
+                              <button
+                                onClick={openChainModal}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition-all"
+                              >
+                                {chain.hasIcon && chain.iconUrl && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    alt={chain.name ?? 'Chain'}
+                                    src={chain.iconUrl}
+                                    className="w-5 h-5 rounded-full"
+                                  />
+                                )}
+                                <span className="font-medium">{chain.name}</span>
+                              </button>
+                              <button
+                                onClick={openAccountModal}
+                                className="w-full btn-primary text-navy px-8 py-4 rounded-2xl text-lg font-semibold transition-all flex items-center justify-center gap-2"
+                              >
+                                {account.displayName}
+                              </button>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  }}
+                </ConnectButton.Custom>
+              </div>
+              
+              {/* Version info */}
+              <p className="text-xs text-white/30">
+                NeverSell v1.0 • DeFi Made Simple
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 }
