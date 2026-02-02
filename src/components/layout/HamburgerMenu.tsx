@@ -82,12 +82,12 @@ export function HamburgerMenu({ onOpenChange }: HamburgerMenuProps) {
         {isOpen ? <X size={24} className="text-white" /> : <Menu size={24} className="text-white" />}
       </button>
 
-      {/* Fullscreen Mobile Menu - z-[60] to cover navbar (z-50) */}
+      {/* Fullscreen Mobile Menu - z-[9999] to cover EVERYTHING including RainbowKit portals */}
       {isOpen && (
-        <div className="fixed inset-0 z-[60] lg:hidden">
-          {/* Background overlay */}
+        <div className="fixed inset-0 z-[9999] lg:hidden">
+          {/* Background overlay - solid color to ensure coverage */}
           <div
-            className="absolute inset-0 bg-navy/98 backdrop-blur-xl"
+            className="absolute inset-0 bg-[#05070A]"
             onClick={() => setIsOpen(false)}
           />
           
