@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { CreditCard, Loader2, ExternalLink } from 'lucide-react';
 
 interface OnrampButtonProps {
-  address: string;
+  address?: string; // Optional - can work without wallet
   defaultAsset?: string;
   defaultNetwork?: string;
   presetFiatAmount?: number;
@@ -16,7 +16,9 @@ const COINBASE_PROJECT_ID = process.env.NEXT_PUBLIC_COINBASE_PROJECT_ID;
 
 /**
  * Coinbase Onramp Button - Opens the Coinbase Buy widget
- * Uses session tokens for secure authentication
+ * Works with or without a connected wallet
+ * - With wallet: Uses session token auth, funds go directly to connected wallet
+ * - Without wallet: Opens Coinbase where user can create/connect their own wallet
  */
 export function OnrampButton({
   address,
@@ -30,44 +32,59 @@ export function OnrampButton({
   const [error, setError] = useState<string | null>(null);
 
   const handleOnramp = useCallback(async () => {
-    if (!address || disabled) return;
+    if (disabled) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      // Fetch session token from backend
-      const response = await fetch('/api/coinbase/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address,
-          blockchains: ['ethereum', 'arbitrum', 'base', 'optimism'],
-          assets: ['ETH', 'USDC', 'USDT', 'DAI'],
-        }),
-      });
+      // If user has a connected wallet, use session token auth
+      if (address) {
+        const response = await fetch('/api/coinbase/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address,
+            blockchains: ['ethereum', 'arbitrum', 'base', 'optimism'],
+            assets: ['ETH', 'USDC', 'USDT', 'DAI'],
+          }),
+        });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to initialize onramp');
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to initialize onramp');
+        }
+
+        const { token } = await response.json();
+
+        // Build authenticated Coinbase Onramp URL
+        const onrampUrl = new URL('https://pay.coinbase.com/buy/select-asset');
+        onrampUrl.searchParams.set('sessionToken', token);
+        
+        if (COINBASE_PROJECT_ID) {
+          onrampUrl.searchParams.set('appId', COINBASE_PROJECT_ID);
+        }
+        
+        onrampUrl.searchParams.set('defaultNetwork', defaultNetwork);
+        onrampUrl.searchParams.set('defaultAsset', defaultAsset);
+        onrampUrl.searchParams.set('presetFiatAmount', presetFiatAmount.toString());
+
+        window.open(onrampUrl.toString(), '_blank', 'width=460,height=750');
+      } else {
+        // No wallet connected - open Coinbase directly
+        // User will create/connect wallet through Coinbase flow
+        const onrampUrl = new URL('https://pay.coinbase.com/buy/select-asset');
+        
+        if (COINBASE_PROJECT_ID) {
+          onrampUrl.searchParams.set('appId', COINBASE_PROJECT_ID);
+        }
+        
+        onrampUrl.searchParams.set('defaultNetwork', defaultNetwork);
+        onrampUrl.searchParams.set('defaultAsset', defaultAsset);
+        onrampUrl.searchParams.set('presetFiatAmount', presetFiatAmount.toString());
+
+        window.open(onrampUrl.toString(), '_blank', 'width=460,height=750');
       }
-
-      const { token } = await response.json();
-
-      // Build Coinbase Onramp URL
-      const onrampUrl = new URL('https://pay.coinbase.com/buy/select-asset');
-      onrampUrl.searchParams.set('sessionToken', token);
-      
-      if (COINBASE_PROJECT_ID) {
-        onrampUrl.searchParams.set('appId', COINBASE_PROJECT_ID);
-      }
-      
-      onrampUrl.searchParams.set('defaultNetwork', defaultNetwork);
-      onrampUrl.searchParams.set('defaultAsset', defaultAsset);
-      onrampUrl.searchParams.set('presetFiatAmount', presetFiatAmount.toString());
-
-      // Open in new window
-      window.open(onrampUrl.toString(), '_blank', 'width=460,height=750');
     } catch (err) {
       console.error('Onramp error:', err);
       setError(err instanceof Error ? err.message : 'Failed to open buy widget');
@@ -80,7 +97,7 @@ export function OnrampButton({
     <div className="flex flex-col">
       <button
         onClick={handleOnramp}
-        disabled={disabled || isLoading || !address}
+        disabled={disabled || isLoading}
         className={`flex items-center justify-center gap-2 py-4 px-6 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-400 hover:to-blue-500 shadow-lg shadow-blue-500/25 ${className}`}
       >
         {isLoading ? (

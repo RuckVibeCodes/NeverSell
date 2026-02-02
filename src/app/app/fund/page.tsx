@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { 
-  Wallet, 
   ArrowDown, 
   Loader2, 
   Check, 
@@ -112,7 +111,7 @@ const DEST_TOKENS = [
   { symbol: "ARB", name: "Arbitrum", address: "0x912CE59144191C1204E64559FE8253a0e49E6548", decimals: 18, icon: "🔷" },
 ];
 
-// Dropdown component
+// Dropdown component - mobile optimized
 function Dropdown<T extends { symbol: string; name: string; icon: string }>({
   items,
   selected,
@@ -134,23 +133,23 @@ function Dropdown<T extends { symbol: string; name: string; icon: string }>({
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-navy-light border border-white/10 hover:border-mint/30 transition-colors min-w-[140px] ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+        className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-navy-light border border-white/10 hover:border-mint/30 transition-colors min-w-[100px] sm:min-w-[140px] ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         {selected ? (
           <>
-            <TokenLogo symbol={selected.symbol} size={24} />
-            <span className="text-white font-medium">{selected.symbol}</span>
+            <TokenLogo symbol={selected.symbol} size={20} className="sm:w-6 sm:h-6" />
+            <span className="text-white font-medium text-sm sm:text-base">{selected.symbol}</span>
           </>
         ) : (
-          <span className="text-white/50">{label}</span>
+          <span className="text-white/50 text-sm sm:text-base">{label}</span>
         )}
-        {!disabled && <ChevronDown size={16} className="text-white/50 ml-auto" />}
+        {!disabled && <ChevronDown size={14} className="text-white/50 ml-auto sm:w-4 sm:h-4" />}
       </button>
 
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full left-0 mt-2 z-50 min-w-[180px] glass-card rounded-xl py-2 shadow-xl">
+          <div className="absolute top-full left-0 mt-2 z-50 min-w-[160px] sm:min-w-[180px] glass-card rounded-xl py-2 shadow-xl max-h-[60vh] overflow-y-auto">
             {items.map((item) => (
               <button
                 key={item.symbol}
@@ -159,12 +158,12 @@ function Dropdown<T extends { symbol: string; name: string; icon: string }>({
                   onSelect(item);
                   setIsOpen(false);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-mint/10 transition-colors text-left"
+                className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 hover:bg-mint/10 transition-colors text-left"
               >
-                <TokenLogo symbol={item.symbol} size={24} />
+                <TokenLogo symbol={item.symbol} size={20} className="sm:w-6 sm:h-6" />
                 <div>
-                  <div className="text-white font-medium">{item.symbol}</div>
-                  <div className="text-white/40 text-xs">{item.name}</div>
+                  <div className="text-white font-medium text-sm sm:text-base">{item.symbol}</div>
+                  <div className="text-white/40 text-[10px] sm:text-xs">{item.name}</div>
                 </div>
               </button>
             ))}
@@ -360,50 +359,42 @@ export default function FundPage() {
     : (selectedDestChain.id as number) !== ARBITRUM_CHAIN_ID;
 
   return (
-    <div className="max-w-xl mx-auto px-4 sm:px-6 py-8">
+    <div className="max-w-xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
       {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-display font-bold text-white mb-2">Fund Your Account</h1>
-        <p className="text-white/60">Swap any token to get started on Arbitrum</p>
+      <div className="text-center mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-1 sm:mb-2">Fund Your Account</h1>
+        <p className="text-white/60 text-sm sm:text-base">Swap any token to get started on Arbitrum</p>
       </div>
 
       {/* Coinbase Onramp - Buy with Card */}
-      <div className="glass-card rounded-2xl p-6 mb-6 relative overflow-hidden">
+      <div className="glass-card rounded-2xl p-4 sm:p-6 mb-6 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/5 to-mint/10" />
         <div className="relative">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-              <Sparkles size={24} className="text-white" />
+          <div className="flex items-start sm:items-center gap-3 mb-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0">
+              <Sparkles size={20} className="text-white sm:hidden" />
+              <Sparkles size={24} className="text-white hidden sm:block" />
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-semibold text-white flex flex-wrap items-center gap-2">
                 No crypto? No problem
                 <span className="px-2 py-0.5 rounded-full bg-mint/20 text-mint text-xs">Easiest</span>
               </h2>
-              <p className="text-white/60 text-sm">Buy USDC instantly with Apple Pay, card, or bank</p>
+              <p className="text-white/60 text-xs sm:text-sm">Buy USDC instantly with Apple Pay, card, or bank</p>
             </div>
           </div>
           
-          {isConnected && address ? (
-            <OnrampButton
-              address={address}
-              defaultAsset="USDC"
-              defaultNetwork="arbitrum"
-              presetFiatAmount={100}
-              className="w-full"
-            />
-          ) : (
-            <button
-              disabled
-              className="w-full flex items-center justify-center gap-3 py-4 rounded-xl bg-white/10 text-white/50 font-semibold cursor-not-allowed"
-            >
-              <Wallet size={20} />
-              Connect Wallet to Buy
-            </button>
-          )}
+          {/* Coinbase Onramp works with or without wallet */}
+          <OnrampButton
+            address={address}
+            defaultAsset="USDC"
+            defaultNetwork="arbitrum"
+            presetFiatAmount={100}
+            className="w-full"
+          />
           
           <p className="text-center text-white/40 text-xs mt-3">
-            Powered by Coinbase • Instant delivery to your wallet
+            Powered by Coinbase • {isConnected ? 'Instant delivery to your wallet' : 'No wallet needed to start'}
           </p>
         </div>
       </div>
@@ -416,43 +407,43 @@ export default function FundPage() {
       </div>
 
       {/* Direction Toggle */}
-      <div className="glass-card rounded-2xl p-2 mb-6 flex gap-2">
+      <div className="glass-card rounded-2xl p-1.5 sm:p-2 mb-4 sm:mb-6 flex gap-1.5 sm:gap-2">
         <button
           onClick={() => handleDirectionToggle('in')}
-          className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl text-sm sm:text-base font-medium transition-all flex items-center justify-center gap-1.5 sm:gap-2 ${
             bridgeDirection === 'in'
               ? 'bg-mint/20 text-mint border border-mint/30'
               : 'text-white/60 hover:text-white hover:bg-white/5'
           }`}
         >
-          <ArrowDown size={18} />
+          <ArrowDown size={16} className="sm:w-[18px] sm:h-[18px]" />
           Bridge In
         </button>
         <button
           onClick={() => handleDirectionToggle('out')}
-          className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl text-sm sm:text-base font-medium transition-all flex items-center justify-center gap-1.5 sm:gap-2 ${
             bridgeDirection === 'out'
               ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
               : 'text-white/60 hover:text-white hover:bg-white/5'
           }`}
         >
-          <ArrowDown size={18} className="rotate-180" />
+          <ArrowDown size={16} className="rotate-180 sm:w-[18px] sm:h-[18px]" />
           Bridge Out
         </button>
       </div>
 
       {/* Swap Interface - Always visible */}
-      <div className={`glass-card rounded-2xl p-6 space-y-4 ${!isConnected ? 'opacity-75' : ''}`}>
+      <div className={`glass-card rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4 ${!isConnected ? 'opacity-75' : ''}`}>
           {/* From Section */}
           <div>
-            <label className="text-white/60 text-sm mb-2 block">From</label>
-            <div className="bg-navy-light/50 border border-white/10 rounded-xl p-4 space-y-3">
-              <div className="flex items-center gap-3">
+            <label className="text-white/60 text-xs sm:text-sm mb-1.5 sm:mb-2 block">From</label>
+            <div className="bg-navy-light/50 border border-white/10 rounded-xl p-3 sm:p-4 space-y-2.5 sm:space-y-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 {bridgeDirection === 'out' ? (
                   /* Bridge OUT: Arbitrum is locked as source */
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 min-w-[140px]">
-                    <TokenLogo symbol="ARB" size={24} />
-                    <span className="text-blue-400 font-medium">Arbitrum</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-blue-500/10 border border-blue-500/20 min-w-[100px] sm:min-w-[140px]">
+                    <TokenLogo symbol="ARB" size={20} className="sm:w-6 sm:h-6" />
+                    <span className="text-blue-400 font-medium text-sm sm:text-base">Arbitrum</span>
                   </div>
                 ) : (
                   /* Bridge IN: Can select source chain */
@@ -473,23 +464,23 @@ export default function FundPage() {
                 />
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <input
                   type="number"
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="flex-1 bg-transparent text-white text-2xl font-semibold placeholder:text-white/20 focus:outline-none"
+                  className="flex-1 bg-transparent text-white text-xl sm:text-2xl font-semibold placeholder:text-white/20 focus:outline-none min-w-0"
                   disabled={status === 'executing' || !isConnected}
                 />
-                <div className="text-right">
-                  <div className="text-white/40 text-sm">
-                    Balance: {balanceLoading ? "..." : balance ? parseFloat(formatUnits(balance.value, balance.decimals)).toFixed(4) : "0.00"}
+                <div className="text-right flex-shrink-0">
+                  <div className="text-white/40 text-xs sm:text-sm">
+                    Bal: {balanceLoading ? "..." : balance ? parseFloat(formatUnits(balance.value, balance.decimals)).toFixed(4) : "0.00"}
                   </div>
                   <button
                     onClick={handleMaxClick}
                     disabled={!balance || status === 'executing' || !isConnected}
-                    className="text-mint text-sm hover:underline disabled:opacity-50"
+                    className="text-mint text-xs sm:text-sm hover:underline disabled:opacity-50"
                   >
                     MAX
                   </button>
@@ -507,16 +498,16 @@ export default function FundPage() {
 
           {/* To Section */}
           <div>
-            <label className="text-white/60 text-sm mb-2 block">
+            <label className="text-white/60 text-xs sm:text-sm mb-1.5 sm:mb-2 block">
               To {bridgeDirection === 'in' ? '(Arbitrum)' : `(${selectedDestChain.name})`}
             </label>
-            <div className="bg-navy-light/50 border border-white/10 rounded-xl p-4 space-y-3">
-              <div className="flex items-center gap-3">
+            <div className="bg-navy-light/50 border border-white/10 rounded-xl p-3 sm:p-4 space-y-2.5 sm:space-y-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 {bridgeDirection === 'in' ? (
                   /* Bridge IN: Arbitrum is locked as destination */
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 min-w-[140px]">
-                    <TokenLogo symbol="ARB" size={24} />
-                    <span className="text-blue-400 font-medium">Arbitrum</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-blue-500/10 border border-blue-500/20 min-w-[100px] sm:min-w-[140px]">
+                    <TokenLogo symbol="ARB" size={20} className="sm:w-6 sm:h-6" />
+                    <span className="text-blue-400 font-medium text-sm sm:text-base">Arbitrum</span>
                   </div>
                 ) : (
                   /* Bridge OUT: Can select destination chain */
@@ -538,8 +529,8 @@ export default function FundPage() {
               </div>
 
               <div className="flex items-center">
-                <div className="text-white/40 text-sm">You receive:</div>
-                <div className="ml-auto text-white text-xl font-semibold">
+                <div className="text-white/40 text-xs sm:text-sm">You receive:</div>
+                <div className="ml-auto text-white text-base sm:text-xl font-semibold truncate max-w-[50%]">
                   {status === 'quoting' ? (
                     <span className="text-white/40">Calculating...</span>
                   ) : status === 'quoted' && feeCalculations ? (
