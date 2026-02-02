@@ -7,10 +7,11 @@ import { HamburgerMenu } from './HamburgerMenu';
 
 /**
  * App Navbar - Top navigation bar for the app
- * Shows logo, hamburger menu, and wallet connection
+ * - Desktop: Logo + wallet connect
+ * - Mobile: Logo + hamburger (wallet is inside hamburger menu)
  */
 export function AppNavbar() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [, setIsMenuOpen] = useState(false);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-white/5 bg-navy/80 backdrop-blur-xl">
@@ -25,21 +26,16 @@ export function AppNavbar() {
           </span>
         </Link>
         
-        {/* Right side - Wallet + Hamburger menu */}
+        {/* Right side */}
         <div className="flex items-center gap-2">
-          {/* Wallet button - hidden when mobile menu is open */}
-          {!isMenuOpen && (
-            <div className="navbar-wallet-btn">
-              <ConnectButton 
-                chainStatus="icon"
-                showBalance={false}
-                accountStatus={{
-                  smallScreen: 'avatar',
-                  largeScreen: 'full',
-                }}
-              />
-            </div>
-          )}
+          {/* Wallet button - DESKTOP ONLY (hidden on mobile, wallet is in hamburger menu) */}
+          <div className="hidden lg:block">
+            <ConnectButton 
+              chainStatus="icon"
+              showBalance={false}
+              accountStatus="full"
+            />
+          </div>
           {/* Hamburger menu - mobile only */}
           <HamburgerMenu onOpenChange={setIsMenuOpen} />
         </div>
