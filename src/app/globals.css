@@ -294,3 +294,32 @@ input:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Mobile performance optimizations */
+@media (max-width: 1024px) {
+  /* Reduce blur on decorative orbs - heavy on mobile GPU */
+  .animate-float-slow,
+  .animate-float {
+    filter: blur(80px) !important;
+    opacity: 0.5 !important;
+  }
+  
+  /* Reduce backdrop-filter blur on mobile */
+  .glass-card,
+  .glass-card-strong {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  
+  /* Ensure sections are visible and clickable on mobile */
+  main > section {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: auto;
+  }
+  
+  /* Force hardware acceleration for smooth scrolling */
+  main {
+    -webkit-overflow-scrolling: touch;
+  }
+}

@@ -23,8 +23,8 @@ const pillars = [
 const FinalCTA = () => {
   return (
     <section className="relative w-full py-24 lg:py-32 flex items-center justify-center overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      {/* Background glow - hidden on mobile for performance */}
+      <div className="hidden lg:flex absolute inset-0 items-center justify-center pointer-events-none">
         <div className="w-[600px] h-[600px] bg-gradient-to-br from-mint/15 via-electric-blue/10 to-electric-purple/5 rounded-full blur-[150px]" />
       </div>
 

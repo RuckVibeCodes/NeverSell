@@ -20,8 +20,8 @@ const LiveStats = () => {
                   {stat.prefix}{stat.value}{stat.suffix}
                 </div>
                 <div className="text-sm lg:text-base text-text-muted">{stat.label}</div>
-                {/* Subtle glow behind number */}
-                <div className="absolute inset-0 bg-mint/5 blur-2xl rounded-full -z-10" />
+                {/* Subtle glow behind number - hidden on mobile for performance */}
+                <div className="hidden lg:block absolute inset-0 bg-mint/5 blur-2xl rounded-full -z-10" />
               </div>
             ))}
           </div>

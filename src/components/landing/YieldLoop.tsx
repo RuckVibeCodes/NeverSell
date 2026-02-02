@@ -43,8 +43,8 @@ const loopSteps = [
 const YieldLoop = () => {
   return (
     <section id="yield-loop" className="relative w-full py-24 lg:py-32 overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      {/* Background glow - hidden on mobile for performance */}
+      <div className="hidden lg:flex absolute inset-0 items-center justify-center pointer-events-none">
         <div className="w-[700px] h-[700px] bg-gradient-radial from-mint/10 via-transparent to-transparent rounded-full blur-[100px]" />
       </div>
 

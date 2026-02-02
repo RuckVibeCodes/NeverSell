@@ -39,9 +39,11 @@ const Hero = () => {
 
   return (
     <section className="relative min-h-screen w-full flex items-center overflow-hidden gradient-bg">
-      {/* Background Orbs */}
-      <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-mint/20 rounded-full blur-[200px] animate-float-slow" />
-      <div className="absolute bottom-0 right-0 w-[700px] h-[700px] bg-electric-blue/15 rounded-full blur-[250px] animate-float" />
+      {/* Background Orbs - hidden on mobile for performance */}
+      <div className="hidden lg:block absolute top-0 left-0 w-[600px] h-[600px] bg-mint/20 rounded-full blur-[200px] animate-float-slow" />
+      <div className="hidden lg:block absolute bottom-0 right-0 w-[700px] h-[700px] bg-electric-blue/15 rounded-full blur-[250px] animate-float" />
+      {/* Mobile-optimized subtle gradient instead */}
+      <div className="lg:hidden absolute inset-0 bg-gradient-to-br from-mint/5 via-transparent to-electric-blue/5" />
 
       {/* Content */}
       <div className="relative z-10 w-full px-6 lg:px-10 pt-24 lg:pt-0">

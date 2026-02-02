@@ -17,7 +17,8 @@ const Method = () => {
     <section className="relative w-full py-24 lg:py-32 overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 bg-navy-light" />
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      {/* Background glow - hidden on mobile for performance */}
+      <div className="hidden lg:flex absolute inset-0 items-center justify-center pointer-events-none">
         <div className="w-[500px] h-[500px] bg-mint/5 rounded-full blur-[150px]" />
       </div>
 
