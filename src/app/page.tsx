@@ -1,55 +1,15 @@
-import { Suspense } from 'react';
-import dynamic from 'next/dynamic';
-
 import Navigation from '@/components/landing/Navigation';
 import Hero from '@/components/landing/Hero';
+import LiveStats from '@/components/landing/LiveStats';
+import YieldLoop from '@/components/landing/YieldLoop';
+import CreatorPortfolios from '@/components/landing/CreatorPortfolios';
+import Strategy from '@/components/landing/Strategy';
+import Method from '@/components/landing/Method';
+import Security from '@/components/landing/Security';
+import FAQ from '@/components/landing/FAQ';
+import FinalCTA from '@/components/landing/FinalCTA';
+import Footer from '@/components/landing/Footer';
 import { ScrollAnimations } from '@/components/landing/ScrollAnimations';
-
-// Lazy load below-the-fold components for faster initial load
-const LiveStats = dynamic(() => import('@/components/landing/LiveStats'), {
-  ssr: false,
-  loading: () => <div className="h-32 w-full" />,
-});
-
-const YieldLoop = dynamic(() => import('@/components/landing/YieldLoop'), {
-  ssr: false,
-  loading: () => <div className="min-h-screen w-full" />,
-});
-
-const CreatorPortfolios = dynamic(() => import('@/components/landing/CreatorPortfolios'), {
-  ssr: false,
-  loading: () => <div className="min-h-screen w-full" />,
-});
-
-const Strategy = dynamic(() => import('@/components/landing/Strategy'), {
-  ssr: false,
-  loading: () => <div className="min-h-screen w-full" />,
-});
-
-const Method = dynamic(() => import('@/components/landing/Method'), {
-  ssr: false,
-  loading: () => <div className="min-h-screen w-full" />,
-});
-
-const Security = dynamic(() => import('@/components/landing/Security'), {
-  ssr: false,
-  loading: () => <div className="min-h-screen w-full" />,
-});
-
-const FAQ = dynamic(() => import('@/components/landing/FAQ'), {
-  ssr: false,
-  loading: () => <div className="min-h-[50vh] w-full" />,
-});
-
-const FinalCTA = dynamic(() => import('@/components/landing/FinalCTA'), {
-  ssr: false,
-  loading: () => <div className="min-h-[40vh] w-full" />,
-});
-
-const Footer = dynamic(() => import('@/components/landing/Footer'), {
-  ssr: false,
-  loading: () => <div className="h-32 w-full" />,
-});
 
 export default function Home() {
   return (
@@ -60,34 +20,16 @@ export default function Home() {
       <Navigation />
       <main className="relative">
         <Hero />
-        <Suspense fallback={<div className="h-32 w-full" />}>
-          <LiveStats />
-        </Suspense>
-        <Suspense fallback={<div className="min-h-screen w-full" />}>
-          <YieldLoop />
-        </Suspense>
-        <Suspense fallback={<div className="min-h-screen w-full" />}>
-          <CreatorPortfolios />
-        </Suspense>
-        <Suspense fallback={<div className="min-h-screen w-full" />}>
-          <Strategy />
-        </Suspense>
-        <Suspense fallback={<div className="min-h-screen w-full" />}>
-          <Method />
-        </Suspense>
-        <Suspense fallback={<div className="min-h-screen w-full" />}>
-          <Security />
-        </Suspense>
-        <Suspense fallback={<div className="min-h-[50vh] w-full" />}>
-          <FAQ />
-        </Suspense>
-        <Suspense fallback={<div className="min-h-[40vh] w-full" />}>
-          <FinalCTA />
-        </Suspense>
+        <LiveStats />
+        <YieldLoop />
+        <CreatorPortfolios />
+        <Strategy />
+        <Method />
+        <Security />
+        <FAQ />
+        <FinalCTA />
       </main>
-      <Suspense fallback={<div className="h-32 w-full" />}>
-        <Footer />
-      </Suspense>
+      <Footer />
     </div>
   );
 }
