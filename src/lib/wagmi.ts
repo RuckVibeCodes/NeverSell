@@ -1,13 +1,9 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-import { 
-  arbitrum,
-  arbitrumSepolia,
-} from "wagmi/chains";
-import { http } from "wagmi";
+import { arbitrum } from "wagmi/chains";
 
 export const config = getDefaultConfig({
   appName: "NeverSell",
   projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || "demo",
-  chains: [arbitrum, arbitrumSepolia],
+  chains: [arbitrum],
   ssr: true,
 });
