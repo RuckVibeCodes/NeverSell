@@ -3,182 +3,168 @@
 import { useState } from 'react';
 import Image from 'next/image';
 
-// Token logo URLs from multiple sources for maximum coverage
-// Priority: 1. TrustWallet assets, 2. CoinGecko, 3. Custom mappings
+// Token logo URLs - using exact CoinGecko URLs from GMX SDK
+// Source: https://github.com/gmx-io/gmx-interface/blob/master/sdk/src/configs/tokens.ts
 
-// TrustWallet asset repo on jsDelivr CDN (most reliable)
-const TRUSTWALLET_CDN = 'https://cdn.jsdelivr.net/gh/trustwallet/assets@master/blockchains/arbitrum/assets';
-
-// CoinGecko API images (fallback)
 const COINGECKO_CDN = 'https://assets.coingecko.com/coins/images';
 
-// Known token address to logo mappings (Arbitrum addresses, lowercase)
-const TOKEN_LOGOS: Record<string, string> = {
-  // Native & Major
-  '0x82af49447d8a07e3bd95bd0d56f35241523fbab1': `${TRUSTWALLET_CDN}/0x82aF49447D8a07e3bd95BD0d56f35241523fBab1/logo.png`, // WETH
-  '0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f': `${TRUSTWALLET_CDN}/0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f/logo.png`, // WBTC
-  '0xaf88d065e77c8cc2239327c5edb3a432268e5831': `${TRUSTWALLET_CDN}/0xaf88d065e77c8cC2239327C5EDb3A432268e5831/logo.png`, // USDC
-  '0xff970a61a04b1ca14834a43f5de4533ebddb5cc8': `${TRUSTWALLET_CDN}/0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8/logo.png`, // USDC.e
-  '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9': `${TRUSTWALLET_CDN}/0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9/logo.png`, // USDT
-  '0xda10009cbd5d07dd0cecc66161fc93d7c9000da1': `${TRUSTWALLET_CDN}/0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1/logo.png`, // DAI
-  
-  // GMX ecosystem
-  '0xfc5a1a6eb076a2c7ad06ed22c90d7e710e35ad0a': `${TRUSTWALLET_CDN}/0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a/logo.png`, // GMX
-  '0x912ce59144191c1204e64559fe8253a0e49e6548': `${TRUSTWALLET_CDN}/0x912CE59144191C1204E64559FE8253a0e49E6548/logo.png`, // ARB
-  
-  // DeFi tokens
-  '0xf97f4df75117a78c1a5a0dbb814af92458539fb4': `${TRUSTWALLET_CDN}/0xf97f4df75117a78c1A5a0DBb814Af92458539FB4/logo.png`, // LINK
-  '0xfa7f8980b0f1e64a2062791cc3b0871572f1f7f0': `${TRUSTWALLET_CDN}/0xFa7F8980b0f1E64A2062791cc3b0871572f1F7f0/logo.png`, // UNI
-  '0xba5ddd1f9d7f570dc94a51479a000e3bce967196': `${TRUSTWALLET_CDN}/0xba5DdD1f9d7F570dc94a51479a000E3BCE967196/logo.png`, // AAVE
-  
-  // Memecoins & newer tokens (CoinGecko fallbacks)
-  '0x6985884c4392d348587b19cb9eaaf157f13271cd': `${COINGECKO_CDN}/28850/small/photo_2024-04-26_14-33-03.jpg`, // ZRO
-};
-
-// Symbol to CoinGecko ID mapping for fallback
-// Comprehensive list of all GMX-listed tokens + popular assets
-const SYMBOL_TO_COINGECKO: Record<string, string> = {
-  // Major cryptocurrencies
-  'ETH': '/279/small/ethereum.png',
-  'WETH': '/279/small/ethereum.png',
-  'BTC': '/1/small/bitcoin.png',
-  'WBTC': '/7598/small/wrapped_bitcoin_wbtc.png',
-  'USDC': '/6319/small/usdc.png',
-  'USDT': '/325/small/Tether.png',
-  'DAI': '/9956/small/Badge_Dai.png',
-  'SOL': '/4128/small/solana.png',
-  'BNB': '/825/small/bnb-icon2_2x.png',
-  'XRP': '/44/small/xrp-symbol-white-128.png',
-  'ADA': '/975/small/cardano.png',
-  'AVAX': '/12559/small/Avalanche_Circle_RedWhite_Trans.png',
-  'DOT': '/12171/small/polkadot.png',
-  'MATIC': '/4713/small/polygon.png',
-  'LTC': '/2/small/litecoin.png',
-  'TRX': '/1094/small/tron-logo.png',
-  'ATOM': '/1481/small/cosmos_hub.png',
-  'NEAR': '/10365/small/near.jpg',
+// Complete mapping from GMX's token config + additional tokens
+// Format: symbol -> full CoinGecko URL path after /coins/images/
+const SYMBOL_TO_IMAGE: Record<string, string> = {
+  // Major Cryptocurrencies (from GMX config)
+  'ETH': '279/small/ethereum.png?1595348880',
+  'WETH': '2518/thumb/weth.png?1628852295',
+  'BTC': '1/small/bitcoin.png?1547033579',
+  'WBTC': '26115/thumb/btcb.png?1655921693',
+  'SOL': '4128/small/solana.png?1640133422',
+  'BNB': '825/standard/bnb-icon2_2x.png?1696501970',
+  'XRP': '44/small/xrp-symbol-white-128.png?1605778731',
+  'ADA': '975/standard/cardano.png?1696502090',
+  'AVAX': '12559/small/coin-round-red.png?1604021818',
+  'DOT': '12171/standard/polkadot.png',
+  'LTC': '2/small/litecoin.png?1547033580',
+  'TRX': '1094/standard/tron-logo.png?1696502193',
+  'ATOM': '1481/standard/cosmos_hub.png?1696502525',
+  'NEAR': '10365/standard/near.jpg?1696510367',
+  'TON': '17980/standard/photo_2024-09-10_17.09.00.jpeg?1725963446',
+  'BCH': '780/standard/bitcoin-cash-circle.png?1696501932',
+  'ICP': '14495/standard/icp.png',
+  'APT': '26455/standard/aptos_round.png?1696525528',
+  'FIL': '12817/standard/filecoin.png',
+  'ALGO': '4030/standard/Algorand_400x400.png',
   
   // Layer 2 & Ecosystem tokens
-  'ARB': '/16547/small/photo_2023-03-29_21.11.00.jpeg',
-  'OP': '/25244/small/Optimism.png',
-  'GMX': '/18323/small/arbit.png',
+  'ARB': '16547/small/photo_2023-03-29_21.47.00.jpeg?1680097630',
+  'OP': '25244/standard/Optimism.png?1696524385',
+  'MATIC': '4713/standard/polygon.png',
+  'POL': '32440/standard/polygon.png?1698233684',
+  'STRK': '26997/standard/starknet.png',
+  'IMX': '17233/standard/immutableX-symbol-BLK-RGB.png',
+  'SKY': '33854/standard/sky.png',
   
-  // DeFi tokens
-  'LINK': '/877/small/chainlink-new-logo.png',
-  'UNI': '/12504/small/uni.png',
-  'AAVE': '/12645/small/AAVE.png',
-  'CRV': '/12124/small/Curve.png',
-  'MKR': '/1348/small/mkr.png',
-  'SNX': '/3406/small/SNX.png',
-  'COMP': '/10775/small/COMP.png',
-  'SUSHI': '/12271/small/sushi.png',
-  'CVX': '/15585/small/convex.png',
-  'PENDLE': '/15069/small/Pendle_Logo_Normal-03.png',
-  '1INCH': '/13469/small/1inch-token.png',
-  'LDO': '/13573/small/Lido_DAO.png',
-  'FXS': '/6953/small/frax_share.png',
+  // DeFi tokens (from GMX config)
+  'LINK': '877/thumb/chainlink-new-logo.png?1547034700',
+  'UNI': '12504/thumb/uniswap-uni.png?1600306604',
+  'AAVE': '12645/standard/AAVE.png?1696512452',
+  'CRV': '12124/standard/Curve.png',
+  'MKR': '1348/standard/mkr.png',
+  'SNX': '3406/standard/SNX.png',
+  'COMP': '10775/standard/COMP.png',
+  'SUSHI': '12271/standard/sushi.png',
+  'CVX': '15585/standard/convex.png',
+  'PENDLE': '15069/standard/Pendle_Logo_Normal-03.png?1696514728',
+  '1INCH': '13469/standard/1inch-token.png',
+  'LDO': '13573/standard/Lido_DAO.png',
+  'FXS': '6953/standard/frax_share.png',
+  'GMX': '18323/small/arbit.png?1631532468',
+  'DYDX': '17500/standard/dydx.png',
+  'GRT': '13397/standard/Graph_Token.png',
+  'ENS': '19785/standard/ens.png',
+  'RPL': '2848/standard/rpl.png',
+  'BAL': '11683/standard/Balancer.png',
+  'YFI': '11849/standard/yearn.jpg',
   
-  // Gaming & AI
-  'APE': '/24383/small/apecoin.jpg',
-  'IMX': '/17233/small/immutableX-symbol-BLK-RGB.png',
-  'FET': '/5681/small/Fetch.jpg',
-  'RNDR': '/11636/small/rndr.png',
-  'WLD': '/31069/small/worldcoin.jpeg',
+  // Stablecoins
+  'USDC': '6319/thumb/USD_Coin_icon.png?1547042389',
+  'USDT': '325/thumb/Tether-logo.png?1598003707',
+  'DAI': '9956/thumb/4943.png?1636636734',
+  'FRAX': '13422/small/frax_logo.png?1608476506',
+  'USDE': '33613/standard/USDE.png?1716355685',
+  'LUSD': '14666/standard/lusd.png',
   
-  // Meme coins
-  'DOGE': '/5/small/dogecoin.png',
-  'SHIB': '/11939/small/shiba.png',
-  'PEPE': '/24994/small/pepe.png',
-  'WIF': '/33566/small/wif.png',
-  'BONK': '/28600/small/bonk.jpg',
-  'FLOKI': '/10804/small/FLOKI.png',
-  'PENGU': '/53708/small/pudgy-penguins.jpg',
-  'TRUMP': '/35336/small/trump.png',
-  'FARTCOIN': '/52901/small/fartcoin.png',
+  // Meme coins (from GMX config)
+  'DOGE': '5/small/dogecoin.png?1547792256',
+  'SHIB': '11939/standard/shiba.png?1696511800',
+  'PEPE': '29850/standard/pepe-token.jpeg?1696528776',
+  'WIF': '33566/standard/dogwifhat.jpg?1702499428',
+  'BONK': '28600/standard/bonk.jpg?1696527587',
+  'FLOKI': '16746/standard/PNG_image.png?1696516318',
+  'MEME': '32528/standard/memecoin_%282%29.png?1698912168',
+  'MEW': '36440/standard/MEW.png?1711442286',
+  'BOME': '36071/standard/bome.png?1710407255',
+  'BRETT': '35529/standard/brett.png',
+  'POPCAT': '35899/standard/popcat.png',
+  'TRUMP': '35336/standard/trump.png',
+  'MELANIA': '53711/standard/melania.png',
   
   // Newer/Trending GMX tokens
-  'SEI': '/28205/small/sei-logo.png',
-  'TIA': '/31967/small/tia.jpg',
-  'SUI': '/26375/small/sui_asset.jpeg',
-  'STX': '/4847/small/stacks.png',
-  'INJ': '/12882/small/Secondary_Symbol.png',
-  'JUP': '/35114/small/jup.png',
-  'PYTH': '/31924/small/pyth.png',
-  'ENA': '/36124/small/ena.png',
-  'ONDO': '/26580/small/ONDO.png',
-  'STRK': '/26997/small/starknet.png',
-  'ZRO': '/28850/small/photo_2024-04-26_14-33-03.jpg',
-  'ORDI': '/28380/small/ORDI.png',
-  'EIGEN': '/35658/small/eigen.png',
-  'SPX6900': '/35750/small/spx.png',
-  'SPX': '/35750/small/spx.png',
+  'SEI': '28205/standard/Sei_Logo_-_Transparent.png?1696527207',
+  'SUI': '26375/standard/sui-ocean-square.png?1727791290',
+  'TIA': '31967/standard/tia.jpg?1696530772',
+  'STX': '2069/standard/Stacks_Logo_png.png?1709979332',
+  'INJ': '12882/standard/Secondary_Symbol.png',
+  'JUP': '35114/standard/jup.png',
+  'PYTH': '31924/standard/pyth.png',
+  'ENA': '36124/standard/ena.png',
+  'ONDO': '26580/standard/ONDO.png',
+  'ZRO': '28850/standard/photo_2024-04-26_14-33-03.jpg',
+  'ORDI': '30162/standard/ordi.png?1696529082',
+  'SATS': '30666/standard/_dD8qr3M_400x400.png?1702913020',
+  'EIGEN': '37441/standard/eigen.jpg?1728023974',
+  'TAO': '28452/standard/ARUsPeNQ_400x400.jpeg?1696527447',
+  'WLD': '31069/standard/worldcoin.jpeg?1696529903',
+  'APE': '24383/standard/apecoin.jpg?1696523566',
+  'RENDER': '11636/standard/rndr.png',
+  'FET': '5681/standard/Fetch.jpg',
+  'WSTETH': '18834/standard/wstETH.png?1696518295',
+  'TBTC': '11224/standard/0x18084fba666a33d37592fa2633fd49a74dd93a88.png?1696511155',
   
-  // Astar / ASTER
-  'ASTER': '/12885/small/astar.png',
-  'ASTR': '/12885/small/astar.png',
+  // Additional GMX pools
+  'KAS': '25034/standard/kas.png',
+  'OKB': '4463/standard/okb.png',
+  'CHZ': '8834/standard/chz.png',
+  'ASTR': '12885/standard/astar.png',
+  'ASTER': '12885/standard/astar.png',
+  'KTA': '28205/standard/Sei_Logo_-_Transparent.png', // Placeholder
+  'DOLO': '35645/standard/dolo.png',
+  'OG': '7676/standard/origin_protocol.png',
+  'SPX6900': '35750/standard/spx.png',
+  'SPX': '35750/standard/spx.png',
   
-  // Other GMX pools
-  'OG': '/7676/small/origin_protocol.png',
-  'KTA': '/14691/small/kta.png',
-  'DOLO': '/35645/small/dolo.png',
+  // Gold/Silver RWA
+  'XAU': '5246/standard/Gold.png',
+  'XAG': '5247/standard/Silver.png',
   
-  // Legacy
-  'HYPE': '/35381/small/hyperliquid.png',
-  'AI16Z': '/53063/small/ai16z.png',
-  'VIRTUAL': '/29420/small/virtual-protocol.png',
-  'XAU': '/5246/small/Gold.png',
-  'XAG': '/5247/small/Silver.png',
+  // AI tokens
+  'AI16Z': '53063/standard/ai16z.png',
+  'VIRTUAL': '29420/standard/virtual-protocol.png',
+  'HYPE': '35381/standard/hyperliquid.png',
+  
+  // Gaming/Metaverse
+  'SAND': '12129/standard/sandbox_logo.jpg',
+  'MANA': '1966/standard/decentraland.png',
+  'AXS': '13029/standard/axie_infinity_logo.png',
+  'GALA': '12493/standard/gala.png',
+  
+  // More recent additions
+  'PENGU': '53708/standard/pudgy-penguins.jpg',
+  'FARTCOIN': '52901/standard/fartcoin.png',
 };
 
 interface TokenLogoProps {
   symbol: string;
-  address?: string;
   size?: number;
   className?: string;
 }
 
-export function TokenLogo({ symbol, address, size = 32, className = '' }: TokenLogoProps) {
+export function TokenLogo({ symbol, size = 32, className = '' }: TokenLogoProps) {
   const [error, setError] = useState(false);
-  const [fallbackIndex, setFallbackIndex] = useState(0);
   
-  // Build list of image URLs to try
-  const getImageUrls = (): string[] => {
-    const urls: string[] = [];
-    
-    // 1. Try direct address mapping (TrustWallet)
-    if (address) {
-      const lowerAddress = address.toLowerCase();
-      if (TOKEN_LOGOS[lowerAddress]) {
-        urls.push(TOKEN_LOGOS[lowerAddress]);
-      }
-      // Try TrustWallet with checksummed address
-      urls.push(`${TRUSTWALLET_CDN}/${address}/logo.png`);
-    }
-    
-    // 2. Try CoinGecko by symbol
-    const upperSymbol = symbol.toUpperCase();
-    if (SYMBOL_TO_COINGECKO[upperSymbol]) {
-      urls.push(`${COINGECKO_CDN}${SYMBOL_TO_COINGECKO[upperSymbol]}`);
-    }
-    
-    return urls;
-  };
+  // Normalize symbol
+  const normalizedSymbol = symbol.toUpperCase().replace('.E', '').replace('WSOL', 'SOL');
   
-  const urls = getImageUrls();
-  const currentUrl = urls[fallbackIndex];
+  // Get image URL
+  const imagePath = SYMBOL_TO_IMAGE[normalizedSymbol];
+  const imageUrl = imagePath ? `${COINGECKO_CDN}/${imagePath}` : null;
   
-  // Handle image load error - try next URL
+  // Handle image load error
   const handleError = () => {
-    if (fallbackIndex < urls.length - 1) {
-      setFallbackIndex(fallbackIndex + 1);
-    } else {
-      setError(true);
-    }
+    setError(true);
   };
   
   // Fallback to symbol letter with gradient
-  if (error || !currentUrl) {
-    const gradientColors = getGradientColors(symbol);
+  if (error || !imageUrl) {
+    const gradientColors = getGradientColors(normalizedSymbol);
     return (
       <div 
         className={`rounded-full flex items-center justify-center text-white font-bold ${className}`}
@@ -196,7 +182,7 @@ export function TokenLogo({ symbol, address, size = 32, className = '' }: TokenL
   
   return (
     <Image
-      src={currentUrl}
+      src={imageUrl}
       alt={symbol}
       width={size}
       height={size}
@@ -219,6 +205,7 @@ function getGradientColors(symbol: string): [string, string] {
     'DAI': ['#F5AC37', '#F59E0B'],
     'ARB': ['#28A0F0', '#2563EB'],
     'SOL': ['#9945FF', '#14F195'],
+    'BNB': ['#F3BA2F', '#E6A700'],
     'LINK': ['#375BD2', '#2563EB'],
     'UNI': ['#FF007A', '#EC4899'],
     'AAVE': ['#B6509E', '#A855F7'],
@@ -226,6 +213,10 @@ function getGradientColors(symbol: string): [string, string] {
     'DOGE': ['#C2A633', '#EAB308'],
     'PEPE': ['#3D9C3C', '#22C55E'],
     'PENGU': ['#4A90D9', '#3B82F6'],
+    'SEI': ['#9B1C1C', '#DC2626'],
+    'SUI': ['#4DA2FF', '#3B82F6'],
+    'TRX': ['#EF0027', '#DC2626'],
+    'AVAX': ['#E84142', '#DC2626'],
   };
   
   return gradients[symbol.toUpperCase()] || ['#6B7280', '#4B5563'];
@@ -233,7 +224,7 @@ function getGradientColors(symbol: string): [string, string] {
 
 // Stacked token logos (e.g., for LP pairs)
 interface StackedTokenLogosProps {
-  tokens: { symbol: string; address?: string }[];
+  tokens: { symbol: string }[];
   size?: number;
   className?: string;
 }
@@ -241,7 +232,7 @@ interface StackedTokenLogosProps {
 export function StackedTokenLogos({ tokens, size = 32, className = '' }: StackedTokenLogosProps) {
   if (tokens.length === 0) return null;
   if (tokens.length === 1) {
-    return <TokenLogo symbol={tokens[0].symbol} address={tokens[0].address} size={size} className={className} />;
+    return <TokenLogo symbol={tokens[0].symbol} size={size} className={className} />;
   }
   
   return (
@@ -256,7 +247,6 @@ export function StackedTokenLogos({ tokens, size = 32, className = '' }: Stacked
         >
           <TokenLogo 
             symbol={token.symbol} 
-            address={token.address} 
             size={size}
             className="ring-2 ring-navy"
           />
