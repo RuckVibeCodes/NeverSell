@@ -305,7 +305,7 @@ export default function FundPage() {
     }
   };
 
-  const isCrossChain = selectedChain.id !== ARBITRUM_CHAIN_ID;
+  const isCrossChain = (selectedChain.id as number) !== ARBITRUM_CHAIN_ID;
 
   return (
     <div className="max-w-xl mx-auto px-4 sm:px-6 py-8">
