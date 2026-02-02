@@ -1,6 +1,3 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 
 const protocols = [
@@ -34,44 +31,16 @@ const checks = [
   '100% on-chain',
   '$50K bug bounty',
   '48-hour timelock',
+  'Built on Arbitrum',
 ];
 
 const Security = () => {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [isVisible, setIsVisible] = useState(true);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <section
-      id="security"
-      ref={sectionRef}
-      className="relative w-full py-24 lg:py-32"
-    >
+    <section id="security" className="relative w-full py-24 lg:py-32">
       <div className="w-full px-6 lg:px-10">
         <div className="max-w-4xl mx-auto">
           {/* Heading */}
-          <div 
-            className={`text-center mb-12 transition-all duration-700 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
-          >
+          <div className="text-center mb-12">
             <h2 className="font-display text-display-2 text-text-primary mb-4">
               Built on <span className="text-gradient">battle-tested</span> protocols.
             </h2>
@@ -82,13 +51,10 @@ const Security = () => {
 
           {/* Protocol Cards */}
           <div className="flex flex-wrap justify-center gap-6 mb-12">
-            {protocols.map((protocol, index) => (
+            {protocols.map((protocol) => (
               <div
                 key={protocol.name}
-                className={`glass-card rounded-2xl p-6 text-center min-w-[160px] hover:border-mint/20 transition-all group duration-500 ${
-                  isVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95'
-                }`}
-                style={{ transitionDelay: `${index * 150 + 200}ms` }}
+                className="glass-card rounded-2xl p-6 text-center min-w-[160px] hover:border-mint/20 transition-all group"
               >
                 <div className="mb-4 group-hover:scale-110 transition-transform">
                   {protocol.logo}
@@ -107,45 +73,16 @@ const Security = () => {
           </div>
 
           {/* Checklist */}
-          <div
-            className={`glass-card rounded-2xl p-8 lg:p-10 mb-10 transition-all duration-700 delay-500 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
-          >
+          <div className="glass-card rounded-2xl p-8 lg:p-10">
             <div className="grid sm:grid-cols-2 gap-4">
               {checks.map((check, index) => (
-                <div
-                  key={index}
-                  className={`flex items-center gap-3 text-text-secondary transition-all duration-500 ${
-                    isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'
-                  }`}
-                  style={{ transitionDelay: `${index * 100 + 600}ms` }}
-                >
+                <div key={index} className="flex items-center gap-3 text-text-secondary">
                   <div className="w-6 h-6 rounded-full bg-mint/15 flex items-center justify-center flex-shrink-0 border border-mint/25">
                     <Check className="w-3.5 h-3.5 text-mint" />
                   </div>
                   {check}
                 </div>
               ))}
-            </div>
-          </div>
-
-          {/* Built on Arbitrum Badge */}
-          <div 
-            className={`flex justify-center transition-all duration-700 delay-1000 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}
-          >
-            <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-electric-blue/10 border border-electric-blue/25">
-              <div className="w-8 h-8 rounded-lg bg-electric-blue/20 flex items-center justify-center">
-                <svg viewBox="0 0 32 32" className="w-5 h-5">
-                  <circle cx="16" cy="16" r="14" fill="#28A0F0" />
-                  <path d="M16 8l-6 10h4l2-5 2 5h4L16 8z" fill="white" />
-                </svg>
-              </div>
-              <span className="text-text-secondary text-sm">
-                Built on <span className="text-electric-blue font-medium">Arbitrum</span>
-              </span>
             </div>
           </div>
         </div>

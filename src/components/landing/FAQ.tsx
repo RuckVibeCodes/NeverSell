@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import {
   Accordion,
   AccordionContent,
@@ -42,65 +41,30 @@ const faqs = [
 ];
 
 const FAQ = () => {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [isVisible, setIsVisible] = useState(true);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <section
-      id="faq"
-      ref={sectionRef}
-      className="relative w-full py-24 lg:py-32"
-    >
+    <section id="faq" className="relative w-full py-24 lg:py-32">
       <div className="w-full px-6 lg:px-10">
         <div className="max-w-3xl mx-auto">
-          <h2
-            className={`font-display text-display-2 text-text-primary text-center mb-12 transition-all duration-700 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
-          >
+          <h2 className="font-display text-display-2 text-text-primary text-center mb-12">
             Questions? <span className="text-gradient">Answered.</span>
           </h2>
 
-          <div 
-            className={`transition-all duration-700 delay-200 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
-          >
-            <Accordion type="single" collapsible className="space-y-4">
-              {faqs.map((faq, index) => (
-                <AccordionItem
-                  key={index}
-                  value={`item-${index}`}
-                  className="glass-card rounded-xl border-0 px-6 data-[state=open]:border-mint/30 transition-colors"
-                >
-                  <AccordionTrigger className="text-text-primary text-left hover:no-underline py-5 text-base lg:text-lg font-medium">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-text-secondary pb-5 leading-relaxed">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </div>
+          <Accordion type="single" collapsible className="space-y-4">
+            {faqs.map((faq, index) => (
+              <AccordionItem
+                key={index}
+                value={`item-${index}`}
+                className="glass-card rounded-xl border-0 px-6 data-[state=open]:border-mint/30 transition-colors"
+              >
+                <AccordionTrigger className="text-text-primary text-left hover:no-underline py-5 text-base lg:text-lg font-medium">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-text-secondary pb-5 leading-relaxed">
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       </div>
     </section>

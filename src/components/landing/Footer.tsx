@@ -1,6 +1,3 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Twitter, MessageCircle, Send } from 'lucide-react';
@@ -17,42 +14,14 @@ const footerLinks = {
 };
 
 const Footer = () => {
-  const footerRef = useRef<HTMLElement>(null);
-  const [isVisible, setIsVisible] = useState(true);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (footerRef.current) {
-      observer.observe(footerRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <footer
-      ref={footerRef}
-      className="relative w-full py-16 lg:py-20 border-t border-white/5"
-    >
+    <footer className="relative w-full py-16 lg:py-20 border-t border-white/5">
       <div className="w-full px-6 lg:px-10">
         <div className="max-w-6xl mx-auto">
           {/* Main Footer Content */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-12 mb-12">
             {/* Logo Column */}
-            <div 
-              className={`col-span-2 md:col-span-1 transition-all duration-500 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-              }`}
-            >
+            <div className="col-span-2 md:col-span-1">
               <Link href="/" className="inline-flex items-center gap-3 mb-4">
                 <Image
                   src="/logo.png"
@@ -71,11 +40,7 @@ const Footer = () => {
             </div>
 
             {/* Link Columns */}
-            <div 
-              className={`transition-all duration-500 delay-100 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-              }`}
-            >
+            <div>
               <h4 className="font-semibold text-text-primary mb-4 text-sm">
                 Product
               </h4>
@@ -93,11 +58,7 @@ const Footer = () => {
               </ul>
             </div>
 
-            <div 
-              className={`transition-all duration-500 delay-200 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-              }`}
-            >
+            <div>
               <h4 className="font-semibold text-text-primary mb-4 text-sm">
                 Resources
               </h4>
@@ -115,11 +76,7 @@ const Footer = () => {
               </ul>
             </div>
 
-            <div 
-              className={`transition-all duration-500 delay-300 ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-              }`}
-            >
+            <div>
               <h4 className="font-semibold text-text-primary mb-4 text-sm">
                 Community
               </h4>
@@ -141,11 +98,7 @@ const Footer = () => {
               </ul>
             </div>
 
-            <div 
-              className={`transition-all duration-500 delay-[400ms] ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-              }`}
-            >
+            <div>
               <h4 className="font-semibold text-text-primary mb-4 text-sm">
                 Legal
               </h4>
@@ -165,11 +118,7 @@ const Footer = () => {
           </div>
 
           {/* Bottom Bar */}
-          <div
-            className={`pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 transition-all duration-500 delay-500 ${
-              isVisible ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
+          <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-text-muted text-sm">
               © 2026 NeverSell. All rights reserved.
             </p>

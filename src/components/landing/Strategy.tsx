@@ -1,59 +1,58 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
-const assets = [
+interface Asset {
+  id: string;
+  name: string;
+  symbol: string;
+  apy: string;
+  description: string;
+  subtext: string;
+  color: string;
+  popular?: boolean;
+}
+
+const assets: Asset[] = [
   {
     id: 'BTC',
     name: 'Bitcoin',
     symbol: 'BTC',
-    apy: '~8–12%',
-    apyNum: 10,
+    apy: '~6%',
     description: 'Earn while you HODL.',
     subtext: '+ BTC price upside',
     color: '#F7931A',
-    gradient: 'from-orange-500/20 to-orange-600/10',
   },
   {
     id: 'ETH',
     name: 'Ethereum',
     symbol: 'ETH',
-    apy: '~10–14%',
-    apyNum: 12,
+    apy: '~9%',
     description: 'Your ETH works harder.',
     subtext: '+ ETH price upside',
     color: '#627EEA',
-    gradient: 'from-blue-500/20 to-blue-600/10',
   },
   {
     id: 'ARB',
     name: 'Arbitrum',
     symbol: 'ARB',
-    apy: '~12–18%',
-    apyNum: 15,
+    apy: '~4%',
     description: 'Higher risk, higher reward.',
     subtext: '+ ARB price upside',
     color: '#28A0F0',
-    gradient: 'from-cyan-500/20 to-cyan-600/10',
   },
   {
     id: 'USDC',
     name: 'USDC',
     symbol: 'USDC',
-    apy: '~7–10%',
-    apyNum: 8.5,
+    apy: '~11%',
     description: 'Stable yield, no volatility.',
     subtext: 'No price risk',
     color: '#2775CA',
-    gradient: 'from-blue-400/20 to-blue-500/10',
     popular: true,
   },
 ];
 
-// Token icon mapping to actual images
 const tokenIcons: Record<string, string> = {
   BTC: '/tokens/btc.png',
   ETH: '/tokens/eth.png',
@@ -61,197 +60,96 @@ const tokenIcons: Record<string, string> = {
   USDC: '/tokens/usdc.png',
 };
 
-const TokenIcon = ({ symbol }: { symbol: string; color?: string }) => {
-  const iconSrc = tokenIcons[symbol];
-  if (!iconSrc) return null;
-  return (
-    <Image 
-      src={iconSrc} 
-      alt={symbol}
-      width={56}
-      height={56}
-      className="w-full h-full rounded-full object-cover"
-    />
-  );
-};
-
 const Strategy = () => {
-  const sectionRef = useRef<HTMLElement>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
-  const [isVisible, setIsVisible] = useState(true);
-
-  useEffect(() => {
-    // Simple intersection observer for initial visibility
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
-    if (isMobile) {
-      return () => observer.disconnect();
-    }
-
-    // Desktop: Load GSAP for scroll animations
-    let cleanup: (() => void) | undefined;
-    
-    const initScrollAnimation = async () => {
-      try {
-        const gsap = await import('gsap');
-        const { ScrollTrigger } = await import('gsap/ScrollTrigger');
-        gsap.default.registerPlugin(ScrollTrigger);
-
-        const ctx = gsap.default.context(() => {
-          const scrollTl = gsap.default.timeline({
-            scrollTrigger: {
-              trigger: sectionRef.current,
-              start: 'top top',
-              end: '+=130%',
-              pin: true,
-              scrub: 1.2,
-            },
-          });
-
-          // Phase 1: ENTRANCE (0% - 30%)
-          scrollTl.fromTo(
-            headingRef.current,
-            { y: -60, opacity: 0 },
-            { y: 0, opacity: 1, ease: 'none' },
-            0
-          );
-
-          cardsRef.current.forEach((card, index) => {
-            scrollTl.fromTo(
-              card,
-              { y: 80, opacity: 0, scale: 0.95 },
-              { y: 0, opacity: 1, scale: 1, ease: 'none' },
-              0.03 + index * 0.025
-            );
-          });
-
-          // Phase 3: EXIT (70% - 100%)
-          cardsRef.current.forEach((card, index) => {
-            scrollTl.fromTo(
-              card,
-              { y: 0, opacity: 1 },
-              { y: -40, opacity: 0, ease: 'power2.in' },
-              0.7 + index * 0.02
-            );
-          });
-
-          scrollTl.fromTo(
-            headingRef.current,
-            { opacity: 1 },
-            { opacity: 0, ease: 'power2.in' },
-            0.85
-          );
-        }, sectionRef);
-
-        cleanup = () => ctx.revert();
-      } catch (e) {
-        console.warn('GSAP failed to load:', e);
-      }
-    };
-
-    // Delay GSAP load
-    const rafId = requestAnimationFrame(() => {
-      setTimeout(initScrollAnimation, 100);
-    });
-
-    return () => {
-      observer.disconnect();
-      cancelAnimationFrame(rafId);
-      cleanup?.();
-    };
-  }, []);
-
   return (
-    <section
-      id="assets"
-      ref={sectionRef}
-      className="relative min-h-screen w-full flex items-center justify-center overflow-hidden"
-    >
-      {/* Background glow */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[600px] h-[600px] bg-mint/5 rounded-full blur-[150px]" />
-      </div>
+    <section id="assets" className="relative w-full py-24 lg:py-32">
+      {/* Background */}
+      <div className="absolute inset-0 bg-navy-light" />
 
-      <div className="relative z-10 w-full px-6 lg:px-10 py-20">
-        <h2
-          ref={headingRef}
-          className={`font-display text-display-2 text-text-primary text-center mb-12 lg:mb-16 transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
-        >
-          Pick your <span className="text-gradient">asset.</span>
-        </h2>
+      <div className="relative z-10 w-full px-6 lg:px-10">
+        {/* Heading */}
+        <div className="text-center mb-12 lg:mb-16">
+          <h2 className="font-display text-display-2 text-text-primary mb-4">
+            Pick your <span className="text-gradient">asset.</span>
+          </h2>
+        </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 max-w-6xl mx-auto">
-          {assets.map((asset, index) => (
-            <div
-              key={asset.id}
-              ref={(el) => { cardsRef.current[index] = el; }}
-              className={`glass-card rounded-3xl p-6 transition-all duration-500 group hover:border-mint/30 relative overflow-hidden ${
-                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-              }`}
-              style={{ transitionDelay: `${index * 100 + 200}ms` }}
+        {/* Asset Cards */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 max-w-5xl mx-auto">
+          {assets.map((asset) => (
+            <Link 
+              key={asset.id} 
+              href="/app/pools"
+              className="block"
             >
-              {/* Popular badge */}
-              {asset.popular && (
-                <div className="absolute -top-px left-1/2 -translate-x-1/2">
-                  <span className="px-4 py-1 bg-mint text-navy text-xs font-mono font-bold rounded-b-xl">
-                    POPULAR
-                  </span>
-                </div>
-              )}
-
-              {/* Gradient background on hover */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${asset.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-
-              {/* Content */}
-              <div className="relative z-10">
-                {/* Token Icon */}
-                <div className="w-14 h-14 mb-5 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300">
-                  <TokenIcon symbol={asset.symbol} color={asset.color} />
-                </div>
-
-                <div className="font-mono text-sm text-text-muted mb-1">
-                  {asset.symbol}
-                </div>
-
-                <div
-                  className="font-display text-3xl lg:text-4xl font-bold mb-3 pulse-number"
-                  style={{ color: asset.color }}
-                >
-                  {asset.apy}
-                </div>
-
-                <p className="text-text-secondary text-sm leading-relaxed mb-1">
-                  {asset.description}
-                </p>
-
-                <p className="text-text-muted text-xs mb-5">{asset.subtext}</p>
-
-                <Link href="/app/pools" className="w-full">
-                  <Button
-                    variant="outline"
-                    className="w-full border-white/10 text-text-primary hover:bg-white/5 hover:border-mint/30 rounded-xl py-2.5 text-sm font-medium transition-all"
+              <div 
+                className="glass-card rounded-2xl p-6 transition-all hover:scale-[1.02] hover:border-mint/30 cursor-pointer relative overflow-hidden group"
+              >
+                {asset.popular && (
+                  <div 
+                    className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-xs font-semibold"
+                    style={{ backgroundColor: `${asset.color}20`, color: asset.color }}
                   >
-                    Select
+                    Popular
+                  </div>
+                )}
+
+                {/* Token Icon */}
+                <div className="mb-4">
+                  <div 
+                    className="w-14 h-14 rounded-full overflow-hidden"
+                    style={{ 
+                      boxShadow: `0 0 20px ${asset.color}40`
+                    }}
+                  >
+                    <Image 
+                      src={tokenIcons[asset.symbol]} 
+                      alt={asset.symbol}
+                      width={56}
+                      height={56}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+
+                {/* Name & Symbol */}
+                <div className="mb-3">
+                  <h3 className="font-display font-semibold text-lg text-text-primary">
+                    {asset.name}
+                  </h3>
+                  <p className="text-sm text-text-muted">{asset.symbol}</p>
+                </div>
+
+                {/* APY */}
+                <div className="mb-3">
+                  <span 
+                    className="font-mono text-2xl font-bold"
+                    style={{ color: asset.color }}
+                  >
+                    {asset.apy}
+                  </span>
+                  <span className="text-text-muted text-sm ml-1">APY</span>
+                </div>
+
+                {/* Description */}
+                <p className="text-sm text-text-secondary mb-1">{asset.description}</p>
+                <p className="text-xs text-text-muted">{asset.subtext}</p>
+
+                {/* Hover CTA */}
+                <div className="mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button 
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold"
+                    style={{ 
+                      backgroundColor: `${asset.color}20`,
+                      color: asset.color,
+                      border: `1px solid ${asset.color}40`
+                    }}
+                  >
+                    Deposit {asset.symbol}
                   </Button>
-                </Link>
+                </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

@@ -1,6 +1,3 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Users, TrendingUp, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -57,40 +54,11 @@ const formatFollowers = (num: number) => {
 };
 
 const CreatorPortfolios = () => {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [isVisible, setIsVisible] = useState(true);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <section
-      id="portfolios"
-      ref={sectionRef}
-      className="relative w-full py-24 lg:py-32"
-    >
+    <section id="portfolios" className="relative w-full py-24 lg:py-32">
       <div className="w-full px-6 lg:px-10">
         {/* Header */}
-        <div 
-          className={`flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12 lg:mb-16 max-w-6xl mx-auto transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
-        >
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12 lg:mb-16 max-w-6xl mx-auto">
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="w-5 h-5 text-electric-purple" />
@@ -113,15 +81,12 @@ const CreatorPortfolios = () => {
 
         {/* Portfolio Cards */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 max-w-6xl mx-auto">
-          {portfolios.map((portfolio, index) => (
+          {portfolios.map((portfolio) => (
             <div
               key={portfolio.name}
-              className={`glass-card rounded-2xl p-6 transition-all duration-500 group hover:border-mint/30 ${
+              className={`glass-card rounded-2xl p-6 transition-all group hover:border-mint/30 ${
                 portfolio.isPlaceholder ? 'border-dashed border-white/20' : ''
-              } ${
-                isVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-98'
               }`}
-              style={{ transitionDelay: `${index * 100 + 200}ms` }}
             >
               {/* Avatar & Name */}
               <div className="flex items-center gap-3 mb-5">

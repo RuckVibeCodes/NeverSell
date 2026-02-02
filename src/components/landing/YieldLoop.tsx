@@ -1,6 +1,3 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Wallet, TrendingUp, Landmark, Rocket, Layers, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -44,272 +41,86 @@ const loopSteps = [
 ];
 
 const YieldLoop = () => {
-  const sectionRef = useRef<HTMLElement>(null);
-  const headlineRef = useRef<HTMLDivElement>(null);
-  const loopRef = useRef<HTMLDivElement>(null);
-  const nodesRef = useRef<(HTMLDivElement | null)[]>([]);
-  const linesRef = useRef<SVGSVGElement>(null);
-  const ctaRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(true);
-
-  useEffect(() => {
-    // Simple intersection observer for initial visibility
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
-    if (isMobile) {
-      return () => observer.disconnect();
-    }
-
-    // Desktop: Load GSAP for scroll animations
-    let cleanup: (() => void) | undefined;
-    
-    const initScrollAnimation = async () => {
-      try {
-        const gsap = await import('gsap');
-        const { ScrollTrigger } = await import('gsap/ScrollTrigger');
-        gsap.default.registerPlugin(ScrollTrigger);
-
-        const ctx = gsap.default.context(() => {
-          const scrollTl = gsap.default.timeline({
-            scrollTrigger: {
-              trigger: sectionRef.current,
-              start: 'top top',
-              end: '+=150%',
-              pin: true,
-              scrub: 1.2,
-            },
-          });
-
-          // Phase 1: ENTRANCE (0% - 30%)
-          scrollTl.fromTo(
-            headlineRef.current,
-            { y: -80, opacity: 0 },
-            { y: 0, opacity: 1, ease: 'none' },
-            0
-          );
-
-          scrollTl.fromTo(
-            loopRef.current,
-            { scale: 0.85, opacity: 0 },
-            { scale: 1, opacity: 1, ease: 'none' },
-            0.02
-          );
-
-          // Nodes stagger in clockwise
-          nodesRef.current.forEach((node, index) => {
-            scrollTl.fromTo(
-              node,
-              { scale: 0, opacity: 0 },
-              { scale: 1, opacity: 1, ease: 'back.out(1.7)' },
-              0.04 + index * 0.03
-            );
-          });
-
-          // Lines draw on
-          if (linesRef.current) {
-            const paths = linesRef.current.querySelectorAll('path');
-            paths.forEach((path, index) => {
-              const length = (path as SVGPathElement).getTotalLength?.() || 200;
-              gsap.default.set(path, { strokeDasharray: length, strokeDashoffset: length });
-              scrollTl.to(
-                path,
-                { strokeDashoffset: 0, ease: 'none' },
-                0.08 + index * 0.02
-              );
-            });
-          }
-
-          scrollTl.fromTo(
-            ctaRef.current,
-            { y: 30, opacity: 0 },
-            { y: 0, opacity: 1, ease: 'none' },
-            0.25
-          );
-
-          // Phase 3: EXIT (70% - 100%)
-          scrollTl.fromTo(
-            loopRef.current,
-            { scale: 1, opacity: 1 },
-            { scale: 0.9, opacity: 0, ease: 'power2.in' },
-            0.75
-          );
-
-          scrollTl.fromTo(
-            headlineRef.current,
-            { opacity: 1 },
-            { opacity: 0, ease: 'power2.in' },
-            0.85
-          );
-
-          scrollTl.fromTo(
-            ctaRef.current,
-            { opacity: 1 },
-            { opacity: 0, ease: 'power2.in' },
-            0.88
-          );
-        }, sectionRef);
-
-        cleanup = () => ctx.revert();
-      } catch (e) {
-        console.warn('GSAP failed to load:', e);
-      }
-    };
-
-    // Delay GSAP load
-    const rafId = requestAnimationFrame(() => {
-      setTimeout(initScrollAnimation, 100);
-    });
-
-    return () => {
-      observer.disconnect();
-      cancelAnimationFrame(rafId);
-      cleanup?.();
-    };
-  }, []);
-
   return (
-    <section
-      id="yield-loop"
-      ref={sectionRef}
-      className="relative min-h-screen w-full flex items-center justify-center overflow-hidden"
-    >
+    <section id="yield-loop" className="relative w-full py-24 lg:py-32 overflow-hidden">
       {/* Background glow */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[800px] h-[800px] bg-gradient-to-br from-mint/10 via-electric-blue/8 to-electric-purple/5 rounded-full blur-[150px]" />
+        <div className="w-[700px] h-[700px] bg-gradient-radial from-mint/10 via-transparent to-transparent rounded-full blur-[100px]" />
       </div>
 
-      <div className="relative z-10 w-full px-6 lg:px-10 py-20">
+      <div className="relative z-10 w-full px-6 lg:px-10">
         {/* Headline */}
-        <div 
-          ref={headlineRef} 
-          className={`text-center mb-12 lg:mb-16 transition-all duration-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
-        >
+        <div className="text-center mb-12 lg:mb-16">
           <h2 className="font-display text-display-2 text-text-primary mb-4">
-            Stack yield on <span className="text-gradient">yield.</span>
+            Stack yield <span className="text-gradient-mint">on yield.</span>
           </h2>
-          <p className="text-text-secondary text-lg max-w-xl mx-auto">
+          <p className="text-text-secondary text-lg max-w-2xl mx-auto">
             Your money works twice. First from your deposit. Again from your deployment.
           </p>
         </div>
 
-        {/* Loop Visualization */}
-        <div 
-          ref={loopRef} 
-          className={`relative max-w-4xl mx-auto transition-all duration-700 delay-200 ${
-            isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-          }`}
-        >
-          {/* SVG Flow Lines */}
-          <svg
-            ref={linesRef}
-            className="absolute inset-0 w-full h-full"
-            viewBox="0 0 800 300"
-            preserveAspectRatio="xMidYMid meet"
-            style={{ zIndex: 0 }}
-          >
-            {/* Flow paths with animated dashes */}
-            <defs>
-              <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#2ED573" stopOpacity="0.6" />
-                <stop offset="50%" stopColor="#6366F1" stopOpacity="0.6" />
-                <stop offset="100%" stopColor="#A855F7" stopOpacity="0.6" />
-              </linearGradient>
-            </defs>
-            {/* Top curved path */}
-            <path
-              d="M 100 150 Q 250 50, 400 50 Q 550 50, 700 150"
-              fill="none"
-              stroke="url(#flowGradient)"
-              strokeWidth="2"
-              className="flow-line"
-            />
-            {/* Bottom curved path */}
-            <path
-              d="M 700 150 Q 550 250, 400 250 Q 250 250, 100 150"
-              fill="none"
-              stroke="url(#flowGradient)"
-              strokeWidth="2"
-              className="flow-line"
-            />
-          </svg>
-
-          {/* Nodes */}
-          <div className="relative grid grid-cols-5 gap-4 lg:gap-8">
+        {/* Loop Steps - Mobile: Vertical List, Desktop: Horizontal Flow */}
+        <div className="max-w-4xl mx-auto">
+          {/* Mobile: Vertical List */}
+          <div className="flex flex-col gap-4 lg:hidden">
             {loopSteps.map((step, index) => {
               const Icon = step.icon;
-              const isMint = step.color === '#2ED573';
-              const isPurple = step.color === '#A855F7';
-              
               return (
-                <div
-                  key={step.id}
-                  ref={(el) => { nodesRef.current[index] = el; }}
-                  className={`flex flex-col items-center text-center group transition-all duration-500 ${
-                    isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
-                  }`}
-                  style={{ transitionDelay: `${index * 100 + 300}ms` }}
-                >
-                  {/* Node circle */}
+                <div key={step.id} className="flex items-center gap-4">
                   <div 
-                    className={`w-16 h-16 lg:w-20 lg:h-20 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110 ${
-                      isMint 
-                        ? 'bg-mint/15 border border-mint/30 shadow-[0_0_30px_rgba(46,213,115,0.25)]' 
-                        : isPurple
-                        ? 'bg-electric-purple/15 border border-electric-purple/30 shadow-[0_0_30px_rgba(168,85,247,0.2)]'
-                        : 'bg-white/5 border border-white/10'
-                    }`}
+                    className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ 
+                      backgroundColor: `${step.color}15`,
+                      border: `1px solid ${step.color}30`
+                    }}
                   >
-                    <Icon 
-                      className="w-7 h-7 lg:w-8 lg:h-8" 
-                      style={{ color: step.color }}
-                    />
+                    <Icon className="w-6 h-6" style={{ color: step.color }} />
                   </div>
-                  
-                  {/* Label */}
-                  <h3 className="font-display text-sm lg:text-lg font-semibold text-text-primary mb-1">
-                    {step.label}
-                  </h3>
-                  <p className="text-xs lg:text-sm text-text-muted">
-                    {step.description}
-                  </p>
+                  <div>
+                    <h3 className="font-display font-semibold text-text-primary">{step.label}</h3>
+                    <p className="text-sm text-text-muted">{step.description}</p>
+                  </div>
+                  {index < loopSteps.length - 1 && (
+                    <ArrowRight className="w-4 h-4 text-text-muted ml-auto" />
+                  )}
                 </div>
               );
             })}
           </div>
 
-          {/* Arrow indicators between nodes (mobile) */}
-          <div className="flex justify-center gap-2 mt-6 lg:hidden">
-            {[...Array(4)].map((_, i) => (
-              <ArrowRight key={i} className="w-4 h-4 text-mint/50" />
-            ))}
+          {/* Desktop: Horizontal Flow */}
+          <div className="hidden lg:flex items-center justify-center gap-4">
+            {loopSteps.map((step, index) => {
+              const Icon = step.icon;
+              return (
+                <div key={step.id} className="flex items-center">
+                  <div className="flex flex-col items-center text-center group">
+                    <div 
+                      className="w-20 h-20 rounded-2xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110"
+                      style={{ 
+                        backgroundColor: `${step.color}15`,
+                        border: `1px solid ${step.color}30`
+                      }}
+                    >
+                      <Icon className="w-8 h-8" style={{ color: step.color }} />
+                    </div>
+                    <h3 className="font-display font-semibold text-text-primary text-sm mb-1">{step.label}</h3>
+                    <p className="text-xs text-text-muted max-w-[100px]">{step.description}</p>
+                  </div>
+                  {index < loopSteps.length - 1 && (
+                    <ArrowRight className="w-6 h-6 text-text-muted mx-2 flex-shrink-0" />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
         {/* CTA */}
-        <div 
-          ref={ctaRef} 
-          className={`text-center mt-12 lg:mt-16 transition-all duration-700 delay-700 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}
-        >
+        <div className="text-center mt-12 lg:mt-16">
           <Link href="/app/lend">
             <Button className="btn-primary text-navy hover:opacity-90 px-8 py-4 rounded-full text-base font-semibold transition-all flex items-center gap-2 group mx-auto">
-              Start Stacking
+              Start Your Loop
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
