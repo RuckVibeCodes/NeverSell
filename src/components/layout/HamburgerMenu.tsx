@@ -42,8 +42,8 @@ interface HamburgerMenuProps {
 }
 
 /**
- * HamburgerMenu - Fullscreen overlay menu for mobile (matches landing page style)
- * Contains all navigation items with wallet connect at bottom
+ * HamburgerMenu - Fullscreen overlay menu for mobile
+ * Completely solid background - no transparency
  */
 export function HamburgerMenu({ onOpenChange }: HamburgerMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -63,11 +63,17 @@ export function HamburgerMenu({ onOpenChange }: HamburgerMenuProps) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
     }
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
     };
   }, [isOpen]);
 
@@ -76,25 +82,34 @@ export function HamburgerMenu({ onOpenChange }: HamburgerMenuProps) {
       {/* Hamburger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-white/5 transition-colors z-[70]"
+        className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-white/5 transition-colors"
+        style={{ zIndex: isOpen ? 10001 : 70 }}
         aria-label="Toggle menu"
       >
         {isOpen ? <X size={24} className="text-white" /> : <Menu size={24} className="text-white" />}
       </button>
 
-      {/* Fullscreen Mobile Menu - z-[9999] to cover EVERYTHING including RainbowKit portals */}
+      {/* Fullscreen Mobile Menu */}
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] lg:hidden">
-          {/* Background overlay - solid color to ensure coverage */}
-          <div
-            className="absolute inset-0 bg-[#05070A]"
-            onClick={() => setIsOpen(false)}
-          />
+        <div 
+          className="lg:hidden"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10000,
+            backgroundColor: '#05070A',
+          }}
+        >
+          {/* Header spacer for hamburger button */}
+          <div className="h-16" />
           
-          {/* Centered navigation links */}
-          <div className="relative flex flex-col items-center justify-center h-full gap-4 px-6">
-            {/* Nav links */}
-            <nav className="flex flex-col items-center gap-3">
+          {/* Scrollable content area */}
+          <div className="flex flex-col h-[calc(100%-4rem)] overflow-y-auto">
+            {/* Nav links - centered */}
+            <nav className="flex-1 flex flex-col items-center justify-center gap-2 px-6 py-8">
               {navItems.map((item) => {
                 const isActive = pathname === item.href || 
                   (item.href !== '/app' && pathname.startsWith(item.href));
@@ -105,7 +120,7 @@ export function HamburgerMenu({ onOpenChange }: HamburgerMenuProps) {
                     href={item.href}
                     onClick={() => setIsOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 px-6 py-3 rounded-2xl text-xl font-display transition-all duration-200',
+                      'flex items-center gap-3 px-6 py-3 rounded-2xl text-xl font-display transition-all duration-200 w-full max-w-xs justify-center',
                       isActive
                         ? 'bg-mint/10 text-mint border border-mint/20'
                         : 'text-white/80 hover:text-mint hover:bg-white/5'
@@ -130,7 +145,7 @@ export function HamburgerMenu({ onOpenChange }: HamburgerMenuProps) {
             </nav>
             
             {/* Wallet connect button at bottom */}
-            <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-4 px-6">
+            <div className="flex flex-col items-center gap-4 px-6 pb-8 pt-4 border-t border-white/5">
               <div className="w-full max-w-xs">
                 <ConnectButton.Custom>
                   {({
@@ -161,7 +176,7 @@ export function HamburgerMenu({ onOpenChange }: HamburgerMenuProps) {
                             return (
                               <button
                                 onClick={openConnectModal}
-                                className="w-full btn-primary text-navy hover:opacity-90 px-8 py-4 rounded-2xl text-lg font-semibold transition-all flex items-center justify-center gap-2"
+                                className="w-full bg-mint text-navy hover:bg-mint/90 px-8 py-4 rounded-2xl text-lg font-semibold transition-all flex items-center justify-center gap-2"
                               >
                                 <Wallet size={20} />
                                 Connect Wallet
@@ -198,7 +213,7 @@ export function HamburgerMenu({ onOpenChange }: HamburgerMenuProps) {
                               </button>
                               <button
                                 onClick={openAccountModal}
-                                className="w-full btn-primary text-navy px-8 py-4 rounded-2xl text-lg font-semibold transition-all flex items-center justify-center gap-2"
+                                className="w-full bg-mint text-navy px-8 py-4 rounded-2xl text-lg font-semibold transition-all flex items-center justify-center gap-2"
                               >
                                 {account.displayName}
                               </button>
