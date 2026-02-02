@@ -8,8 +8,8 @@ const stats = [
 const LiveStats = () => {
   return (
     <section className="relative w-full py-12 lg:py-16 overflow-hidden">
-      {/* Subtle gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-mint/[0.02] to-transparent" />
+      {/* Subtle gradient background - pointer-events-none to allow touch through */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-mint/[0.02] to-transparent pointer-events-none" />
 
       <div className="w-full px-6 lg:px-10">
         <div className="relative max-w-4xl mx-auto">

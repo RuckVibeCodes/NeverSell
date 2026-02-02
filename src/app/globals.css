@@ -171,15 +171,6 @@
   75% { transform: translate(-15px, -10px); opacity: 0.5; }
 }
 
-/* Pin spacer fix for GSAP */
-.pin-spacer {
-  pointer-events: none !important;
-}
-
-.pin-spacer > * {
-  pointer-events: auto !important;
-}
-
 /* Section z-index stacking - target section elements (not div) */
 main > section {
   position: relative;

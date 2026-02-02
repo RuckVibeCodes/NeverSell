@@ -15,8 +15,8 @@ const borrowPoints = [
 const Method = () => {
   return (
     <section className="relative w-full py-24 lg:py-32 overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-navy-light" />
+      {/* Background - pointer-events-none to allow touch through */}
+      <div className="absolute inset-0 bg-navy-light pointer-events-none" />
       {/* Background glow - hidden on mobile for performance */}
       <div className="hidden lg:flex absolute inset-0 items-center justify-center pointer-events-none">
         <div className="w-[500px] h-[500px] bg-mint/5 rounded-full blur-[150px]" />
@@ -53,8 +53,8 @@ const Method = () => {
 
           {/* Borrow Card */}
           <div className="glass-card-strong rounded-3xl p-8 lg:p-10 border-mint/30 glow-mint relative overflow-hidden">
-            {/* Animated glow background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-mint/10 via-transparent to-electric-blue/10" />
+            {/* Animated glow background - pointer-events-none to allow touch through */}
+            <div className="absolute inset-0 bg-gradient-to-br from-mint/10 via-transparent to-electric-blue/10 pointer-events-none" />
             
             <div className="relative z-10">
               <div className="flex items-center gap-3 mb-8">

@@ -63,8 +63,8 @@ const tokenIcons: Record<string, string> = {
 const Strategy = () => {
   return (
     <section id="assets" className="relative w-full py-24 lg:py-32">
-      {/* Background */}
-      <div className="absolute inset-0 bg-navy-light" />
+      {/* Background - pointer-events-none to allow touch through */}
+      <div className="absolute inset-0 bg-navy-light pointer-events-none" />
 
       <div className="relative z-10 w-full px-6 lg:px-10">
         {/* Heading */}
