@@ -18,7 +18,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 interface NavItem {
   href: string;
@@ -157,18 +156,8 @@ export function HamburgerMenu() {
             </ul>
           </nav>
 
-          {/* Bottom Section - Wallet Connect */}
+          {/* Bottom Section - Version */}
           <div className="border-t border-white/5 p-4 bg-navy/50 backdrop-blur-xl">
-            <div className="mb-3">
-              <ConnectButton 
-                chainStatus="icon"
-                showBalance={false}
-                accountStatus={{
-                  smallScreen: 'full',
-                  largeScreen: 'full',
-                }}
-              />
-            </div>
             <p className="text-[10px] text-white/30 text-center">
               NeverSell v1.0 • DeFi Made Simple
             </p>

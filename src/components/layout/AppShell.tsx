@@ -2,7 +2,6 @@
 
 import { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
-import { MobileNav } from './MobileNav';
 import { AppNavbar } from './AppNavbar';
 
 interface AppShellProps {
@@ -13,12 +12,12 @@ interface AppShellProps {
  * App Shell - Main layout wrapper for authenticated app pages
  * 
  * - Desktop: Sidebar on left, content on right
- * - Mobile: Content with bottom navigation
+ * - Mobile: Top navbar with hamburger menu (slide-out drawer)
  */
 export function AppShell({ children }: AppShellProps) {
   return (
     <div className="min-h-screen bg-navy">
-      {/* Top navbar */}
+      {/* Top navbar with hamburger menu for mobile */}
       <AppNavbar />
       
       {/* Main layout */}
@@ -30,15 +29,12 @@ export function AppShell({ children }: AppShellProps) {
         
         {/* Main content */}
         <main className="flex-1 lg:pl-64">
-          {/* Content area with padding for navbar and mobile nav */}
-          <div className="pt-16 pb-20 lg:pb-8 min-h-screen">
+          {/* Content area with padding for navbar */}
+          <div className="pt-16 pb-8 min-h-screen">
             {children}
           </div>
         </main>
       </div>
-      
-      {/* Mobile bottom navigation - visible only on mobile */}
-      <MobileNav />
     </div>
   );
 }

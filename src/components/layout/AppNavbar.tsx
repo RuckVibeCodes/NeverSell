@@ -22,19 +22,19 @@ export function AppNavbar() {
           </span>
         </Link>
         
-        {/* Right side - Hamburger menu + Wallet */}
-        <div className="flex items-center gap-3">
+        {/* Right side - Wallet + Hamburger menu */}
+        <div className="flex items-center gap-2">
+          {/* Wallet button - compact on mobile */}
+          <ConnectButton 
+            chainStatus="icon"
+            showBalance={false}
+            accountStatus={{
+              smallScreen: 'avatar',
+              largeScreen: 'full',
+            }}
+          />
+          {/* Hamburger menu - mobile only */}
           <HamburgerMenu />
-          <div className="hidden lg:block">
-            <ConnectButton 
-              chainStatus="icon"
-              showBalance={false}
-              accountStatus={{
-                smallScreen: 'avatar',
-                largeScreen: 'full',
-              }}
-            />
-          </div>
         </div>
       </div>
     </header>
