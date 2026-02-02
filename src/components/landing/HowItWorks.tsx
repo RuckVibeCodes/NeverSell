@@ -1,11 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Wallet, Split, TrendingUp } from 'lucide-react';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const steps = [
   {
@@ -35,147 +31,159 @@ const HowItWorks = () => {
   const closingRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
-    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+    const initAnimation = async () => {
+      const gsapModule = await import('gsap');
+      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+      const gsap = gsapModule.default;
+      
+      gsap.registerPlugin(ScrollTrigger);
+      
+      const isMobile = window.matchMedia('(max-width: 1023px)').matches;
 
-    const ctx = gsap.context(() => {
-      if (isMobile) {
-        // Simple staggered fade-in on mobile
-        gsap.fromTo(
-          headingRef.current,
-          { y: 30, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.6,
-            ease: 'power2.out',
-            scrollTrigger: {
-              trigger: sectionRef.current,
-              start: 'top 80%',
-            },
-          }
-        );
-
-        cardsRef.current.forEach((card, index) => {
+      const ctx = gsap.context(() => {
+        if (isMobile) {
+          // Simple staggered fade-in on mobile
           gsap.fromTo(
-            card,
+            headingRef.current,
             { y: 30, opacity: 0 },
             {
               y: 0,
               opacity: 1,
-              duration: 0.5,
-              delay: 0.1 + index * 0.1,
+              duration: 0.6,
               ease: 'power2.out',
               scrollTrigger: {
                 trigger: sectionRef.current,
-                start: 'top 70%',
+                start: 'top 80%',
               },
             }
           );
+
+          cardsRef.current.forEach((card, index) => {
+            gsap.fromTo(
+              card,
+              { y: 30, opacity: 0 },
+              {
+                y: 0,
+                opacity: 1,
+                duration: 0.5,
+                delay: 0.1 + index * 0.1,
+                ease: 'power2.out',
+                scrollTrigger: {
+                  trigger: sectionRef.current,
+                  start: 'top 70%',
+                },
+              }
+            );
+          });
+
+          gsap.fromTo(
+            closingRef.current,
+            { y: 20, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.5,
+              delay: 0.4,
+              ease: 'power2.out',
+              scrollTrigger: {
+                trigger: sectionRef.current,
+                start: 'top 60%',
+              },
+            }
+          );
+          return;
+        }
+
+        // Desktop: full scroll-driven animation
+        const scrollTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: 'top top',
+            end: '+=130%',
+            pin: true,
+            scrub: 1.2,
+          },
         });
 
-        gsap.fromTo(
+        // Phase 1: ENTRANCE (0% - 30%)
+        scrollTl.fromTo(
+          headingRef.current,
+          { y: '-10vh', opacity: 0 },
+          { y: 0, opacity: 1, ease: 'none' },
+          0
+        );
+
+        scrollTl.fromTo(
+          cardsRef.current[0],
+          { x: '-50vw', opacity: 0, rotateZ: -2 },
+          { x: 0, opacity: 1, rotateZ: 0, ease: 'none' },
+          0.02
+        );
+
+        scrollTl.fromTo(
+          cardsRef.current[1],
+          { y: '60vh', opacity: 0, scale: 0.96 },
+          { y: 0, opacity: 1, scale: 1, ease: 'none' },
+          0.06
+        );
+
+        scrollTl.fromTo(
+          cardsRef.current[2],
+          { x: '50vw', opacity: 0, rotateZ: 2 },
+          { x: 0, opacity: 1, rotateZ: 0, ease: 'none' },
+          0.1
+        );
+
+        scrollTl.fromTo(
           closingRef.current,
           { y: 20, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.5,
-            delay: 0.4,
-            ease: 'power2.out',
-            scrollTrigger: {
-              trigger: sectionRef.current,
-              start: 'top 60%',
-            },
-          }
+          { y: 0, opacity: 1, ease: 'none' },
+          0.2
         );
-        return;
-      }
 
-      // Desktop: full scroll-driven animation
-      const scrollTl = gsap.timeline({
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top top',
-          end: '+=130%',
-          pin: true,
-          scrub: 1.2,
-        },
-      });
+        // Phase 3: EXIT (70% - 100%)
+        scrollTl.fromTo(
+          cardsRef.current[0],
+          { x: 0, opacity: 1 },
+          { x: '-18vw', opacity: 0, ease: 'power2.in' },
+          0.7
+        );
 
-      // Phase 1: ENTRANCE (0% - 30%)
-      scrollTl.fromTo(
-        headingRef.current,
-        { y: '-10vh', opacity: 0 },
-        { y: 0, opacity: 1, ease: 'none' },
-        0
-      );
+        scrollTl.fromTo(
+          cardsRef.current[1],
+          { y: 0, opacity: 1 },
+          { y: '-14vh', opacity: 0, ease: 'power2.in' },
+          0.72
+        );
 
-      scrollTl.fromTo(
-        cardsRef.current[0],
-        { x: '-50vw', opacity: 0, rotateZ: -2 },
-        { x: 0, opacity: 1, rotateZ: 0, ease: 'none' },
-        0.02
-      );
+        scrollTl.fromTo(
+          cardsRef.current[2],
+          { x: 0, opacity: 1 },
+          { x: '18vw', opacity: 0, ease: 'power2.in' },
+          0.74
+        );
 
-      scrollTl.fromTo(
-        cardsRef.current[1],
-        { y: '60vh', opacity: 0, scale: 0.96 },
-        { y: 0, opacity: 1, scale: 1, ease: 'none' },
-        0.06
-      );
+        scrollTl.fromTo(
+          closingRef.current,
+          { opacity: 1 },
+          { opacity: 0, ease: 'power2.in' },
+          0.85
+        );
 
-      scrollTl.fromTo(
-        cardsRef.current[2],
-        { x: '50vw', opacity: 0, rotateZ: 2 },
-        { x: 0, opacity: 1, rotateZ: 0, ease: 'none' },
-        0.1
-      );
+        scrollTl.fromTo(
+          headingRef.current,
+          { opacity: 1 },
+          { opacity: 0, ease: 'power2.in' },
+          0.9
+        );
+      }, sectionRef);
 
-      scrollTl.fromTo(
-        closingRef.current,
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, ease: 'none' },
-        0.2
-      );
+      return () => ctx.revert();
+    };
 
-      // Phase 3: EXIT (70% - 100%)
-      scrollTl.fromTo(
-        cardsRef.current[0],
-        { x: 0, opacity: 1 },
-        { x: '-18vw', opacity: 0, ease: 'power2.in' },
-        0.7
-      );
-
-      scrollTl.fromTo(
-        cardsRef.current[1],
-        { y: 0, opacity: 1 },
-        { y: '-14vh', opacity: 0, ease: 'power2.in' },
-        0.72
-      );
-
-      scrollTl.fromTo(
-        cardsRef.current[2],
-        { x: 0, opacity: 1 },
-        { x: '18vw', opacity: 0, ease: 'power2.in' },
-        0.74
-      );
-
-      scrollTl.fromTo(
-        closingRef.current,
-        { opacity: 1 },
-        { opacity: 0, ease: 'power2.in' },
-        0.85
-      );
-
-      scrollTl.fromTo(
-        headingRef.current,
-        { opacity: 1 },
-        { opacity: 0, ease: 'power2.in' },
-        0.9
-      );
-    }, sectionRef);
-
-    return () => ctx.revert();
+    // Delay to not block first paint
+    const timeout = setTimeout(initAnimation, 100);
+    return () => clearTimeout(timeout);
   }, []);
 
   return (

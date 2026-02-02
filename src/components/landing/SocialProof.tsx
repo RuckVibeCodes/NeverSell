@@ -1,10 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-gsap.registerPlugin(ScrollTrigger);
 
 interface StatItemProps {
   value: string;
@@ -18,31 +14,48 @@ const StatItem = ({ value, label, prefix = '', suffix = '', delay = 0 }: StatIte
   const [displayValue, setDisplayValue] = useState(0);
   const numericValue = parseFloat(value.replace(/[^0-9.]/g, ''));
   const itemRef = useRef<HTMLDivElement>(null);
+  const animatedRef = useRef(false);
 
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      ScrollTrigger.create({
-        trigger: itemRef.current,
-        start: 'top 80%',
-        onEnter: () => {
-          gsap.to(
-            { val: 0 },
-            {
-              val: numericValue,
-              duration: 2,
-              delay: delay,
-              ease: 'power2.out',
-              onUpdate: function () {
-                setDisplayValue(this.targets()[0].val);
-              },
-            }
-          );
-        },
-        once: true,
-      });
-    }, itemRef);
+    if (animatedRef.current) return;
+    
+    const initAnimation = async () => {
+      const gsapModule = await import('gsap');
+      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+      const gsap = gsapModule.default;
+      
+      gsap.registerPlugin(ScrollTrigger);
+      
+      const ctx = gsap.context(() => {
+        ScrollTrigger.create({
+          trigger: itemRef.current,
+          start: 'top 80%',
+          onEnter: () => {
+            if (animatedRef.current) return;
+            animatedRef.current = true;
+            gsap.to(
+              { val: 0 },
+              {
+                val: numericValue,
+                duration: 2,
+                delay: delay,
+                ease: 'power2.out',
+                onUpdate: function () {
+                  setDisplayValue(this.targets()[0].val);
+                },
+              }
+            );
+          },
+          once: true,
+        });
+      }, itemRef);
 
-    return () => ctx.revert();
+      return () => ctx.revert();
+    };
+
+    // Delay to not block first paint
+    const timeout = setTimeout(initAnimation, 100);
+    return () => clearTimeout(timeout);
   }, [numericValue, delay]);
 
   const formatValue = (val: number) => {
@@ -71,24 +84,36 @@ const SocialProof = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        containerRef.current,
-        { y: 24, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 80%',
-          },
-        }
-      );
-    }, sectionRef);
+    const initAnimation = async () => {
+      const gsapModule = await import('gsap');
+      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+      const gsap = gsapModule.default;
+      
+      gsap.registerPlugin(ScrollTrigger);
+      
+      const ctx = gsap.context(() => {
+        gsap.fromTo(
+          containerRef.current,
+          { y: 24, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.8,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: 'top 80%',
+            },
+          }
+        );
+      }, sectionRef);
 
-    return () => ctx.revert();
+      return () => ctx.revert();
+    };
+
+    // Delay to not block first paint
+    const timeout = setTimeout(initAnimation, 100);
+    return () => clearTimeout(timeout);
   }, []);
 
   const stats = [
