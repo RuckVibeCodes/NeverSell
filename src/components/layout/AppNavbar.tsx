@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { HamburgerMenu } from './HamburgerMenu';
@@ -9,6 +10,8 @@ import { HamburgerMenu } from './HamburgerMenu';
  * Shows logo, hamburger menu, and wallet connection
  */
 export function AppNavbar() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-white/5 bg-navy/80 backdrop-blur-xl">
       <div className="flex items-center justify-between h-full px-4 lg:px-6">
@@ -24,19 +27,21 @@ export function AppNavbar() {
         
         {/* Right side - Wallet + Hamburger menu */}
         <div className="flex items-center gap-2">
-          {/* Wallet button - compact on mobile, hidden when mobile menu open */}
-          <div className="navbar-wallet-btn">
-            <ConnectButton 
-              chainStatus="icon"
-              showBalance={false}
-              accountStatus={{
-                smallScreen: 'avatar',
-                largeScreen: 'full',
-              }}
-            />
-          </div>
+          {/* Wallet button - hidden when mobile menu is open */}
+          {!isMenuOpen && (
+            <div className="navbar-wallet-btn">
+              <ConnectButton 
+                chainStatus="icon"
+                showBalance={false}
+                accountStatus={{
+                  smallScreen: 'avatar',
+                  largeScreen: 'full',
+                }}
+              />
+            </div>
+          )}
           {/* Hamburger menu - mobile only */}
-          <HamburgerMenu />
+          <HamburgerMenu onOpenChange={setIsMenuOpen} />
         </div>
       </div>
     </header>

@@ -37,30 +37,22 @@ const navItems: NavItem[] = [
   { href: '/app/profile', label: 'Profile', icon: User },
 ];
 
+interface HamburgerMenuProps {
+  onOpenChange?: (isOpen: boolean) => void;
+}
+
 /**
  * HamburgerMenu - Fullscreen overlay menu for mobile (matches landing page style)
  * Contains all navigation items with wallet connect at bottom
  */
-// Export hook for parent components to know if menu is open
-export function useHamburgerMenuState() {
-  return { isOpen: typeof window !== 'undefined' && document.body.classList.contains('mobile-menu-open') };
-}
-
-export function HamburgerMenu() {
+export function HamburgerMenu({ onOpenChange }: HamburgerMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
-  // Add class to body when menu is open (for CSS-based hiding of navbar elements)
+  // Notify parent of state changes
   useEffect(() => {
-    if (isOpen) {
-      document.body.classList.add('mobile-menu-open');
-    } else {
-      document.body.classList.remove('mobile-menu-open');
-    }
-    return () => {
-      document.body.classList.remove('mobile-menu-open');
-    };
-  }, [isOpen]);
+    onOpenChange?.(isOpen);
+  }, [isOpen, onOpenChange]);
 
   // Close menu when route changes
   useEffect(() => {
@@ -84,7 +76,7 @@ export function HamburgerMenu() {
       {/* Hamburger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-white/5 transition-colors"
+        className="lg:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-white/5 transition-colors z-[70]"
         aria-label="Toggle menu"
       >
         {isOpen ? <X size={24} className="text-white" /> : <Menu size={24} className="text-white" />}
@@ -98,14 +90,6 @@ export function HamburgerMenu() {
             className="absolute inset-0 bg-navy/98 backdrop-blur-xl"
             onClick={() => setIsOpen(false)}
           />
-          
-          {/* Close button */}
-          <button
-            onClick={() => setIsOpen(false)}
-            className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/5 transition-colors z-50"
-          >
-            <X size={24} className="text-white/60" />
-          </button>
           
           {/* Centered navigation links */}
           <div className="relative flex flex-col items-center justify-center h-full gap-4 px-6">

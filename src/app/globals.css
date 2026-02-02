@@ -314,10 +314,3 @@ input:focus-visible {
     -webkit-overflow-scrolling: touch;
   }
 }
-
-/* Hide navbar ConnectButton when mobile menu is open */
-body.mobile-menu-open .navbar-wallet-btn {
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
