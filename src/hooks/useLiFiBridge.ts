@@ -20,6 +20,7 @@ export interface UseLiFiBridgeParams {
   toTokenAddress: string;
   amount: string; // Human readable amount (e.g., "1.5")
   decimals?: number;
+  toChainId?: number; // Destination chain (defaults to Arbitrum)
 }
 
 export interface UseLiFiBridgeReturn {
@@ -48,7 +49,8 @@ export interface UseLiFiBridgeReturn {
 let lifiInitialized = false;
 
 export function useLiFiBridge(params: UseLiFiBridgeParams): UseLiFiBridgeReturn {
-  const { fromTokenAddress, toTokenAddress, amount, decimals = 18 } = params;
+  const { fromTokenAddress, toTokenAddress, amount, decimals = 18, toChainId } = params;
+  const destinationChainId = toChainId || ARBITRUM_CHAIN_ID;
   
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -93,7 +95,7 @@ export function useLiFiBridge(params: UseLiFiBridgeParams): UseLiFiBridgeReturn 
       
       const quoteResult = await getBridgeQuote({
         fromChainId: chainId,
-        toChainId: ARBITRUM_CHAIN_ID,
+        toChainId: destinationChainId,
         fromTokenAddress,
         toTokenAddress,
         fromAmount,
@@ -107,7 +109,7 @@ export function useLiFiBridge(params: UseLiFiBridgeParams): UseLiFiBridgeReturn 
       setError(err instanceof Error ? err.message : 'Failed to get quote');
       setStatus('error');
     }
-  }, [isConnected, address, chainId, amount, decimals, fromTokenAddress, toTokenAddress]);
+  }, [isConnected, address, chainId, amount, decimals, fromTokenAddress, toTokenAddress, destinationChainId]);
 
   const executeBridge = useCallback(async () => {
     if (!quote?.route || !walletClient) {

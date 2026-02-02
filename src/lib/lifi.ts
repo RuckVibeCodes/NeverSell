@@ -37,11 +37,12 @@ export const TOKENS = {
   WETH_ARB: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
 } as const;
 
-// Initialize Li.Fi SDK config
+// Initialize Li.Fi SDK config with fee collection
 export function initLiFiConfig() {
   createConfig({
-    integrator: 'neversell',
-    // Using default API URL
+    integrator: process.env.NEXT_PUBLIC_LIFI_INTEGRATOR || 'NeverSell',
+    apiKey: process.env.NEXT_PUBLIC_LIFI_API_KEY,
+    // Fee is configured per-request in getBridgeQuote
   });
 }
 
@@ -81,6 +82,9 @@ export async function getBridgeQuote(params: BridgeQuoteParams): Promise<BridgeQ
     slippage = 0.005, // 0.5% default
   } = params;
 
+  // Get integrator fee (0.1% = 0.001)
+  const integratorFee = parseFloat(process.env.NEXT_PUBLIC_LIFI_FEE || '0.001');
+  
   const quoteRequest: QuoteRequest = {
     fromChain: fromChainId,
     toChain: toChainId,
@@ -90,6 +94,8 @@ export async function getBridgeQuote(params: BridgeQuoteParams): Promise<BridgeQ
     fromAddress,
     toAddress,
     slippage,
+    // Integrator fee - 0.1% goes to NeverSell
+    fee: integratorFee,
   };
 
   // getQuote returns a single LiFiStep
