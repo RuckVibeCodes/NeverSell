@@ -4,7 +4,8 @@
 **Fee:** 0.1% on bridge/swap transactions  
 **Revenue Potential:** $1 per $1,000 volume  
 **LiFi Integrator:** NeverSell  
-**API Key:** Configured in .env.local
+**API Key:** Configured in .env.local  
+**Fee Collection Wallet:** `0x9c7930cA28279C6A7a763DcA3573620903491806`
 
 ---
 
