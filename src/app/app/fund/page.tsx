@@ -12,9 +12,9 @@ import {
   Clock,
   Fuel,
   Route,
-  CreditCard,
   Sparkles,
 } from "lucide-react";
+import { OnrampButton } from "@/components/coinbase";
 import { useAccount, useChainId, useBalance, useSwitchChain } from "wagmi";
 import { formatUnits } from "viem";
 import { useLiFiBridge, ARBITRUM_CHAIN_ID } from "@/hooks/useLiFiBridge";
@@ -373,7 +373,7 @@ export default function FundPage() {
         <div className="relative">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-              <CreditCard size={24} className="text-white" />
+              <Sparkles size={24} className="text-white" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -385,23 +385,13 @@ export default function FundPage() {
           </div>
           
           {isConnected && address ? (
-            <button
-              onClick={() => {
-                // Coinbase Onramp URL - opens in new tab
-                const onrampUrl = new URL('https://pay.coinbase.com/buy/select-asset');
-                onrampUrl.searchParams.set('appId', 'neversell'); // Replace with real app ID
-                onrampUrl.searchParams.set('destinationWallets', JSON.stringify([{
-                  address: address,
-                  assets: ['USDC'],
-                  supportedNetworks: ['arbitrum'],
-                }]));
-                window.open(onrampUrl.toString(), '_blank');
-              }}
-              className="w-full flex items-center justify-center gap-3 py-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold hover:from-blue-400 hover:to-blue-500 transition-all shadow-lg shadow-blue-500/25"
-            >
-              <Sparkles size={20} />
-              Buy with Card
-            </button>
+            <OnrampButton
+              address={address}
+              defaultAsset="USDC"
+              defaultNetwork="arbitrum"
+              presetFiatAmount={100}
+              className="w-full"
+            />
           ) : (
             <button
               disabled
