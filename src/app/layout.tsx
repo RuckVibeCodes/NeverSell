@@ -21,6 +21,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://neversell.finance'),
   title: "NeverSell | DeFi Yield Without Selling",
   description: "Earn yield on your crypto without selling. Deposit, borrow, and grow your assets on Arbitrum.",
   keywords: ["DeFi", "yield", "Arbitrum", "crypto", "lending", "borrowing"],
