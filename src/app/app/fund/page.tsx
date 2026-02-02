@@ -34,6 +34,15 @@ const CHAINS = [
   { id: 43114, name: "Avalanche", symbol: "AVAX", icon: "🔺", color: "from-red-500 to-orange-500" },
 ] as const;
 
+// Mutable chain type for state
+type ChainItem = {
+  id: number;
+  name: string;
+  symbol: string;
+  icon: string;
+  color: string;
+};
+
 // Token definitions per chain
 const TOKENS_BY_CHAIN: Record<number, Array<{
   symbol: string;
@@ -171,43 +180,73 @@ export default function FundPage() {
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
 
+  // Bridge direction: 'in' = to Arbitrum, 'out' = from Arbitrum
+  const [bridgeDirection, setBridgeDirection] = useState<'in' | 'out'>('in');
+
   // Source selection
-  const [selectedChain, setSelectedChain] = useState(CHAINS.find(c => c.id === currentChainId) || CHAINS[0]);
+  const [selectedChain, setSelectedChain] = useState<ChainItem>(CHAINS.find(c => c.id === currentChainId) || CHAINS[0] as ChainItem);
   const [selectedFromToken, setSelectedFromToken] = useState<typeof TOKENS_BY_CHAIN[1][0] | null>(null);
   const [amount, setAmount] = useState("");
 
-  // Destination selection
+  // Destination selection (for bridge OUT)
+  const [selectedDestChain, setSelectedDestChain] = useState<ChainItem>(CHAINS[0] as ChainItem);
   const [selectedToToken, setSelectedToToken] = useState(DEST_TOKENS[0]);
+
+  // Handle direction toggle
+  const handleDirectionToggle = (direction: 'in' | 'out') => {
+    setBridgeDirection(direction);
+    setAmount("");
+    if (direction === 'out') {
+      // Switching to bridge OUT - source is Arbitrum
+      setSelectedChain(CHAINS.find(c => c.id === ARBITRUM_CHAIN_ID) as ChainItem || CHAINS[1] as ChainItem);
+      setSelectedFromToken(TOKENS_BY_CHAIN[ARBITRUM_CHAIN_ID]?.[0] || null);
+    } else {
+      // Switching to bridge IN - reset to current chain or Ethereum
+      const chain = CHAINS.find(c => c.id === currentChainId) as ChainItem || CHAINS[0] as ChainItem;
+      setSelectedChain(chain);
+    }
+  };
 
   // Get available tokens for selected chain
   const availableTokens = useMemo(() => {
     return TOKENS_BY_CHAIN[selectedChain.id] || TOKENS_BY_CHAIN[1];
   }, [selectedChain.id]);
 
-  // Update token when chain changes
+  // Destination tokens for bridge OUT (tokens on destination chain)
+  const destChainTokens = useMemo(() => {
+    return TOKENS_BY_CHAIN[selectedDestChain.id] || TOKENS_BY_CHAIN[1];
+  }, [selectedDestChain.id]);
+
+  const [selectedDestToken, setSelectedDestToken] = useState(destChainTokens[0]);
+
+  // Update dest token when dest chain changes
   useEffect(() => {
-    const tokens = TOKENS_BY_CHAIN[selectedChain.id];
+    const tokens = TOKENS_BY_CHAIN[selectedDestChain.id];
     if (tokens && tokens.length > 0) {
-      setSelectedFromToken(tokens[0]);
+      setSelectedDestToken(tokens[0]);
     }
-  }, [selectedChain.id]);
+  }, [selectedDestChain.id]);
 
   // Switch network when chain selection changes
-  const handleChainChange = useCallback((chain: typeof CHAINS[number]) => {
+  const handleChainChange = useCallback((chain: ChainItem) => {
     setSelectedChain(chain);
-    if (chain.id !== currentChainId && switchChain) {
-      switchChain({ chainId: chain.id });
+    if ((chain.id as number) !== currentChainId && switchChain) {
+      switchChain({ chainId: chain.id as number });
     }
   }, [currentChainId, switchChain]);
 
-  // Balance query
+  // Balance query - use correct chain based on direction
+  const sourceChainId = bridgeDirection === 'out' ? ARBITRUM_CHAIN_ID : selectedChain.id;
   const { data: balance, isLoading: balanceLoading } = useBalance({
     address,
     token: selectedFromToken?.isNative ? undefined : selectedFromToken?.address as `0x${string}`,
-    chainId: selectedChain.id,
+    chainId: sourceChainId,
   });
 
-  // Li.Fi bridge hook
+  // Check if user needs to switch networks for bridge OUT
+  const needsNetworkSwitch = bridgeDirection === 'out' && currentChainId !== ARBITRUM_CHAIN_ID;
+
+  // Li.Fi bridge hook - supports both directions
   const {
     status,
     quote,
@@ -221,9 +260,10 @@ export default function FundPage() {
     bridgePath,
   } = useLiFiBridge({
     fromTokenAddress: selectedFromToken?.address || "0x0000000000000000000000000000000000000000",
-    toTokenAddress: selectedToToken.address,
+    toTokenAddress: bridgeDirection === 'in' ? selectedToToken.address : selectedDestToken?.address || "0x0000000000000000000000000000000000000000",
     amount,
     decimals: selectedFromToken?.decimals || 18,
+    toChainId: bridgeDirection === 'in' ? ARBITRUM_CHAIN_ID : selectedDestChain.id,
   });
 
   // Calculate platform fee and final amounts
@@ -294,18 +334,30 @@ export default function FundPage() {
   // Get button text
   const getButtonText = () => {
     if (!isConnected) return "Connect Wallet";
+    if (needsNetworkSwitch) return "Switch to Arbitrum";
     if (!amount || parseFloat(amount) <= 0) return "Enter Amount";
     if (insufficientBalance) return "Insufficient Balance";
     switch (status) {
       case 'quoting': return 'Getting Quote...';
-      case 'quoted': return 'Swap & Fund';
+      case 'quoted': return bridgeDirection === 'in' ? 'Swap & Fund' : 'Bridge Out';
       case 'executing': return 'Processing...';
       case 'success': return 'Success!';
       default: return 'Get Quote';
     }
   };
 
-  const isCrossChain = (selectedChain.id as number) !== ARBITRUM_CHAIN_ID;
+  // Handle swap/bridge action
+  const handleAction = async () => {
+    if (needsNetworkSwitch && switchChain) {
+      switchChain({ chainId: ARBITRUM_CHAIN_ID });
+      return;
+    }
+    await handleSwap();
+  };
+
+  const isCrossChain = bridgeDirection === 'in' 
+    ? (selectedChain.id as number) !== ARBITRUM_CHAIN_ID 
+    : (selectedDestChain.id as number) !== ARBITRUM_CHAIN_ID;
 
   return (
     <div className="max-w-xl mx-auto px-4 sm:px-6 py-8">
@@ -373,6 +425,32 @@ export default function FundPage() {
         <div className="flex-1 border-t border-white/10" />
       </div>
 
+      {/* Direction Toggle */}
+      <div className="glass-card rounded-2xl p-2 mb-6 flex gap-2">
+        <button
+          onClick={() => handleDirectionToggle('in')}
+          className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+            bridgeDirection === 'in'
+              ? 'bg-mint/20 text-mint border border-mint/30'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <ArrowDown size={18} />
+          Bridge In
+        </button>
+        <button
+          onClick={() => handleDirectionToggle('out')}
+          className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+            bridgeDirection === 'out'
+              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+              : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <ArrowDown size={18} className="rotate-180" />
+          Bridge Out
+        </button>
+      </div>
+
       {/* Swap Interface - Always visible */}
       <div className={`glass-card rounded-2xl p-6 space-y-4 ${!isConnected ? 'opacity-75' : ''}`}>
           {/* From Section */}
@@ -380,15 +458,24 @@ export default function FundPage() {
             <label className="text-white/60 text-sm mb-2 block">From</label>
             <div className="bg-navy-light/50 border border-white/10 rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-3">
+                {bridgeDirection === 'out' ? (
+                  /* Bridge OUT: Arbitrum is locked as source */
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 min-w-[140px]">
+                    <TokenLogo symbol="ARB" size={24} />
+                    <span className="text-blue-400 font-medium">Arbitrum</span>
+                  </div>
+                ) : (
+                  /* Bridge IN: Can select source chain */
+                  <Dropdown
+                    items={CHAINS as unknown as typeof CHAINS[number][]}
+                    selected={selectedChain}
+                    onSelect={handleChainChange}
+                    label="Chain"
+                    disabled={!isConnected}
+                  />
+                )}
                 <Dropdown
-                  items={CHAINS as unknown as typeof CHAINS[number][]}
-                  selected={selectedChain}
-                  onSelect={handleChainChange}
-                  label="Chain"
-                  disabled={!isConnected}
-                />
-                <Dropdown
-                  items={availableTokens}
+                  items={bridgeDirection === 'out' ? TOKENS_BY_CHAIN[ARBITRUM_CHAIN_ID] : availableTokens}
                   selected={selectedFromToken}
                   onSelect={setSelectedFromToken}
                   label="Token"
@@ -430,18 +517,31 @@ export default function FundPage() {
 
           {/* To Section */}
           <div>
-            <label className="text-white/60 text-sm mb-2 block">To (Arbitrum)</label>
+            <label className="text-white/60 text-sm mb-2 block">
+              To {bridgeDirection === 'in' ? '(Arbitrum)' : `(${selectedDestChain.name})`}
+            </label>
             <div className="bg-navy-light/50 border border-white/10 rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-3">
-                {/* Arbitrum - Locked */}
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 min-w-[140px]">
-                  <span className="text-lg">🔷</span>
-                  <span className="text-blue-400 font-medium">Arbitrum</span>
-                </div>
+                {bridgeDirection === 'in' ? (
+                  /* Bridge IN: Arbitrum is locked as destination */
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 min-w-[140px]">
+                    <TokenLogo symbol="ARB" size={24} />
+                    <span className="text-blue-400 font-medium">Arbitrum</span>
+                  </div>
+                ) : (
+                  /* Bridge OUT: Can select destination chain */
+                  <Dropdown
+                    items={CHAINS.filter(c => (c.id as number) !== ARBITRUM_CHAIN_ID) as unknown as ChainItem[]}
+                    selected={selectedDestChain}
+                    onSelect={(item) => setSelectedDestChain(item as ChainItem)}
+                    label="Chain"
+                    disabled={!isConnected}
+                  />
+                )}
                 <Dropdown
-                  items={DEST_TOKENS}
-                  selected={selectedToToken}
-                  onSelect={setSelectedToToken}
+                  items={bridgeDirection === 'in' ? DEST_TOKENS : destChainTokens}
+                  selected={bridgeDirection === 'in' ? selectedToToken : selectedDestToken}
+                  onSelect={bridgeDirection === 'in' ? setSelectedToToken : setSelectedDestToken}
                   label="Token"
                   disabled={!isConnected}
                 />
@@ -453,7 +553,7 @@ export default function FundPage() {
                   {status === 'quoting' ? (
                     <span className="text-white/40">Calculating...</span>
                   ) : status === 'quoted' && feeCalculations ? (
-                    `~${feeCalculations.finalAmount.toFixed(6)} ${selectedToToken.symbol}`
+                    `~${feeCalculations.finalAmount.toFixed(6)} ${bridgeDirection === 'in' ? selectedToToken.symbol : selectedDestToken?.symbol}`
                   ) : (
                     <span className="text-white/40">-</span>
                   )}
@@ -515,7 +615,10 @@ export default function FundPage() {
                       Route
                     </div>
                     <div className="text-white text-sm">
-                      {selectedChain.name} → {bridgePath} → Arbitrum
+                      {bridgeDirection === 'in' 
+                        ? `${selectedChain.name} → ${bridgePath} → Arbitrum`
+                        : `Arbitrum → ${bridgePath} → ${selectedDestChain.name}`
+                      }
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
@@ -556,9 +659,13 @@ export default function FundPage() {
 
           {/* Swap Button */}
           <button
-            onClick={handleSwap}
-            disabled={!canSwap || !!insufficientBalance}
-            className="w-full btn-primary flex items-center justify-center gap-2 py-4 text-lg font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleAction}
+            disabled={!isConnected || (!needsNetworkSwitch && (!canSwap || !!insufficientBalance))}
+            className={`w-full flex items-center justify-center gap-2 py-4 text-lg font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed ${
+              bridgeDirection === 'out' && !needsNetworkSwitch
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-400 hover:to-orange-400'
+                : 'btn-primary'
+            }`}
           >
             {(status === 'quoting' || status === 'executing') && (
               <Loader2 size={20} className="animate-spin" />
@@ -570,7 +677,10 @@ export default function FundPage() {
           {/* Cross-chain info */}
           {isCrossChain && status === 'idle' && isConnected && (
             <p className="text-center text-white/40 text-xs">
-              Powered by Li.Fi — automatically bridges from {selectedChain.name} to Arbitrum
+              Powered by Li.Fi — automatically bridges {bridgeDirection === 'in' 
+                ? `from ${selectedChain.name} to Arbitrum`
+                : `from Arbitrum to ${selectedDestChain.name}`
+              }
             </p>
           )}
 
