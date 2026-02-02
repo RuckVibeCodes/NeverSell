@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Wallet, TrendingUp, Landmark, Rocket, Layers, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -306,10 +307,12 @@ const YieldLoop = () => {
             isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
         >
-          <Button className="btn-primary text-navy hover:opacity-90 px-8 py-4 rounded-full text-base font-semibold transition-all flex items-center gap-2 group mx-auto">
-            Start Stacking
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </Button>
+          <Link href="/app/lend">
+            <Button className="btn-primary text-navy hover:opacity-90 px-8 py-4 rounded-full text-base font-semibold transition-all flex items-center gap-2 group mx-auto">
+              Start Stacking
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
         </div>
       </div>
     </section>

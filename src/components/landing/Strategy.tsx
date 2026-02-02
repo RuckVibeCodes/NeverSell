@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 const assets = [
@@ -241,12 +242,14 @@ const Strategy = () => {
 
                 <p className="text-text-muted text-xs mb-5">{asset.subtext}</p>
 
-                <Button
-                  variant="outline"
-                  className="w-full border-white/10 text-text-primary hover:bg-white/5 hover:border-mint/30 rounded-xl py-2.5 text-sm font-medium transition-all"
-                >
-                  Select
-                </Button>
+                <Link href="/app/pools" className="w-full">
+                  <Button
+                    variant="outline"
+                    className="w-full border-white/10 text-text-primary hover:bg-white/5 hover:border-mint/30 rounded-xl py-2.5 text-sm font-medium transition-all"
+                  >
+                    Select
+                  </Button>
+                </Link>
               </div>
             </div>
           ))}

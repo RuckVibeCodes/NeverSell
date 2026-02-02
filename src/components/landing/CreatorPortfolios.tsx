@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { ArrowRight, Users, TrendingUp, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -102,10 +103,12 @@ const CreatorPortfolios = () => {
               Launch your own portfolio. Let your community earn with you.
             </p>
           </div>
-          <Button className="btn-secondary text-white hover:opacity-90 px-6 py-3 rounded-full text-sm font-semibold transition-all flex items-center gap-2 group w-fit">
-            Launch Portfolio
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </Button>
+          <Link href="/app/vaults">
+            <Button className="btn-secondary text-white hover:opacity-90 px-6 py-3 rounded-full text-sm font-semibold transition-all flex items-center gap-2 group w-fit">
+              Launch Portfolio
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
         </div>
 
         {/* Portfolio Cards */}
@@ -177,12 +180,14 @@ const CreatorPortfolios = () => {
                   <p className="text-text-muted text-sm mb-4">
                     Start earning with your community
                   </p>
-                  <Button 
-                    variant="outline" 
-                    className="w-full border-white/10 text-text-primary hover:bg-white/5 rounded-xl py-2.5 text-sm"
-                  >
-                    Get Started
-                  </Button>
+                  <Link href="/app/vaults" className="w-full">
+                    <Button 
+                      variant="outline" 
+                      className="w-full border-white/10 text-text-primary hover:bg-white/5 rounded-xl py-2.5 text-sm"
+                    >
+                      Get Started
+                    </Button>
+                  </Link>
                 </div>
               )}
             </div>

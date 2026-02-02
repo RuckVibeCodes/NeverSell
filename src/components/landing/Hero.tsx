@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { ArrowRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -33,11 +34,16 @@ interface CalculatorProps {
 }
 
 // Blended APYs: (Aave Supply × 0.6) + (GMX Pool × 0.4)
+// Source: Aave V3 Arbitrum supply rates + GMX GM pool APYs (Feb 2026)
+// BTC: (0.1% × 0.6) + (14.82% × 0.4) = 6.0%
+// ETH: (2.0% × 0.6) + (19.75% × 0.4) = 9.1%
+// ARB: (1.0% × 0.6) + (8.65% × 0.4) = 4.1%
+// USDC: (4.5% × 0.6) + (19.75% × 0.4) = 10.6% (uses ETH/USD pool)
 const assetAPYs: Record<string, number> = {
   BTC: 6.0,
   ETH: 9.1,
   ARB: 4.1,
-  USDC: 7.5,
+  USDC: 10.6,
 };
 
 const assets = [
@@ -134,9 +140,11 @@ const Calculator = ({ amount, setAmount, asset, setAsset }: CalculatorProps) => 
           </div>
         </div>
 
-        <Button className="w-full btn-primary text-navy hover:opacity-90 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 group">
-          Start Earning <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-        </Button>
+        <Link href="/app/lend" className="w-full">
+          <Button className="w-full btn-primary text-navy hover:opacity-90 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 group">
+            Start Earning <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </Button>
+        </Link>
       </div>
     </div>
   );
@@ -290,10 +298,12 @@ const Hero = () => {
                 isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
               }`}
             >
-              <Button className="btn-primary text-navy hover:opacity-90 px-8 py-4 rounded-full text-base font-semibold transition-all flex items-center gap-2 group">
-                Start Earning
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
+              <Link href="/app/lend">
+                <Button className="btn-primary text-navy hover:opacity-90 px-8 py-4 rounded-full text-base font-semibold transition-all flex items-center gap-2 group">
+                  Start Earning
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
               <Button 
                 variant="outline" 
                 onClick={scrollToYieldLoop}
