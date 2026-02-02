@@ -73,9 +73,9 @@ export function HamburgerMenu() {
         {isOpen ? <X size={24} className="text-white" /> : <Menu size={24} className="text-white" />}
       </button>
 
-      {/* Fullscreen Mobile Menu - Matches landing page style */}
+      {/* Fullscreen Mobile Menu - z-[60] to cover navbar (z-50) */}
       {isOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
+        <div className="fixed inset-0 z-[60] lg:hidden">
           {/* Background overlay */}
           <div
             className="absolute inset-0 bg-navy/98 backdrop-blur-xl"
