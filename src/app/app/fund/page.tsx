@@ -18,6 +18,7 @@ import {
 import { useAccount, useChainId, useBalance, useSwitchChain } from "wagmi";
 import { formatUnits } from "viem";
 import { useLiFiBridge, ARBITRUM_CHAIN_ID } from "@/hooks/useLiFiBridge";
+import { TokenLogo } from "@/components/ui/TokenLogo";
 
 // Platform fee (0.1%)
 const PLATFORM_FEE_PERCENT = 0.001;
@@ -128,7 +129,7 @@ function Dropdown<T extends { symbol: string; name: string; icon: string }>({
       >
         {selected ? (
           <>
-            <span className="text-lg">{selected.icon}</span>
+            <TokenLogo symbol={selected.symbol} size={24} />
             <span className="text-white font-medium">{selected.symbol}</span>
           </>
         ) : (
@@ -151,7 +152,7 @@ function Dropdown<T extends { symbol: string; name: string; icon: string }>({
                 }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-mint/10 transition-colors text-left"
               >
-                <span className="text-lg">{item.icon}</span>
+                <TokenLogo symbol={item.symbol} size={24} />
                 <div>
                   <div className="text-white font-medium">{item.symbol}</div>
                   <div className="text-white/40 text-xs">{item.name}</div>

@@ -24,6 +24,7 @@ import {
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
+import { TokenLogo } from "@/components/ui/TokenLogo";
 import { useAccount, useBalance } from "wagmi";
 import { formatUnits } from "viem";
 import { AAVE_V3_ADDRESSES } from "@/lib/aave";
@@ -369,9 +370,7 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
                     if (!pool) return null;
                     return (
                       <div key={alloc.poolId} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
-                        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${pool.color} flex items-center justify-center text-lg`}>
-                          {pool.icon}
-                        </div>
+                        <TokenLogo symbol={pool.name} size={40} />
                         <div className="flex-1">
                           <p className="text-white font-medium">{pool.id}</p>
                           <p className="text-white/40 text-xs">{pool.name}</p>
@@ -439,7 +438,9 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
                               : 'bg-white/5 border-white/10 hover:border-white/20 disabled:opacity-30'
                           }`}
                         >
-                          <div className="text-2xl mb-1">{pool.icon}</div>
+                          <div className="flex justify-center mb-1">
+                            <TokenLogo symbol={pool.name} size={32} />
+                          </div>
                           <p className="text-white text-xs font-medium truncate">{pool.id}</p>
                         </button>
                       );
@@ -616,8 +617,8 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
                     const pool = getPoolById(alloc.poolId);
                     if (!pool) return null;
                     return (
-                      <span key={alloc.poolId} className="px-2 py-1 rounded-full bg-white/10 text-white/80 text-sm">
-                        {pool.icon} {alloc.poolId} ({alloc.percentage}%)
+                      <span key={alloc.poolId} className="px-2 py-1 rounded-full bg-white/10 text-white/80 text-sm flex items-center gap-1">
+                        <TokenLogo symbol={pool.name} size={16} /> {alloc.poolId} ({alloc.percentage}%)
                       </span>
                     );
                   })}

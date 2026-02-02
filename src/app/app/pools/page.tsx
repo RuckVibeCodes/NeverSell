@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Layers, TrendingUp, Loader2, Check, AlertCircle, X, DollarSign, Droplets, ChevronDown, Shield, Scale, Flame } from "lucide-react";
+import { StackedTokenLogos } from "@/components/ui/TokenLogo";
 import { useAccount, useBalance } from "wagmi";
 import { formatUnits } from "viem";
 import { useGMXApy, formatAPY, getAPYColorClass, formatLastUpdated } from "@/hooks/useGMXApy";
@@ -577,10 +578,14 @@ function PoolCard({
     <div className="glass-card p-6 hover:border-mint/20 transition-all duration-300 group">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <div
-            className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${pool.color} flex items-center justify-center text-white font-bold text-2xl shadow-lg group-hover:scale-105 transition-transform`}
-          >
-            {pool.icon}
+          <div className="group-hover:scale-105 transition-transform">
+            <StackedTokenLogos 
+              tokens={[
+                { symbol: pool.longAsset },
+                { symbol: pool.shortAsset }
+              ]}
+              size={48}
+            />
           </div>
           <div>
             <h3 className="text-xl font-semibold text-white">{pool.name}</h3>
@@ -710,11 +715,13 @@ function DepositModal({ pool, apy, onClose }: DepositModalProps) {
         </button>
 
         <div className="flex items-center gap-4 mb-6">
-          <div
-            className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${pool.color} flex items-center justify-center text-white font-bold text-xl shadow-lg`}
-          >
-            {pool.icon}
-          </div>
+          <StackedTokenLogos 
+            tokens={[
+              { symbol: pool.longAsset },
+              { symbol: pool.shortAsset }
+            ]}
+            size={48}
+          />
           <div>
             <h3 className="text-xl font-semibold text-white">{pool.name} Pool</h3>
             <p className="text-mint text-sm">{formatAPY(apy)} APY</p>

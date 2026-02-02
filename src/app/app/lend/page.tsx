@@ -4,8 +4,8 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { PiggyBank, TrendingUp, Loader2, Check, AlertCircle, X, Info, ExternalLink } from "lucide-react";
 import { useAccount, useBalance } from "wagmi";
 import { formatUnits } from "viem";
-import Image from "next/image";
 import { useAaveDeposit } from "@/hooks/useAaveDeposit";
+import { TokenLogo } from "@/components/ui/TokenLogo";
 import { useAavePosition } from "@/hooks/useAavePosition";
 import { useGMXApy, formatAPY, formatLastUpdated } from "@/hooks/useGMXApy";
 import { useAaveSupplyRates, FALLBACK_AAVE_SUPPLY_APY } from "@/hooks/useAaveSupplyRate";
@@ -187,15 +187,7 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${asset.color} flex items-center justify-center shadow-lg overflow-hidden`}>
-            <Image 
-              src={asset.logo} 
-              alt={asset.symbol}
-              width={32}
-              height={32}
-              className="object-contain"
-            />
-          </div>
+          <TokenLogo symbol={asset.symbol} size={48} />
           <div>
             <h3 className="text-xl font-semibold text-white">{asset.symbol}</h3>
             <p className="text-white/50 text-sm">{asset.name}</p>
@@ -374,14 +366,8 @@ function AssetCard({
     <div className="glass-card p-6 hover:border-mint/20 transition-all duration-300 group">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
-          <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${asset.color} flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform overflow-hidden`}>
-            <Image 
-              src={asset.logo} 
-              alt={asset.symbol}
-              width={36}
-              height={36}
-              className="object-contain"
-            />
+          <div className="group-hover:scale-105 transition-transform">
+            <TokenLogo symbol={asset.symbol} size={56} />
           </div>
           <div>
             <h3 className="text-xl font-semibold text-white">{asset.symbol}</h3>
