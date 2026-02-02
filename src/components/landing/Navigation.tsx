@@ -53,6 +53,7 @@ const Navigation = () => {
                   width={36}
                   height={36}
                   className="w-9 h-9"
+                  priority
                 />
                 <span className="font-display text-xl lg:text-2xl font-bold text-text-primary group-hover:text-mint transition-colors">
                   NeverSell

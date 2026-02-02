@@ -111,6 +111,7 @@ const Calculator = ({ amount, setAmount, asset, setAsset }: CalculatorProps) => 
                   width={20}
                   height={20}
                   className="rounded-full"
+                  priority
                 />
                 {a.label}
               </button>
@@ -153,7 +154,8 @@ const Calculator = ({ amount, setAmount, asset, setAsset }: CalculatorProps) => 
 const Hero = () => {
   const [amount, setAmount] = useState(10000);
   const [asset, setAsset] = useState('USDC');
-  const [isAnimated, setIsAnimated] = useState(false);
+  // Start visible immediately - content should show on SSR, not wait for JS
+  const [isAnimated, setIsAnimated] = useState(true);
   const sectionRef = useRef<HTMLElement>(null);
   const headlineRef = useRef<HTMLDivElement>(null);
   const calculatorRef = useRef<HTMLDivElement>(null);
@@ -161,8 +163,7 @@ const Hero = () => {
   const ctaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Simple CSS-based entrance animation that runs immediately
-    // No GSAP needed for initial render - make it instant and responsive
+    // Content already visible - this is just for any future animations
     const timer = setTimeout(() => setIsAnimated(true), 50);
     
     // Load GSAP only for desktop scroll animations (non-blocking)
