@@ -13,7 +13,7 @@ import { ScrollAnimations } from '@/components/landing/ScrollAnimations';
 
 export default function Home() {
   return (
-    <div className="relative min-h-screen gradient-bg">
+    <div className="relative min-h-[100dvh] lg:min-h-screen gradient-bg">
       {/* Client component for scroll animations */}
       <ScrollAnimations />
       

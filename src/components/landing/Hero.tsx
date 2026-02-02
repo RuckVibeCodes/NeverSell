@@ -38,7 +38,7 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative min-h-screen w-full flex items-center overflow-hidden gradient-bg">
+    <section className="relative min-h-[100dvh] lg:min-h-screen w-full flex items-center overflow-hidden gradient-bg">
       {/* Background Orbs - hidden on mobile for performance */}
       <div className="hidden lg:block absolute top-0 left-0 w-[600px] h-[600px] bg-mint/20 rounded-full blur-[200px] animate-float-slow" />
       <div className="hidden lg:block absolute bottom-0 right-0 w-[700px] h-[700px] bg-electric-blue/15 rounded-full blur-[250px] animate-float" />
