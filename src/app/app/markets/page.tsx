@@ -53,8 +53,8 @@ function PoolCard({ pool }: { pool: GMPool }) {
         <div className="flex items-center gap-3">
           <StackedTokenLogos 
             tokens={[
-              { symbol: pool.longToken },
-              ...(pool.longToken !== pool.shortToken ? [{ symbol: pool.shortToken }] : [])
+              { symbol: pool.indexTokenSymbol || pool.longToken },
+              { symbol: pool.shortToken }
             ]}
             size={36}
           />

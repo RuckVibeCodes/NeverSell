@@ -36,7 +36,9 @@ const TOKEN_LOGOS: Record<string, string> = {
 };
 
 // Symbol to CoinGecko ID mapping for fallback
+// Comprehensive list of all GMX-listed tokens + popular assets
 const SYMBOL_TO_COINGECKO: Record<string, string> = {
+  // Major cryptocurrencies
   'ETH': '/279/small/ethereum.png',
   'WETH': '/279/small/ethereum.png',
   'BTC': '/1/small/bitcoin.png',
@@ -44,29 +46,88 @@ const SYMBOL_TO_COINGECKO: Record<string, string> = {
   'USDC': '/6319/small/usdc.png',
   'USDT': '/325/small/Tether.png',
   'DAI': '/9956/small/Badge_Dai.png',
+  'SOL': '/4128/small/solana.png',
+  'BNB': '/825/small/bnb-icon2_2x.png',
+  'XRP': '/44/small/xrp-symbol-white-128.png',
+  'ADA': '/975/small/cardano.png',
+  'AVAX': '/12559/small/Avalanche_Circle_RedWhite_Trans.png',
+  'DOT': '/12171/small/polkadot.png',
+  'MATIC': '/4713/small/polygon.png',
+  'LTC': '/2/small/litecoin.png',
+  'TRX': '/1094/small/tron-logo.png',
+  'ATOM': '/1481/small/cosmos_hub.png',
+  'NEAR': '/10365/small/near.jpg',
+  
+  // Layer 2 & Ecosystem tokens
   'ARB': '/16547/small/photo_2023-03-29_21.11.00.jpeg',
+  'OP': '/25244/small/Optimism.png',
   'GMX': '/18323/small/arbit.png',
+  
+  // DeFi tokens
   'LINK': '/877/small/chainlink-new-logo.png',
   'UNI': '/12504/small/uni.png',
   'AAVE': '/12645/small/AAVE.png',
-  'SOL': '/4128/small/solana.png',
+  'CRV': '/12124/small/Curve.png',
+  'MKR': '/1348/small/mkr.png',
+  'SNX': '/3406/small/SNX.png',
+  'COMP': '/10775/small/COMP.png',
+  'SUSHI': '/12271/small/sushi.png',
+  'CVX': '/15585/small/convex.png',
+  'PENDLE': '/15069/small/Pendle_Logo_Normal-03.png',
+  '1INCH': '/13469/small/1inch-token.png',
+  'LDO': '/13573/small/Lido_DAO.png',
+  'FXS': '/6953/small/frax_share.png',
+  
+  // Gaming & AI
+  'APE': '/24383/small/apecoin.jpg',
+  'IMX': '/17233/small/immutableX-symbol-BLK-RGB.png',
+  'FET': '/5681/small/Fetch.jpg',
+  'RNDR': '/11636/small/rndr.png',
+  'WLD': '/31069/small/worldcoin.jpeg',
+  
+  // Meme coins
   'DOGE': '/5/small/dogecoin.png',
+  'SHIB': '/11939/small/shiba.png',
   'PEPE': '/24994/small/pepe.png',
   'WIF': '/33566/small/wif.png',
-  'ATOM': '/1481/small/cosmos_hub.png',
-  'NEAR': '/10365/small/near.jpg',
-  'XRP': '/44/small/xrp-symbol-white-128.png',
-  'AVAX': '/12559/small/Avalanche_Circle_RedWhite_Trans.png',
-  'MATIC': '/4713/small/polygon.png',
-  'OP': '/25244/small/Optimism.png',
-  'LTC': '/2/small/litecoin.png',
-  'SHIB': '/11939/small/shiba.png',
-  'PENGU': '/37505/small/pengu.png',
+  'BONK': '/28600/small/bonk.jpg',
+  'FLOKI': '/10804/small/FLOKI.png',
+  'PENGU': '/53708/small/pudgy-penguins.jpg',
   'TRUMP': '/35336/small/trump.png',
+  'FARTCOIN': '/52901/small/fartcoin.png',
+  
+  // Newer/Trending GMX tokens
+  'SEI': '/28205/small/sei-logo.png',
+  'TIA': '/31967/small/tia.jpg',
+  'SUI': '/26375/small/sui_asset.jpeg',
+  'STX': '/4847/small/stacks.png',
+  'INJ': '/12882/small/Secondary_Symbol.png',
+  'JUP': '/35114/small/jup.png',
+  'PYTH': '/31924/small/pyth.png',
+  'ENA': '/36124/small/ena.png',
+  'ONDO': '/26580/small/ONDO.png',
+  'STRK': '/26997/small/starknet.png',
+  'ZRO': '/28850/small/photo_2024-04-26_14-33-03.jpg',
+  'ORDI': '/28380/small/ORDI.png',
+  'EIGEN': '/35658/small/eigen.png',
+  'SPX6900': '/35750/small/spx.png',
+  'SPX': '/35750/small/spx.png',
+  
+  // Astar / ASTER
+  'ASTER': '/12885/small/astar.png',
+  'ASTR': '/12885/small/astar.png',
+  
+  // Other GMX pools
+  'OG': '/7676/small/origin_protocol.png',
+  'KTA': '/14691/small/kta.png',
+  'DOLO': '/35645/small/dolo.png',
+  
+  // Legacy
   'HYPE': '/35381/small/hyperliquid.png',
   'AI16Z': '/53063/small/ai16z.png',
-  'FARTCOIN': '/52901/small/fartcoin.png',
   'VIRTUAL': '/29420/small/virtual-protocol.png',
+  'XAU': '/5246/small/Gold.png',
+  'XAG': '/5247/small/Silver.png',
 };
 
 interface TokenLogoProps {
