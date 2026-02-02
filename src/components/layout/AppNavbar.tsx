@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { HamburgerMenu } from './HamburgerMenu';
 
 /**
  * App Navbar - Top navigation bar for the app
- * Shows logo and wallet connection
+ * Shows logo, hamburger menu, and wallet connection
  */
 export function AppNavbar() {
   return (
@@ -21,16 +22,19 @@ export function AppNavbar() {
           </span>
         </Link>
         
-        {/* Wallet connection */}
-        <div className="flex items-center gap-4">
-          <ConnectButton 
-            chainStatus="icon"
-            showBalance={false}
-            accountStatus={{
-              smallScreen: 'avatar',
-              largeScreen: 'full',
-            }}
-          />
+        {/* Right side - Hamburger menu + Wallet */}
+        <div className="flex items-center gap-3">
+          <HamburgerMenu />
+          <div className="hidden lg:block">
+            <ConnectButton 
+              chainStatus="icon"
+              showBalance={false}
+              accountStatus={{
+                smallScreen: 'avatar',
+                largeScreen: 'full',
+              }}
+            />
+          </div>
         </div>
       </div>
     </header>

@@ -709,7 +709,7 @@ function DepositModal({ vault, onClose }: DepositModalProps) {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="p-3 rounded-xl bg-white/5 text-center">
-              <p className="text-green-400 font-bold">+{vault.performance.thirtyDay}%</p>
+              <p className="text-green-400 font-bold drop-shadow-md">+{vault.performance.thirtyDay}%</p>
               <p className="text-white/40 text-xs">30d Return</p>
             </div>
             <div className="p-3 rounded-xl bg-white/5 text-center">
@@ -832,12 +832,12 @@ function VaultCard({ vault, onSelect }: { vault: typeof mockVaults[0]; onSelect:
             <p className="text-white/60 text-xs mb-1">30d Performance</p>
             <div className="flex items-center gap-1">
               <TrendingUp size={18} className="text-green-400" />
-              <span className="text-2xl font-bold text-green-400">+{vault.performance.thirtyDay}%</span>
+              <span className="text-2xl font-bold text-green-400 drop-shadow-lg">+{vault.performance.thirtyDay}%</span>
             </div>
           </div>
           <div className="text-right">
             <p className="text-white/60 text-xs mb-1">APY</p>
-            <span className="text-xl font-bold text-mint">{vault.apy}%</span>
+            <span className="text-xl font-bold text-mint drop-shadow-lg">{vault.apy}%</span>
           </div>
         </div>
       </div>
@@ -877,7 +877,7 @@ function VaultCard({ vault, onSelect }: { vault: typeof mockVaults[0]; onSelect:
       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
         <button 
           onClick={() => setIsFollowed(!isFollowed)}
-          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-sm font-medium transition-all ${
+          className={`flex-1 py-2.5 rounded-2xl flex items-center justify-center gap-2 text-sm font-medium transition-all ${
             isFollowed 
               ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30' 
               : 'bg-white/5 text-white/60 hover:bg-white/10'
@@ -888,7 +888,7 @@ function VaultCard({ vault, onSelect }: { vault: typeof mockVaults[0]; onSelect:
         </button>
         <button 
           onClick={onSelect}
-          className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2"
+          className="flex-1 btn-primary py-2.5 rounded-2xl text-sm flex items-center justify-center gap-2"
         >
           <ArrowUpRight size={16} />
           Deposit
@@ -942,11 +942,11 @@ function Leaderboard({ vaults }: { vaults: typeof mockVaults }) {
             <div className="flex justify-between items-end">
               <div>
                 <p className="text-white/40 text-xs">30d Return</p>
-                <p className="text-green-400 font-bold text-lg">+{vault.performance.thirtyDay}%</p>
+                <p className="text-green-400 font-bold text-lg drop-shadow-md">+{vault.performance.thirtyDay}%</p>
               </div>
               <div className="text-right">
                 <p className="text-white/40 text-xs">TVL</p>
-                <p className="text-white font-medium">${(vault.tvl / 1_000_000).toFixed(1)}M</p>
+                <p className="text-white font-medium drop-shadow-md">${(vault.tvl / 1_000_000).toFixed(1)}M</p>
               </div>
             </div>
           </div>
@@ -1038,7 +1038,7 @@ export default function VaultsPage() {
             {/* Right CTA */}
             <button
               onClick={() => setShowCreateVault(true)}
-              className="relative group px-8 py-4 rounded-xl font-semibold text-white overflow-hidden whitespace-nowrap"
+              className="relative group px-8 py-4 rounded-2xl font-semibold text-white overflow-hidden whitespace-nowrap"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 group-hover:scale-105 transition-transform" />
               <span className="relative flex items-center gap-2">
@@ -1054,7 +1054,7 @@ export default function VaultsPage() {
       <div className="mb-6 flex items-center gap-2 group relative">
         <Info size={16} className="text-white/40" />
         <span className="text-white/40 text-sm">How earnings are split</span>
-        <div className="absolute left-0 top-full mt-2 p-4 bg-navy-100 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 min-w-[280px]">
+        <div className="absolute left-0 bottom-full mb-2 p-4 bg-navy-100 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 min-w-[280px] shadow-xl">
           <p className="text-white font-medium mb-3">Yield Distribution</p>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">

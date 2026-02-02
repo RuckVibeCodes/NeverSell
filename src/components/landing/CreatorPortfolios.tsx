@@ -1,12 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Users, TrendingUp, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const portfolios = [
   {
@@ -61,47 +57,24 @@ const formatFollowers = (num: number) => {
 
 const CreatorPortfolios = () => {
   const sectionRef = useRef<HTMLElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-  const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        headerRef.current,
-        { y: 30, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 80%',
-          },
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
         }
-      );
+      },
+      { threshold: 0.1 }
+    );
 
-      cardsRef.current.forEach((card, index) => {
-        gsap.fromTo(
-          card,
-          { y: 50, opacity: 0, scale: 0.98 },
-          {
-            y: 0,
-            opacity: 1,
-            scale: 1,
-            duration: 0.7,
-            delay: index * 0.1,
-            ease: 'power2.out',
-            scrollTrigger: {
-              trigger: sectionRef.current,
-              start: 'top 70%',
-            },
-          }
-        );
-      });
-    }, sectionRef);
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
 
-    return () => ctx.revert();
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -112,7 +85,11 @@ const CreatorPortfolios = () => {
     >
       <div className="w-full px-6 lg:px-10">
         {/* Header */}
-        <div ref={headerRef} className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12 lg:mb-16 max-w-6xl mx-auto">
+        <div 
+          className={`flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12 lg:mb-16 max-w-6xl mx-auto transition-all duration-700 ${
+            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
+        >
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="w-5 h-5 text-electric-purple" />
@@ -136,10 +113,12 @@ const CreatorPortfolios = () => {
           {portfolios.map((portfolio, index) => (
             <div
               key={portfolio.name}
-              ref={(el) => { cardsRef.current[index] = el; }}
-              className={`glass-card rounded-2xl p-6 transition-all duration-300 group hover:border-mint/30 ${
+              className={`glass-card rounded-2xl p-6 transition-all duration-500 group hover:border-mint/30 ${
                 portfolio.isPlaceholder ? 'border-dashed border-white/20' : ''
+              } ${
+                isVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-98'
               }`}
+              style={{ transitionDelay: `${index * 100 + 200}ms` }}
             >
               {/* Avatar & Name */}
               <div className="flex items-center gap-3 mb-5">

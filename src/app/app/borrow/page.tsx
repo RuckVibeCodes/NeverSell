@@ -188,18 +188,34 @@ function HealthFactorCard({
     return ((healthFactor - 0.5) / 2.5) * 100;
   }, [healthFactor]);
 
-  // Calculate liquidation price for collateral
-  // Simplified: assumes they'd need collateral to drop by factor to hit HF=1
-  const liquidationDropPercent = useMemo(() => {
+  // Calculate exact liquidation collateral amount
+  // At liquidation, HF = 1.0
+  // HF = (collateral * liqThreshold) / debt
+  // 1 = (liquidationCollateral * liqThreshold) / debt
+  // liquidationCollateral = debt / liqThreshold
+  const liquidationCollateral = useMemo(() => {
     if (healthFactor === Infinity || totalDebt === 0) return null;
-    // At liquidation, HF = 1
-    // HF = (collateral * liqThreshold) / debt
-    // 1 = (newCollateral * liqThreshold) / debt
-    // newCollateral = debt / liqThreshold
-    const liqCollateral = totalDebt / (liquidationThreshold / 100);
-    const dropPercent = ((totalCollateral - liqCollateral) / totalCollateral) * 100;
-    return Math.max(0, dropPercent);
-  }, [healthFactor, totalCollateral, totalDebt, liquidationThreshold]);
+    return totalDebt / (liquidationThreshold / 100);
+  }, [healthFactor, totalDebt, liquidationThreshold]);
+
+  // Calculate drop percentage before liquidation
+  const liquidationDropPercent = useMemo(() => {
+    if (liquidationCollateral === null || totalCollateral === 0) return null;
+    return ((totalCollateral - liquidationCollateral) / totalCollateral) * 100;
+  }, [liquidationCollateral, totalCollateral]);
+
+  // Calculate liquidation price (assuming collateral value drops)
+  const liquidationPrice = useMemo(() => {
+    if (liquidationCollateral === null || totalCollateral === 0) return null;
+    // If collateral drops to liquidationCollateral level
+    return liquidationCollateral;
+  }, [liquidationCollateral, totalCollateral]);
+
+  // Calculate buffer until liquidation
+  const bufferUntilLiquidation = useMemo(() => {
+    if (liquidationCollateral === null || totalCollateral === 0) return null;
+    return totalCollateral - liquidationCollateral;
+  }, [liquidationCollateral, totalCollateral]);
 
   return (
     <div className="glass-card p-6">
@@ -234,8 +250,62 @@ function HealthFactorCard({
         </div>
       </div>
 
+      {/* Exact Liquidation Price - PROMINENT DISPLAY */}
+      {liquidationPrice !== null && (
+        <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-red-500/10 via-orange-500/5 to-transparent border border-red-500/20">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={18} className="text-red-400" />
+              <span className="text-red-400 font-semibold">Liquidation Price</span>
+            </div>
+            {healthFactor < 1.5 && (
+              <span className="text-xs text-red-400/70 bg-red-500/10 px-2 py-1 rounded-full">
+                At Risk
+              </span>
+            )}
+          </div>
+          
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-3xl font-bold text-white mb-1">
+                ${liquidationPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+              <p className="text-white/50 text-sm">
+                Your collateral value at liquidation
+              </p>
+            </div>
+            <div className="text-right">
+              {bufferUntilLiquidation !== null && bufferUntilLiquidation > 0 && (
+                <>
+                  <p className="text-white/50 text-sm">Buffer</p>
+                  <p className="text-green-400 font-semibold">
+                    ${bufferUntilLiquidation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+          
+          {/* Drop percentage indicator */}
+          {liquidationDropPercent !== null && liquidationDropPercent > 0 && (
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <div className="flex justify-between text-sm">
+                <span className="text-white/50">Collateral can drop</span>
+                <span className="text-red-400 font-semibold">-{liquidationDropPercent.toFixed(1)}%</span>
+              </div>
+              <div className="mt-2 h-2 bg-white/10 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-red-500 transition-all duration-500"
+                  style={{ width: `${Math.min(100, liquidationDropPercent)}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Liquidation Warning */}
-      {liquidationDropPercent !== null && liquidationDropPercent < 50 && (
+      {liquidationDropPercent !== null && liquidationDropPercent < 50 && healthFactor > 1.0 && (
         <div className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2">
           <AlertTriangle size={16} className="text-amber-400 mt-0.5 flex-shrink-0" />
           <div className="text-sm">

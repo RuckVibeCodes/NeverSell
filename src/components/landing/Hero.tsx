@@ -1,14 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import { ArrowRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-gsap.registerPlugin(ScrollTrigger);
-
-// Particle component for background
+// Particle component for background - lightweight CSS animations
 const Particles = () => {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -36,26 +33,25 @@ interface CalculatorProps {
 }
 
 // Blended APYs: (Aave Supply × 0.6) + (GMX Pool × 0.4)
-// These are calculated from real protocol data
 const assetAPYs: Record<string, number> = {
-  BTC: 6.0,    // (0.1% Aave × 0.6) + (14.8% GMX × 0.4) ≈ 6%
-  ETH: 9.1,    // (2.0% Aave × 0.6) + (19.8% GMX × 0.4) ≈ 9.1%
-  ARB: 4.1,    // (1.0% Aave × 0.6) + (8.7% GMX × 0.4) ≈ 4.1%
-  USDC: 7.5,   // (4.5% Aave × 0.6) + (12% GMX avg × 0.4) ≈ 7.5%
+  BTC: 6.0,
+  ETH: 9.1,
+  ARB: 4.1,
+  USDC: 7.5,
 };
+
+const assets = [
+  { id: 'BTC', label: 'BTC', color: '#F7931A', icon: '/tokens/btc.png' },
+  { id: 'ETH', label: 'ETH', color: '#627EEA', icon: '/tokens/eth.png' },
+  { id: 'ARB', label: 'ARB', color: '#28A0F0', icon: '/tokens/arb.png' },
+  { id: 'USDC', label: 'USDC', color: '#2775CA', icon: '/tokens/usdc.png' },
+];
 
 const Calculator = ({ amount, setAmount, asset, setAsset }: CalculatorProps) => {
   const apy = assetAPYs[asset];
   const dailyEarn = (amount * (apy / 100)) / 365;
   const monthlyEarn = (amount * (apy / 100)) / 12;
   const yearlyEarn = amount * (apy / 100);
-
-  const assets = [
-    { id: 'BTC', label: 'BTC', color: '#F7931A', icon: '/tokens/btc.png' },
-    { id: 'ETH', label: 'ETH', color: '#627EEA', icon: '/tokens/eth.png' },
-    { id: 'ARB', label: 'ARB', color: '#28A0F0', icon: '/tokens/arb.png' },
-    { id: 'USDC', label: 'USDC', color: '#2775CA', icon: '/tokens/usdc.png' },
-  ];
 
   return (
     <div className="glass-card-strong rounded-3xl p-6 lg:p-8 w-full glow-border-mint animate-pulse-glow">
@@ -103,7 +99,13 @@ const Calculator = ({ amount, setAmount, asset, setAsset }: CalculatorProps) => 
                     : 'border-white/10 text-text-secondary hover:border-white/20 hover:text-text-primary'
                 }`}
               >
-                <img src={a.icon} alt={a.label} className="w-5 h-5 rounded-full" />
+                <Image
+                  src={a.icon}
+                  alt={a.label}
+                  width={20}
+                  height={20}
+                  className="rounded-full"
+                />
                 {a.label}
               </button>
             ))}
@@ -143,6 +145,7 @@ const Calculator = ({ amount, setAmount, asset, setAsset }: CalculatorProps) => 
 const Hero = () => {
   const [amount, setAmount] = useState(10000);
   const [asset, setAsset] = useState('USDC');
+  const [isAnimated, setIsAnimated] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
   const headlineRef = useRef<HTMLDivElement>(null);
   const calculatorRef = useRef<HTMLDivElement>(null);
@@ -150,89 +153,87 @@ const Hero = () => {
   const ctaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Check for mobile - skip complex animations
+    // Simple CSS-based entrance animation that runs immediately
+    // No GSAP needed for initial render - make it instant and responsive
+    const timer = setTimeout(() => setIsAnimated(true), 50);
+    
+    // Load GSAP only for desktop scroll animations (non-blocking)
     const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+    if (isMobile) return () => clearTimeout(timer);
 
-    const ctx = gsap.context(() => {
-      // Initial load animation (keep this on all devices, but simpler on mobile)
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    let cleanup: (() => void) | undefined;
+    
+    const initScrollAnimation = async () => {
+      try {
+        const gsap = await import('gsap');
+        const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+        gsap.default.registerPlugin(ScrollTrigger);
 
-      tl.fromTo(
-        '.hero-line',
-        { y: isMobile ? 30 : 80, opacity: 0, rotateX: isMobile ? 0 : 20 },
-        { y: 0, opacity: 1, rotateX: 0, duration: isMobile ? 0.6 : 1.2, stagger: 0.1 }
-      )
-        .fromTo(
-          subheadRef.current,
-          { y: 20, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.6 },
-          '-=0.3'
-        )
-        .fromTo(
-          ctaRef.current,
-          { y: 15, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.5 },
-          '-=0.2'
-        )
-        .fromTo(
-          calculatorRef.current,
-          { y: isMobile ? 20 : 0, x: isMobile ? 0 : 100, opacity: 0, rotateY: isMobile ? 0 : -10 },
-          { y: 0, x: 0, opacity: 1, rotateY: 0, duration: 0.6, ease: 'power2.out' },
-          '-=0.4'
-        );
+        const ctx = gsap.default.context(() => {
+          const scrollTl = gsap.default.timeline({
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: 'top top',
+              end: '+=140%',
+              pin: true,
+              scrub: 1.2,
+            },
+          });
 
-      // Only add scroll-driven exit animation on desktop
-      if (!isMobile) {
-        const scrollTl = gsap.timeline({
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top top',
-            end: '+=140%',
-            pin: true,
-            scrub: 1.2,
-          },
-        });
+          // EXIT animation on scroll
+          scrollTl.fromTo(
+            headlineRef.current,
+            { x: 0, opacity: 1 },
+            { x: '-20vw', opacity: 0, ease: 'power2.in' },
+            0.7
+          );
 
-        // Phase 3: EXIT (70% - 100%)
-        scrollTl.fromTo(
-          headlineRef.current,
-          { x: 0, opacity: 1 },
-          { x: '-20vw', opacity: 0, ease: 'power2.in' },
-          0.7
-        );
+          scrollTl.fromTo(
+            subheadRef.current,
+            { x: 0, opacity: 1 },
+            { x: '-15vw', opacity: 0, ease: 'power2.in' },
+            0.72
+          );
 
-        scrollTl.fromTo(
-          subheadRef.current,
-          { x: 0, opacity: 1 },
-          { x: '-15vw', opacity: 0, ease: 'power2.in' },
-          0.72
-        );
+          scrollTl.fromTo(
+            ctaRef.current,
+            { x: 0, opacity: 1 },
+            { x: '-10vw', opacity: 0, ease: 'power2.in' },
+            0.74
+          );
 
-        scrollTl.fromTo(
-          ctaRef.current,
-          { x: 0, opacity: 1 },
-          { x: '-10vw', opacity: 0, ease: 'power2.in' },
-          0.74
-        );
+          scrollTl.fromTo(
+            calculatorRef.current,
+            { x: 0, opacity: 1 },
+            { x: '20vw', opacity: 0, ease: 'power2.in' },
+            0.7
+          );
+        }, sectionRef);
 
-        scrollTl.fromTo(
-          calculatorRef.current,
-          { x: 0, opacity: 1 },
-          { x: '20vw', opacity: 0, ease: 'power2.in' },
-          0.7
-        );
+        cleanup = () => ctx.revert();
+      } catch (e) {
+        console.warn('GSAP failed to load:', e);
       }
-    }, sectionRef);
+    };
 
-    return () => ctx.revert();
+    // Delay GSAP load to not block first paint
+    const rafId = requestAnimationFrame(() => {
+      setTimeout(initScrollAnimation, 100);
+    });
+
+    return () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(rafId);
+      cleanup?.();
+    };
   }, []);
 
-  const scrollToYieldLoop = () => {
+  const scrollToYieldLoop = useCallback(() => {
     const element = document.querySelector('#yield-loop');
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
-  };
+  }, []);
 
   return (
     <section
@@ -250,24 +251,45 @@ const Hero = () => {
       <div className="relative z-10 w-full px-6 lg:px-10 pt-24 lg:pt-0">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center max-w-[1600px] mx-auto">
           {/* Left: Text Content */}
-          <div ref={headlineRef} className="space-y-6 lg:space-y-8">
+          <div 
+            ref={headlineRef} 
+            className={`space-y-6 lg:space-y-8 transition-all duration-700 ease-out ${
+              isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
+          >
             <h1 className="font-display text-display-1 text-text-primary">
-              <div className="hero-line overflow-hidden">
-                <span className="block">Yield on yield.</span>
+              <div className="overflow-hidden">
+                <span className={`block transition-all duration-700 delay-100 ${isAnimated ? 'translate-y-0' : 'translate-y-full'}`}>
+                  Yield on yield.
+                </span>
               </div>
-              <div className="hero-line overflow-hidden">
-                <span className="block">No lock-ups.</span>
+              <div className="overflow-hidden">
+                <span className={`block transition-all duration-700 delay-200 ${isAnimated ? 'translate-y-0' : 'translate-y-full'}`}>
+                  No lock-ups.
+                </span>
               </div>
-              <div className="hero-line overflow-hidden">
-                <span className="block text-gradient-mint">No banks.</span>
+              <div className="overflow-hidden">
+                <span className={`block text-gradient-mint transition-all duration-700 delay-300 ${isAnimated ? 'translate-y-0' : 'translate-y-full'}`}>
+                  No banks.
+                </span>
               </div>
             </h1>
 
-            <p ref={subheadRef} className="text-lg lg:text-xl text-text-secondary max-w-lg leading-relaxed">
+            <p 
+              ref={subheadRef} 
+              className={`text-lg lg:text-xl text-text-secondary max-w-lg leading-relaxed transition-all duration-700 delay-400 ${
+                isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
+            >
               Deposit crypto. Earn yield. Borrow against it. Deploy to pools. <span className="text-mint font-medium">Earn again.</span>
             </p>
 
-            <div ref={ctaRef} className="flex flex-col sm:flex-row gap-4 items-start">
+            <div 
+              ref={ctaRef} 
+              className={`flex flex-col sm:flex-row gap-4 items-start transition-all duration-700 delay-500 ${
+                isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
+            >
               <Button className="btn-primary text-navy hover:opacity-90 px-8 py-4 rounded-full text-base font-semibold transition-all flex items-center gap-2 group">
                 Start Earning
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -286,7 +308,9 @@ const Hero = () => {
           {/* Right: Calculator */}
           <div
             ref={calculatorRef}
-            className="lg:justify-self-end w-full max-w-md lg:max-w-lg"
+            className={`lg:justify-self-end w-full max-w-md lg:max-w-lg transition-all duration-700 delay-300 ${
+              isAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
           >
             <Calculator
               amount={amount}

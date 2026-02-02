@@ -1,10 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-gsap.registerPlugin(ScrollTrigger);
 
 interface StatItemProps {
   value: string;
@@ -13,38 +9,43 @@ interface StatItemProps {
   suffix?: string;
   isCurrency?: boolean;
   delay?: number;
+  isVisible: boolean;
 }
 
-const StatItem = ({ value, label, prefix = '', suffix = '', delay = 0 }: StatItemProps) => {
+const StatItem = ({ value, label, prefix = '', suffix = '', delay = 0, isVisible }: StatItemProps) => {
   const [displayValue, setDisplayValue] = useState(0);
   const numericValue = parseFloat(value.replace(/[^0-9.]/g, ''));
   const itemRef = useRef<HTMLDivElement>(null);
+  const hasAnimated = useRef(false);
 
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      ScrollTrigger.create({
-        trigger: itemRef.current,
-        start: 'top 85%',
-        onEnter: () => {
-          gsap.to(
-            { val: 0 },
-            {
-              val: numericValue,
-              duration: 2.5,
-              delay: delay,
-              ease: 'power2.out',
-              onUpdate: function () {
-                setDisplayValue(this.targets()[0].val);
-              },
-            }
-          );
-        },
-        once: true,
-      });
-    }, itemRef);
+    if (!isVisible || hasAnimated.current) return;
+    hasAnimated.current = true;
 
-    return () => ctx.revert();
-  }, [numericValue, delay]);
+    // Simple counter animation without GSAP
+    const duration = 2500;
+    const startTime = Date.now() + delay * 1000;
+    
+    const animate = () => {
+      const now = Date.now();
+      if (now < startTime) {
+        requestAnimationFrame(animate);
+        return;
+      }
+      
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease out quad
+      const eased = 1 - (1 - progress) * (1 - progress);
+      setDisplayValue(numericValue * eased);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    
+    requestAnimationFrame(animate);
+  }, [numericValue, delay, isVisible]);
 
   const formatValue = (val: number) => {
     if (value.includes('M')) {
@@ -70,26 +71,24 @@ const StatItem = ({ value, label, prefix = '', suffix = '', delay = 0 }: StatIte
 const LiveStats = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        containerRef.current,
-        { y: 40, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 85%',
-          },
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
         }
-      );
-    }, sectionRef);
+      },
+      { threshold: 0.2 }
+    );
 
-    return () => ctx.revert();
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
   }, []);
 
   const stats = [
@@ -106,7 +105,9 @@ const LiveStats = () => {
     >
       <div
         ref={containerRef}
-        className="w-full px-6 lg:px-10"
+        className={`w-full px-6 lg:px-10 transition-all duration-700 ${
+          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+        }`}
       >
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-4">
@@ -119,6 +120,7 @@ const LiveStats = () => {
                 suffix={stat.suffix}
                 isCurrency={stat.isCurrency}
                 delay={index * 0.15}
+                isVisible={isVisible}
               />
             ))}
           </div>

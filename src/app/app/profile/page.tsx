@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from "react";
+import Image from "next/image";
 import { useAccount } from 'wagmi';
-import { Wallet, LogOut, Edit2, Check, Twitter, MessageCircle, Link as LinkIcon, Plus, Users } from "lucide-react";
+import { Wallet, LogOut, Edit2, Check, Twitter, MessageCircle, Link as LinkIcon, Plus, Users, Copy, CheckCheck, Upload, X, Loader2 } from "lucide-react";
 
 // Mock portfolios for the profile
 const mockUserPortfolios = [
@@ -37,10 +38,60 @@ export default function ProfilePage() {
   const [twitter, setTwitter] = useState("");
   const [telegram, setTelegram] = useState("");
   const [website, setWebsite] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Generate referral link based on address
+  const referralLink = address 
+    ? `https://neversell.finance/ref/${address.slice(0, 8)}`
+    : '';
 
   const handleSave = () => {
     setIsEditing(false);
     // In production: save to backend/database
+  };
+
+  // Handle image upload with base64
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image must be less than 2MB');
+      return;
+    }
+
+    setIsUploading(true);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // Compress image if needed (simple base64 for now)
+      const result = reader.result as string;
+      setAvatarUrl(result);
+      setIsUploading(false);
+      // In production: upload to cloud storage and save URL
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setAvatarUrl(null);
+  };
+
+  const handleCopyReferral = () => {
+    if (referralLink) {
+      navigator.clipboard.writeText(referralLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   return (
@@ -64,8 +115,45 @@ export default function ProfilePage() {
           {/* Avatar & Edit Button */}
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-mint to-emerald-500 flex items-center justify-center text-3xl font-bold text-white">
-                {displayName.charAt(0).toUpperCase()}
+              <div className="relative group">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-mint to-emerald-500 flex items-center justify-center text-3xl font-bold text-white overflow-hidden">
+                  {avatarUrl ? (
+                    <Image 
+                      src={avatarUrl} 
+                      alt="Profile" 
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    displayName.charAt(0).toUpperCase()
+                  )}
+                </div>
+                {/* Upload overlay */}
+                {isEditing && (
+                  <label className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={isUploading}
+                      className="hidden"
+                    />
+                    {isUploading ? (
+                      <Loader2 size={20} className="animate-spin text-white" />
+                    ) : (
+                      <Upload size={20} className="text-white" />
+                    )}
+                  </label>
+                )}
+                {/* Remove button */}
+                {isEditing && avatarUrl && (
+                  <button
+                    onClick={handleRemoveImage}
+                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white hover:bg-red-600 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
               </div>
               <div>
                 {isEditing ? (
@@ -83,7 +171,7 @@ export default function ProfilePage() {
             </div>
             <button
               onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/10 text-white hover:bg-white/20 transition-colors"
             >
               {isEditing ? <Check size={16} /> : <Edit2 size={16} />}
               {isEditing ? 'Save' : 'Edit'}
@@ -169,6 +257,38 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
+
+          {/* Referral Link */}
+          {isConnected && referralLink && (
+            <div className="mt-6 pt-6 border-t border-white/10">
+              <p className="text-white/50 text-sm mb-3 flex items-center gap-2">
+                <Users size={14} className="text-mint" />
+                Share Your Portfolio & Earn 20%
+              </p>
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-gradient-to-r from-mint/10 to-purple-500/10 border border-mint/20">
+                <input
+                  type="text"
+                  readOnly
+                  value={referralLink}
+                  className="flex-1 bg-transparent text-white text-sm placeholder:text-white/30 focus:outline-none font-mono"
+                />
+                <button
+                  onClick={handleCopyReferral}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
+                    copied 
+                      ? 'bg-green-500 text-white' 
+                      : 'bg-mint text-navy-400 hover:bg-mint/90'
+                  }`}
+                >
+                  {copied ? <CheckCheck size={14} /> : <Copy size={14} />}
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+              <p className="text-white/40 text-xs mt-2">
+                You earn 20% of your followers' trading gains when they use your referral link
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -181,7 +301,7 @@ export default function ProfilePage() {
             </div>
             Your Portfolios
           </h2>
-          <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-mint text-navy-400 text-sm font-medium hover:bg-mint/90 transition-colors">
+          <button className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-mint text-navy-400 text-sm font-medium hover:bg-mint/90 transition-colors">
             <Plus size={14} />
             New Portfolio
           </button>

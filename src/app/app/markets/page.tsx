@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Search, 
   TrendingUp, 
@@ -13,11 +13,12 @@ import {
   Loader2,
   AlertCircle,
   BarChart3,
-  Layers
+  Layers,
+  Star,
+  TrendingUpIcon
 } from "lucide-react";
 import { 
   useAllGMXPools, 
-  useFilteredGMXPools,
   formatTVL, 
   formatPoolAPY, 
   getPoolAPYColor,
@@ -29,6 +30,7 @@ import { TokenLogo, StackedTokenLogos } from "@/components/ui/TokenLogo";
 type SortBy = 'tvl' | 'apy' | 'symbol';
 type SortOrder = 'asc' | 'desc';
 type PoolTypeFilter = 'all' | 'standard' | 'single-sided';
+type CategoryFilter = 'all' | 'favorites' | 'rwa' | 'defi' | 'meme';
 
 // TVL filter presets
 const TVL_PRESETS = [
@@ -39,8 +41,33 @@ const TVL_PRESETS = [
   { label: '$50M+', value: 50_000_000 },
 ];
 
+// Pool categories based on GMX token config
+const CATEGORY_TOKENS: Record<string, string[]> = {
+  rwa: ['XAU', 'XAG'], // Gold, Silver
+  defi: ['AAVE', 'UNI', 'LINK', 'GMX', 'CRV', 'MKR', 'COMP', 'SNX', 'SUSHI', 'APE', 'AXS', 'ENS', 'LDO', 'RPL', 'BAL', 'YFI', 'CVX', 'FXS', 'ALCX'],
+  meme: ['DOGE', 'PEPE', 'WIF', 'BONK', 'SHIB', 'FLOKI', 'ARBI', 'PENGU', 'MEME', 'NEIRO', 'BRETT', 'TURBO', 'MOG', 'BOME', 'WLD'],
+};
+
+// Get pool category based on long token symbol
+function getPoolCategory(longToken: string): string {
+  const token = longToken.toUpperCase();
+  for (const [category, tokens] of Object.entries(CATEGORY_TOKENS)) {
+    if (tokens.includes(token)) return category;
+  }
+  return 'other';
+}
+
+// Check if pool is in a specific category
+function isPoolInCategory(pool: GMPool, category: CategoryFilter): boolean {
+  if (category === 'all') return true;
+  if (category === 'favorites') return false; // Handled separately
+  
+  const poolCategory = getPoolCategory(pool.longToken);
+  return poolCategory === category;
+}
+
 // Pool card component
-function PoolCard({ pool }: { pool: GMPool }) {
+function PoolCard({ pool, isFavorite, onToggleFavorite }: { pool: GMPool; isFavorite: boolean; onToggleFavorite: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   
   return (
@@ -70,11 +97,25 @@ function PoolCard({ pool }: { pool: GMPool }) {
             </div>
           </div>
         </div>
-        <div className="text-right">
-          <p className={`text-xl font-bold ${getPoolAPYColor(pool.apy)}`}>
-            {formatPoolAPY(pool.apy)}
-          </p>
-          <p className="text-white/40 text-xs">APY</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(pool.id);
+            }}
+            className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <Star 
+              size={20} 
+              className={isFavorite ? 'text-yellow-400 fill-yellow-400' : 'text-white/30 hover:text-white/60'} 
+            />
+          </button>
+          <div className="text-right">
+            <p className={`text-xl font-bold ${getPoolAPYColor(pool.apy)}`}>
+              {formatPoolAPY(pool.apy)}
+            </p>
+            <p className="text-white/40 text-xs">APY</p>
+          </div>
         </div>
       </div>
 
@@ -159,7 +200,7 @@ function PoolCard({ pool }: { pool: GMPool }) {
           {/* External links (smaller) */}
           <div className="flex gap-2 pt-2">
             <a
-              href={`https://app.gmx.io/#/earn?market=${pool.longToken}`}
+              href={`https://app.gmx.io/#/pools/details?market=${pool.marketToken}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 py-1.5 text-white/40 text-xs text-center hover:text-white/60 transition-colors flex items-center justify-center gap-1"
@@ -238,17 +279,109 @@ export default function MarketsPage() {
   const [sortBy, setSortBy] = useState<SortBy>('tvl');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Category filter
+  const [category, setCategory] = useState<CategoryFilter>('all');
+  
+  // Favorites state with localStorage persistence
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [mounted, setMounted] = useState(false);
+
+  // Load favorites from localStorage on mount
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const saved = localStorage.getItem('gmx-pool-favorites');
+      if (saved) {
+        const ids = JSON.parse(saved);
+        setFavorites(new Set(ids));
+      }
+    } catch (e) {
+      console.error('Failed to load favorites:', e);
+    }
+  }, []);
+
+  // Save favorites to localStorage when they change
+  const toggleFavorite = (poolId: string) => {
+    const newFavorites = new Set(favorites);
+    if (newFavorites.has(poolId)) {
+      newFavorites.delete(poolId);
+    } else {
+      newFavorites.add(poolId);
+    }
+    setFavorites(newFavorites);
+    try {
+      localStorage.setItem('gmx-pool-favorites', JSON.stringify(Array.from(newFavorites)));
+    } catch (e) {
+      console.error('Failed to save favorites:', e);
+    }
+  };
 
   // Filtered pools
-  const filteredPools = useFilteredGMXPools(pools, {
-    search,
-    minTvl,
-    minApy,
-    poolType,
-    mainOnly,
-    sortBy,
-    sortOrder,
-  });
+  const filteredPools = useMemo(() => {
+    let result = [...pools];
+
+    // Category filter
+    if (category === 'favorites') {
+      result = result.filter(p => favorites.has(p.id));
+    } else if (category !== 'all') {
+      result = result.filter(p => isPoolInCategory(p, category));
+    }
+
+    // Main pools only - dedupe to highest TVL per symbol
+    if (mainOnly) {
+      const mainPoolsBySymbol = new Map<string, GMPool>();
+      for (const pool of result) {
+        const existing = mainPoolsBySymbol.get(pool.symbol);
+        if (!existing || pool.tvlUsd > existing.tvlUsd) {
+          mainPoolsBySymbol.set(pool.symbol, pool);
+        }
+      }
+      result = Array.from(mainPoolsBySymbol.values());
+    }
+
+    // Search filter - includes index token for assets like PENGU, ASTER
+    if (search) {
+      const searchLower = search.toLowerCase();
+      result = result.filter(
+        p => 
+          p.symbol.toLowerCase().includes(searchLower) ||
+          p.name.toLowerCase().includes(searchLower) ||
+          p.longToken.toLowerCase().includes(searchLower) ||
+          p.shortToken.toLowerCase().includes(searchLower) ||
+          p.indexTokenSymbol.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // TVL filter
+    if (minTvl > 0) {
+      result = result.filter(p => p.tvlUsd >= minTvl);
+    }
+
+    // APY filter
+    if (minApy > 0) {
+      result = result.filter(p => p.apy >= minApy);
+    }
+
+    // Pool type filter
+    if (poolType !== 'all') {
+      result = result.filter(p => p.poolType === poolType);
+    }
+
+    // Sort
+    const multiplier = sortOrder === 'desc' ? -1 : 1;
+    result.sort((a, b) => {
+      if (sortBy === 'tvl') {
+        return (a.tvlUsd - b.tvlUsd) * multiplier;
+      } else if (sortBy === 'apy') {
+        return (a.apy - b.apy) * multiplier;
+      } else {
+        return a.symbol.localeCompare(b.symbol) * multiplier;
+      }
+    });
+
+    return result;
+  }, [pools, category, favorites, mainOnly, search, minTvl, minApy, poolType, sortBy, sortOrder]);
 
   // Toggle sort
   const handleSort = (column: SortBy) => {
@@ -321,6 +454,42 @@ export default function MarketsPage() {
 
       {/* Stats summary */}
       <StatsSummary pools={filteredPools} />
+
+      {/* Category tabs */}
+      <div className="mb-6">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {[
+            { id: 'all', label: 'All Markets', icon: Layers },
+            { id: 'favorites', label: 'Favorites', icon: Star, badge: mounted ? favorites.size : 0 },
+            { id: 'rwa', label: 'RWA', icon: TrendingUpIcon },
+            { id: 'defi', label: 'DeFi', icon: TrendingUp },
+            { id: 'meme', label: 'Meme', icon: TrendingUpIcon },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setCategory(tab.id as CategoryFilter)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap transition-colors ${
+                  category === tab.id
+                    ? 'bg-mint/20 text-mint border border-mint/30'
+                    : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                <Icon size={16} />
+                <span className="text-sm font-medium">{tab.label}</span>
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span className={`px-1.5 py-0.5 rounded-full text-xs ${
+                    category === tab.id ? 'bg-mint/30 text-mint' : 'bg-white/20 text-white/60'
+                  }`}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Search & Filters */}
       <div className="mb-6 space-y-4">
@@ -454,9 +623,10 @@ export default function MarketsPage() {
       <div className="flex items-center justify-between mb-4">
         <p className="text-white/50 text-sm">
           Showing {filteredPools.length} of {pools.length} pools
+          {category !== 'all' && <span className="text-mint ml-1">({category})</span>}
           {mainOnly && <span className="text-mint ml-1">(main pools)</span>}
         </p>
-        {(search || minTvl > 0 || minApy > 0 || poolType !== 'all' || mainOnly) && (
+        {(search || minTvl > 0 || minApy > 0 || poolType !== 'all' || mainOnly || category !== 'all') && (
           <button
             onClick={() => {
               setSearch('');
@@ -464,6 +634,7 @@ export default function MarketsPage() {
               setMinApy(0);
               setPoolType('all');
               setMainOnly(false);
+              setCategory('all');
             }}
             className="text-mint text-sm hover:underline"
           >
@@ -510,7 +681,12 @@ export default function MarketsPage() {
       {filteredPools.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredPools.map((pool) => (
-            <PoolCard key={pool.id} pool={pool} />
+            <PoolCard 
+              key={pool.id} 
+              pool={pool} 
+              isFavorite={favorites.has(pool.id)}
+              onToggleFavorite={toggleFavorite}
+            />
           ))}
         </div>
       )}

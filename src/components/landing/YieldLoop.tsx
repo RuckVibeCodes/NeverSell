@@ -1,12 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useEffect, useRef, useState } from 'react';
 import { Wallet, TrendingUp, Landmark, Rocket, Layers, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const loopSteps = [
   {
@@ -53,143 +49,134 @@ const YieldLoop = () => {
   const nodesRef = useRef<(HTMLDivElement | null)[]>([]);
   const linesRef = useRef<SVGSVGElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    // Simple intersection observer for initial visibility
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
     const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+    if (isMobile) {
+      return () => observer.disconnect();
+    }
 
-    const ctx = gsap.context(() => {
-      if (isMobile) {
-        // Simple fade-in on mobile
-        gsap.fromTo(
-          headlineRef.current,
-          { y: 30, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.6,
-            ease: 'power2.out',
+    // Desktop: Load GSAP for scroll animations
+    let cleanup: (() => void) | undefined;
+    
+    const initScrollAnimation = async () => {
+      try {
+        const gsap = await import('gsap');
+        const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+        gsap.default.registerPlugin(ScrollTrigger);
+
+        const ctx = gsap.default.context(() => {
+          const scrollTl = gsap.default.timeline({
             scrollTrigger: {
               trigger: sectionRef.current,
-              start: 'top 80%',
+              start: 'top top',
+              end: '+=150%',
+              pin: true,
+              scrub: 1.2,
             },
-          }
-        );
+          });
 
-        gsap.fromTo(
-          loopRef.current,
-          { y: 30, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.6,
-            delay: 0.1,
-            ease: 'power2.out',
-            scrollTrigger: {
-              trigger: sectionRef.current,
-              start: 'top 80%',
-            },
-          }
-        );
-
-        gsap.fromTo(
-          ctaRef.current,
-          { y: 20, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.5,
-            delay: 0.2,
-            ease: 'power2.out',
-            scrollTrigger: {
-              trigger: sectionRef.current,
-              start: 'top 70%',
-            },
-          }
-        );
-        return;
-      }
-
-      // Desktop: full scroll-driven animation
-      const scrollTl = gsap.timeline({
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top top',
-          end: '+=150%',
-          pin: true,
-          scrub: 1.2,
-        },
-      });
-
-      // Phase 1: ENTRANCE (0% - 30%)
-      scrollTl.fromTo(
-        headlineRef.current,
-        { y: -80, opacity: 0 },
-        { y: 0, opacity: 1, ease: 'none' },
-        0
-      );
-
-      scrollTl.fromTo(
-        loopRef.current,
-        { scale: 0.85, opacity: 0 },
-        { scale: 1, opacity: 1, ease: 'none' },
-        0.02
-      );
-
-      // Nodes stagger in clockwise
-      nodesRef.current.forEach((node, index) => {
-        scrollTl.fromTo(
-          node,
-          { scale: 0, opacity: 0 },
-          { scale: 1, opacity: 1, ease: 'back.out(1.7)' },
-          0.04 + index * 0.03
-        );
-      });
-
-      // Lines draw on
-      if (linesRef.current) {
-        const paths = linesRef.current.querySelectorAll('path');
-        paths.forEach((path, index) => {
-          const length = (path as SVGPathElement).getTotalLength?.() || 200;
-          gsap.set(path, { strokeDasharray: length, strokeDashoffset: length });
-          scrollTl.to(
-            path,
-            { strokeDashoffset: 0, ease: 'none' },
-            0.08 + index * 0.02
+          // Phase 1: ENTRANCE (0% - 30%)
+          scrollTl.fromTo(
+            headlineRef.current,
+            { y: -80, opacity: 0 },
+            { y: 0, opacity: 1, ease: 'none' },
+            0
           );
-        });
+
+          scrollTl.fromTo(
+            loopRef.current,
+            { scale: 0.85, opacity: 0 },
+            { scale: 1, opacity: 1, ease: 'none' },
+            0.02
+          );
+
+          // Nodes stagger in clockwise
+          nodesRef.current.forEach((node, index) => {
+            scrollTl.fromTo(
+              node,
+              { scale: 0, opacity: 0 },
+              { scale: 1, opacity: 1, ease: 'back.out(1.7)' },
+              0.04 + index * 0.03
+            );
+          });
+
+          // Lines draw on
+          if (linesRef.current) {
+            const paths = linesRef.current.querySelectorAll('path');
+            paths.forEach((path, index) => {
+              const length = (path as SVGPathElement).getTotalLength?.() || 200;
+              gsap.default.set(path, { strokeDasharray: length, strokeDashoffset: length });
+              scrollTl.to(
+                path,
+                { strokeDashoffset: 0, ease: 'none' },
+                0.08 + index * 0.02
+              );
+            });
+          }
+
+          scrollTl.fromTo(
+            ctaRef.current,
+            { y: 30, opacity: 0 },
+            { y: 0, opacity: 1, ease: 'none' },
+            0.25
+          );
+
+          // Phase 3: EXIT (70% - 100%)
+          scrollTl.fromTo(
+            loopRef.current,
+            { scale: 1, opacity: 1 },
+            { scale: 0.9, opacity: 0, ease: 'power2.in' },
+            0.75
+          );
+
+          scrollTl.fromTo(
+            headlineRef.current,
+            { opacity: 1 },
+            { opacity: 0, ease: 'power2.in' },
+            0.85
+          );
+
+          scrollTl.fromTo(
+            ctaRef.current,
+            { opacity: 1 },
+            { opacity: 0, ease: 'power2.in' },
+            0.88
+          );
+        }, sectionRef);
+
+        cleanup = () => ctx.revert();
+      } catch (e) {
+        console.warn('GSAP failed to load:', e);
       }
+    };
 
-      scrollTl.fromTo(
-        ctaRef.current,
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, ease: 'none' },
-        0.25
-      );
+    // Delay GSAP load
+    const rafId = requestAnimationFrame(() => {
+      setTimeout(initScrollAnimation, 100);
+    });
 
-      // Phase 3: EXIT (70% - 100%)
-      scrollTl.fromTo(
-        loopRef.current,
-        { scale: 1, opacity: 1 },
-        { scale: 0.9, opacity: 0, ease: 'power2.in' },
-        0.75
-      );
-
-      scrollTl.fromTo(
-        headlineRef.current,
-        { opacity: 1 },
-        { opacity: 0, ease: 'power2.in' },
-        0.85
-      );
-
-      scrollTl.fromTo(
-        ctaRef.current,
-        { opacity: 1 },
-        { opacity: 0, ease: 'power2.in' },
-        0.88
-      );
-    }, sectionRef);
-
-    return () => ctx.revert();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(rafId);
+      cleanup?.();
+    };
   }, []);
 
   return (
@@ -205,7 +192,12 @@ const YieldLoop = () => {
 
       <div className="relative z-10 w-full px-6 lg:px-10 py-20">
         {/* Headline */}
-        <div ref={headlineRef} className="text-center mb-12 lg:mb-16">
+        <div 
+          ref={headlineRef} 
+          className={`text-center mb-12 lg:mb-16 transition-all duration-700 ${
+            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
+        >
           <h2 className="font-display text-display-2 text-text-primary mb-4">
             Stack yield on <span className="text-gradient">yield.</span>
           </h2>
@@ -215,7 +207,12 @@ const YieldLoop = () => {
         </div>
 
         {/* Loop Visualization */}
-        <div ref={loopRef} className="relative max-w-4xl mx-auto">
+        <div 
+          ref={loopRef} 
+          className={`relative max-w-4xl mx-auto transition-all duration-700 delay-200 ${
+            isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+          }`}
+        >
           {/* SVG Flow Lines */}
           <svg
             ref={linesRef}
@@ -261,7 +258,10 @@ const YieldLoop = () => {
                 <div
                   key={step.id}
                   ref={(el) => { nodesRef.current[index] = el; }}
-                  className="flex flex-col items-center text-center group"
+                  className={`flex flex-col items-center text-center group transition-all duration-500 ${
+                    isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+                  }`}
+                  style={{ transitionDelay: `${index * 100 + 300}ms` }}
                 >
                   {/* Node circle */}
                   <div 
@@ -300,7 +300,12 @@ const YieldLoop = () => {
         </div>
 
         {/* CTA */}
-        <div ref={ctaRef} className="text-center mt-12 lg:mt-16">
+        <div 
+          ref={ctaRef} 
+          className={`text-center mt-12 lg:mt-16 transition-all duration-700 delay-700 ${
+            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}
+        >
           <Button className="btn-primary text-navy hover:opacity-90 px-8 py-4 rounded-full text-base font-semibold transition-all flex items-center gap-2 group mx-auto">
             Start Stacking
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

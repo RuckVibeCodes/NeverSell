@@ -1,101 +1,119 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ArrowRight, TrendingUp, Shield, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const FinalCTA = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const pillarsRef = useRef<HTMLDivElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+    // Simple intersection observer for initial visibility
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
 
-    const ctx = gsap.context(() => {
-      if (isMobile) {
-        // Simple fade-in on mobile
-        gsap.fromTo(
-          [headlineRef.current, pillarsRef.current, ctaRef.current],
-          { y: 30, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.6,
-            stagger: 0.1,
-            ease: 'power2.out',
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+    if (isMobile) {
+      return () => observer.disconnect();
+    }
+
+    // Desktop: Load GSAP for scroll animations
+    let cleanup: (() => void) | undefined;
+    
+    const initScrollAnimation = async () => {
+      try {
+        const gsap = await import('gsap');
+        const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+        gsap.default.registerPlugin(ScrollTrigger);
+
+        const ctx = gsap.default.context(() => {
+          const scrollTl = gsap.default.timeline({
             scrollTrigger: {
               trigger: sectionRef.current,
-              start: 'top 80%',
+              start: 'top top',
+              end: '+=120%',
+              pin: true,
+              scrub: 1.2,
             },
-          }
-        );
-        return;
+          });
+
+          // Phase 1: ENTRANCE (0% - 30%)
+          scrollTl.fromTo(
+            headlineRef.current,
+            { y: 60, opacity: 0, scale: 0.98 },
+            { y: 0, opacity: 1, scale: 1, ease: 'none' },
+            0
+          );
+
+          scrollTl.fromTo(
+            pillarsRef.current,
+            { y: 40, opacity: 0 },
+            { y: 0, opacity: 1, ease: 'none' },
+            0.1
+          );
+
+          scrollTl.fromTo(
+            ctaRef.current,
+            { y: 30, opacity: 0 },
+            { y: 0, opacity: 1, ease: 'none' },
+            0.2
+          );
+
+          // Phase 3: EXIT (70% - 100%)
+          scrollTl.fromTo(
+            headlineRef.current,
+            { opacity: 1 },
+            { opacity: 0, ease: 'power2.in' },
+            0.85
+          );
+
+          scrollTl.fromTo(
+            pillarsRef.current,
+            { opacity: 1 },
+            { opacity: 0, ease: 'power2.in' },
+            0.88
+          );
+
+          scrollTl.fromTo(
+            ctaRef.current,
+            { opacity: 1 },
+            { opacity: 0, ease: 'power2.in' },
+            0.9
+          );
+        }, sectionRef);
+
+        cleanup = () => ctx.revert();
+      } catch (e) {
+        console.warn('GSAP failed to load:', e);
       }
+    };
 
-      // Desktop: full scroll-driven animation
-      const scrollTl = gsap.timeline({
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top top',
-          end: '+=120%',
-          pin: true,
-          scrub: 1.2,
-        },
-      });
+    // Delay GSAP load
+    const rafId = requestAnimationFrame(() => {
+      setTimeout(initScrollAnimation, 100);
+    });
 
-      // Phase 1: ENTRANCE (0% - 30%)
-      scrollTl.fromTo(
-        headlineRef.current,
-        { y: 60, opacity: 0, scale: 0.98 },
-        { y: 0, opacity: 1, scale: 1, ease: 'none' },
-        0
-      );
-
-      scrollTl.fromTo(
-        pillarsRef.current,
-        { y: 40, opacity: 0 },
-        { y: 0, opacity: 1, ease: 'none' },
-        0.1
-      );
-
-      scrollTl.fromTo(
-        ctaRef.current,
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, ease: 'none' },
-        0.2
-      );
-
-      // Phase 3: EXIT (70% - 100%)
-      scrollTl.fromTo(
-        headlineRef.current,
-        { opacity: 1 },
-        { opacity: 0, ease: 'power2.in' },
-        0.85
-      );
-
-      scrollTl.fromTo(
-        pillarsRef.current,
-        { opacity: 1 },
-        { opacity: 0, ease: 'power2.in' },
-        0.88
-      );
-
-      scrollTl.fromTo(
-        ctaRef.current,
-        { opacity: 1 },
-        { opacity: 0, ease: 'power2.in' },
-        0.9
-      );
-    }, sectionRef);
-
-    return () => ctx.revert();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(rafId);
+      cleanup?.();
+    };
   }, []);
 
   const pillars = [
@@ -129,13 +147,20 @@ const FinalCTA = () => {
       <div className="relative z-10 w-full px-6 lg:px-10 text-center">
         <h2
           ref={headlineRef}
-          className="font-display text-display-2 lg:text-display-1 text-text-primary mb-10 max-w-4xl mx-auto"
+          className={`font-display text-display-2 lg:text-display-1 text-text-primary mb-10 max-w-4xl mx-auto transition-all duration-700 ${
+            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
         >
           The <span className="text-gradient-mint">NeverSell</span> Method
         </h2>
 
         {/* Three Pillars */}
-        <div ref={pillarsRef} className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 lg:gap-16 mb-12">
+        <div 
+          ref={pillarsRef} 
+          className={`flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 lg:gap-16 mb-12 transition-all duration-700 delay-100 ${
+            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+          }`}
+        >
           {pillars.map((pillar, index) => (
             <div key={index} className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-mint/10 border border-mint/20 flex items-center justify-center">
@@ -149,7 +174,12 @@ const FinalCTA = () => {
           ))}
         </div>
 
-        <div ref={ctaRef}>
+        <div 
+          ref={ctaRef}
+          className={`transition-all duration-700 delay-200 ${
+            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}
+        >
           <Link href="/app">
             <Button className="btn-primary text-navy hover:opacity-90 px-10 py-5 rounded-full text-lg font-semibold transition-all flex items-center gap-3 group mx-auto animate-pulse-glow">
               Start Earning

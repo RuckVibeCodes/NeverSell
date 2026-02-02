@@ -1,11 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const assets = [
   {
@@ -67,9 +64,11 @@ const TokenIcon = ({ symbol }: { symbol: string; color?: string }) => {
   const iconSrc = tokenIcons[symbol];
   if (!iconSrc) return null;
   return (
-    <img 
+    <Image 
       src={iconSrc} 
-      alt={symbol} 
+      alt={symbol}
+      width={56}
+      height={56}
       className="w-full h-full rounded-full object-cover"
     />
   );
@@ -79,95 +78,100 @@ const Strategy = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+    // Simple intersection observer for initial visibility
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
 
-    const ctx = gsap.context(() => {
-      if (isMobile) {
-        // Simple fade-in on mobile
-        gsap.fromTo(
-          headingRef.current,
-          { y: 30, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.6,
-            ease: 'power2.out',
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+    if (isMobile) {
+      return () => observer.disconnect();
+    }
+
+    // Desktop: Load GSAP for scroll animations
+    let cleanup: (() => void) | undefined;
+    
+    const initScrollAnimation = async () => {
+      try {
+        const gsap = await import('gsap');
+        const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+        gsap.default.registerPlugin(ScrollTrigger);
+
+        const ctx = gsap.default.context(() => {
+          const scrollTl = gsap.default.timeline({
             scrollTrigger: {
               trigger: sectionRef.current,
-              start: 'top 80%',
+              start: 'top top',
+              end: '+=130%',
+              pin: true,
+              scrub: 1.2,
             },
-          }
-        );
+          });
 
-        cardsRef.current.forEach((card, index) => {
-          gsap.fromTo(
-            card,
-            { y: 30, opacity: 0 },
-            {
-              y: 0,
-              opacity: 1,
-              duration: 0.5,
-              delay: index * 0.1,
-              ease: 'power2.out',
-              scrollTrigger: {
-                trigger: sectionRef.current,
-                start: 'top 70%',
-              },
-            }
+          // Phase 1: ENTRANCE (0% - 30%)
+          scrollTl.fromTo(
+            headingRef.current,
+            { y: -60, opacity: 0 },
+            { y: 0, opacity: 1, ease: 'none' },
+            0
           );
-        });
-        return;
+
+          cardsRef.current.forEach((card, index) => {
+            scrollTl.fromTo(
+              card,
+              { y: 80, opacity: 0, scale: 0.95 },
+              { y: 0, opacity: 1, scale: 1, ease: 'none' },
+              0.03 + index * 0.025
+            );
+          });
+
+          // Phase 3: EXIT (70% - 100%)
+          cardsRef.current.forEach((card, index) => {
+            scrollTl.fromTo(
+              card,
+              { y: 0, opacity: 1 },
+              { y: -40, opacity: 0, ease: 'power2.in' },
+              0.7 + index * 0.02
+            );
+          });
+
+          scrollTl.fromTo(
+            headingRef.current,
+            { opacity: 1 },
+            { opacity: 0, ease: 'power2.in' },
+            0.85
+          );
+        }, sectionRef);
+
+        cleanup = () => ctx.revert();
+      } catch (e) {
+        console.warn('GSAP failed to load:', e);
       }
+    };
 
-      // Desktop: full scroll-driven animation
-      const scrollTl = gsap.timeline({
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top top',
-          end: '+=130%',
-          pin: true,
-          scrub: 1.2,
-        },
-      });
+    // Delay GSAP load
+    const rafId = requestAnimationFrame(() => {
+      setTimeout(initScrollAnimation, 100);
+    });
 
-      // Phase 1: ENTRANCE (0% - 30%)
-      scrollTl.fromTo(
-        headingRef.current,
-        { y: -60, opacity: 0 },
-        { y: 0, opacity: 1, ease: 'none' },
-        0
-      );
-
-      cardsRef.current.forEach((card, index) => {
-        scrollTl.fromTo(
-          card,
-          { y: 80, opacity: 0, scale: 0.95 },
-          { y: 0, opacity: 1, scale: 1, ease: 'none' },
-          0.03 + index * 0.025
-        );
-      });
-
-      // Phase 3: EXIT (70% - 100%)
-      cardsRef.current.forEach((card, index) => {
-        scrollTl.fromTo(
-          card,
-          { y: 0, opacity: 1 },
-          { y: -40, opacity: 0, ease: 'power2.in' },
-          0.7 + index * 0.02
-        );
-      });
-
-      scrollTl.fromTo(
-        headingRef.current,
-        { opacity: 1 },
-        { opacity: 0, ease: 'power2.in' },
-        0.85
-      );
-    }, sectionRef);
-
-    return () => ctx.revert();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(rafId);
+      cleanup?.();
+    };
   }, []);
 
   return (
@@ -184,7 +188,9 @@ const Strategy = () => {
       <div className="relative z-10 w-full px-6 lg:px-10 py-20">
         <h2
           ref={headingRef}
-          className="font-display text-display-2 text-text-primary text-center mb-12 lg:mb-16"
+          className={`font-display text-display-2 text-text-primary text-center mb-12 lg:mb-16 transition-all duration-700 ${
+            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
         >
           Pick your <span className="text-gradient">asset.</span>
         </h2>
@@ -194,7 +200,10 @@ const Strategy = () => {
             <div
               key={asset.id}
               ref={(el) => { cardsRef.current[index] = el; }}
-              className={`glass-card rounded-3xl p-6 transition-all duration-300 group hover:border-mint/30 relative overflow-hidden`}
+              className={`glass-card rounded-3xl p-6 transition-all duration-500 group hover:border-mint/30 relative overflow-hidden ${
+                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+              }`}
+              style={{ transitionDelay: `${index * 100 + 200}ms` }}
             >
               {/* Popular badge */}
               {asset.popular && (

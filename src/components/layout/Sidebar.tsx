@@ -26,11 +26,11 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: '/app', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/app/fund', label: 'Fund', icon: Wallet },
+  { href: '/app/lend', label: 'Lend', icon: PiggyBank },
+  { href: '/app/borrow', label: 'Borrow', icon: Landmark },
   { href: '/app/pools', label: 'Quick Start', icon: Zap, description: '3 simple strategies' },
   { href: '/app/markets', label: 'Research', icon: BarChart3, description: 'Analyze GM pools' },
   { href: '/app/vaults', label: 'Social Trading', icon: Users, description: 'Copy top traders' },
-  { href: '/app/lend', label: 'Lend', icon: PiggyBank },
-  { href: '/app/borrow', label: 'Borrow', icon: Landmark },
   { href: '/app/profile', label: 'Profile', icon: User },
 ];
 

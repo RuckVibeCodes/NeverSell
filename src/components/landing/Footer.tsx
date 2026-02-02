@@ -1,13 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Twitter, MessageCircle, Send } from 'lucide-react';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const footerLinks = {
   Product: ['Launch App', 'How it Works', 'Creator Portfolios', 'Security'],
@@ -22,43 +18,24 @@ const footerLinks = {
 
 const Footer = () => {
   const footerRef = useRef<HTMLElement>(null);
-  const columnsRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        columnsRef.current?.children || [],
-        { y: 20, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.5,
-          stagger: 0.12,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: footerRef.current,
-            start: 'top 90%',
-          },
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
         }
-      );
+      },
+      { threshold: 0.1 }
+    );
 
-      gsap.fromTo(
-        bottomRef.current,
-        { opacity: 0 },
-        {
-          opacity: 1,
-          duration: 0.5,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: bottomRef.current,
-            start: 'top 95%',
-          },
-        }
-      );
-    }, footerRef);
+    if (footerRef.current) {
+      observer.observe(footerRef.current);
+    }
 
-    return () => ctx.revert();
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -69,9 +46,13 @@ const Footer = () => {
       <div className="w-full px-6 lg:px-10">
         <div className="max-w-6xl mx-auto">
           {/* Main Footer Content */}
-          <div ref={columnsRef} className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-12 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-12 mb-12">
             {/* Logo Column */}
-            <div className="col-span-2 md:col-span-1">
+            <div 
+              className={`col-span-2 md:col-span-1 transition-all duration-500 ${
+                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
+            >
               <Link href="/" className="inline-flex items-center gap-3 mb-4">
                 <Image
                   src="/logo.png"
@@ -90,7 +71,11 @@ const Footer = () => {
             </div>
 
             {/* Link Columns */}
-            <div>
+            <div 
+              className={`transition-all duration-500 delay-100 ${
+                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
+            >
               <h4 className="font-semibold text-text-primary mb-4 text-sm">
                 Product
               </h4>
@@ -108,7 +93,11 @@ const Footer = () => {
               </ul>
             </div>
 
-            <div>
+            <div 
+              className={`transition-all duration-500 delay-200 ${
+                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
+            >
               <h4 className="font-semibold text-text-primary mb-4 text-sm">
                 Resources
               </h4>
@@ -126,7 +115,11 @@ const Footer = () => {
               </ul>
             </div>
 
-            <div>
+            <div 
+              className={`transition-all duration-500 delay-300 ${
+                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
+            >
               <h4 className="font-semibold text-text-primary mb-4 text-sm">
                 Community
               </h4>
@@ -148,7 +141,11 @@ const Footer = () => {
               </ul>
             </div>
 
-            <div>
+            <div 
+              className={`transition-all duration-500 delay-[400ms] ${
+                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
+            >
               <h4 className="font-semibold text-text-primary mb-4 text-sm">
                 Legal
               </h4>
@@ -169,8 +166,9 @@ const Footer = () => {
 
           {/* Bottom Bar */}
           <div
-            ref={bottomRef}
-            className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4"
+            className={`pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 transition-all duration-500 delay-500 ${
+              isVisible ? 'opacity-100' : 'opacity-0'
+            }`}
           >
             <p className="text-text-muted text-sm">
               © 2026 NeverSell. All rights reserved.

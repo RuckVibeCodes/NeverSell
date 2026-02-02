@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { PiggyBank, TrendingUp, Loader2, Check, AlertCircle, X, Info, ExternalLink } from "lucide-react";
+import { PiggyBank, TrendingUp, Loader2, Check, AlertCircle, X, Info, ExternalLink, ArrowUpRight } from "lucide-react";
 import { useAccount, useBalance } from "wagmi";
 import { formatUnits } from "viem";
 import { useAaveDeposit } from "@/hooks/useAaveDeposit";
@@ -567,6 +567,30 @@ export default function LendPage() {
           />
         </div>
       )}
+
+      {/* Borrow CTA Banner */}
+      <div className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-mint/10 via-emerald-500/10 to-teal-500/10 border border-mint/30">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-mint to-emerald-500 flex items-center justify-center">
+              <span className="text-2xl">💰</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Borrow Against Your Collateral</h3>
+              <p className="text-white/60 text-sm">
+                Your deposited assets unlock borrowing power. Use your supplied assets as collateral to borrow USDC for other DeFi strategies — all while your collateral continues earning yield.
+              </p>
+            </div>
+          </div>
+          <a
+            href="/app/borrow"
+            className="px-6 py-3 rounded-2xl bg-mint text-navy-400 font-semibold hover:bg-mint/90 transition-colors whitespace-nowrap flex items-center gap-2"
+          >
+            Go to Borrow
+            <ArrowUpRight size={18} />
+          </a>
+        </div>
+      </div>
 
       {!isConnected ? (
         <div className="glass-card p-12 text-center">

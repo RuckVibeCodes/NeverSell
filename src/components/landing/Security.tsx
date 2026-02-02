@@ -1,11 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useEffect, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const protocols = [
   {
@@ -42,78 +38,24 @@ const checks = [
 
 const Security = () => {
   const sectionRef = useRef<HTMLElement>(null);
-  const headingRef = useRef<HTMLDivElement>(null);
-  const protocolsRef = useRef<HTMLDivElement>(null);
-  const checklistRef = useRef<HTMLDivElement>(null);
-  const badgeRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        headingRef.current,
-        { y: 30, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 75%',
-          },
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
         }
-      );
+      },
+      { threshold: 0.1 }
+    );
 
-      gsap.fromTo(
-        protocolsRef.current?.children || [],
-        { y: 40, opacity: 0, scale: 0.95 },
-        {
-          y: 0,
-          opacity: 1,
-          scale: 1,
-          duration: 0.7,
-          stagger: 0.15,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: protocolsRef.current,
-            start: 'top 80%',
-          },
-        }
-      );
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
 
-      gsap.fromTo(
-        checklistRef.current?.children || [],
-        { x: -15, opacity: 0 },
-        {
-          x: 0,
-          opacity: 1,
-          duration: 0.5,
-          stagger: 0.12,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: checklistRef.current,
-            start: 'top 85%',
-          },
-        }
-      );
-
-      gsap.fromTo(
-        badgeRef.current,
-        { y: 20, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.6,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: badgeRef.current,
-            start: 'top 90%',
-          },
-        }
-      );
-    }, sectionRef);
-
-    return () => ctx.revert();
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -125,7 +67,11 @@ const Security = () => {
       <div className="w-full px-6 lg:px-10">
         <div className="max-w-4xl mx-auto">
           {/* Heading */}
-          <div ref={headingRef} className="text-center mb-12">
+          <div 
+            className={`text-center mb-12 transition-all duration-700 ${
+              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
+          >
             <h2 className="font-display text-display-2 text-text-primary mb-4">
               Built on <span className="text-gradient">battle-tested</span> protocols.
             </h2>
@@ -135,14 +81,14 @@ const Security = () => {
           </div>
 
           {/* Protocol Cards */}
-          <div
-            ref={protocolsRef}
-            className="flex flex-wrap justify-center gap-6 mb-12"
-          >
-            {protocols.map((protocol) => (
+          <div className="flex flex-wrap justify-center gap-6 mb-12">
+            {protocols.map((protocol, index) => (
               <div
                 key={protocol.name}
-                className="glass-card rounded-2xl p-6 text-center min-w-[160px] hover:border-mint/20 transition-all group"
+                className={`glass-card rounded-2xl p-6 text-center min-w-[160px] hover:border-mint/20 transition-all group duration-500 ${
+                  isVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95'
+                }`}
+                style={{ transitionDelay: `${index * 150 + 200}ms` }}
               >
                 <div className="mb-4 group-hover:scale-110 transition-transform">
                   {protocol.logo}
@@ -162,14 +108,18 @@ const Security = () => {
 
           {/* Checklist */}
           <div
-            ref={checklistRef}
-            className="glass-card rounded-2xl p-8 lg:p-10 mb-10"
+            className={`glass-card rounded-2xl p-8 lg:p-10 mb-10 transition-all duration-700 delay-500 ${
+              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
           >
             <div className="grid sm:grid-cols-2 gap-4">
               {checks.map((check, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-3 text-text-secondary"
+                  className={`flex items-center gap-3 text-text-secondary transition-all duration-500 ${
+                    isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'
+                  }`}
+                  style={{ transitionDelay: `${index * 100 + 600}ms` }}
                 >
                   <div className="w-6 h-6 rounded-full bg-mint/15 flex items-center justify-center flex-shrink-0 border border-mint/25">
                     <Check className="w-3.5 h-3.5 text-mint" />
@@ -181,7 +131,11 @@ const Security = () => {
           </div>
 
           {/* Built on Arbitrum Badge */}
-          <div ref={badgeRef} className="flex justify-center">
+          <div 
+            className={`flex justify-center transition-all duration-700 delay-1000 ${
+              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            }`}
+          >
             <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-electric-blue/10 border border-electric-blue/25">
               <div className="w-8 h-8 rounded-lg bg-electric-blue/20 flex items-center justify-center">
                 <svg viewBox="0 0 32 32" className="w-5 h-5">

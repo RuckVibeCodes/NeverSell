@@ -1,11 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useEffect, useRef, useState } from 'react';
 import { X, Check } from 'lucide-react';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const Method = () => {
   const sectionRef = useRef<HTMLElement>(null);
@@ -13,102 +9,124 @@ const Method = () => {
   const sellCardRef = useRef<HTMLDivElement>(null);
   const borrowCardRef = useRef<HTMLDivElement>(null);
   const subheadRef = useRef<HTMLParagraphElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+    // Simple intersection observer for initial visibility
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
 
-    const ctx = gsap.context(() => {
-      if (isMobile) {
-        // Simple fade-in on mobile
-        gsap.fromTo(
-          [headingRef.current, sellCardRef.current, borrowCardRef.current, subheadRef.current],
-          { y: 30, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.6,
-            stagger: 0.1,
-            ease: 'power2.out',
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+    if (isMobile) {
+      return () => observer.disconnect();
+    }
+
+    // Desktop: Load GSAP for scroll animations
+    let cleanup: (() => void) | undefined;
+    
+    const initScrollAnimation = async () => {
+      try {
+        const gsap = await import('gsap');
+        const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+        gsap.default.registerPlugin(ScrollTrigger);
+
+        const ctx = gsap.default.context(() => {
+          const scrollTl = gsap.default.timeline({
             scrollTrigger: {
               trigger: sectionRef.current,
-              start: 'top 80%',
+              start: 'top top',
+              end: '+=120%',
+              pin: true,
+              scrub: 1.2,
             },
-          }
-        );
-        return;
+          });
+
+          // Phase 1: ENTRANCE (0% - 30%)
+          scrollTl.fromTo(
+            headingRef.current,
+            { y: -50, opacity: 0 },
+            { y: 0, opacity: 1, ease: 'none' },
+            0
+          );
+
+          scrollTl.fromTo(
+            sellCardRef.current,
+            { x: '-60vw', opacity: 0 },
+            { x: 0, opacity: 1, ease: 'none' },
+            0.02
+          );
+
+          scrollTl.fromTo(
+            borrowCardRef.current,
+            { x: '60vw', opacity: 0 },
+            { x: 0, opacity: 1, ease: 'none' },
+            0.06
+          );
+
+          scrollTl.fromTo(
+            subheadRef.current,
+            { y: 20, opacity: 0 },
+            { y: 0, opacity: 1, ease: 'none' },
+            0.2
+          );
+
+          // Phase 3: EXIT (70% - 100%)
+          scrollTl.fromTo(
+            sellCardRef.current,
+            { y: 0, opacity: 1 },
+            { y: '30vh', opacity: 0, ease: 'power2.in' },
+            0.7
+          );
+
+          scrollTl.fromTo(
+            borrowCardRef.current,
+            { y: 0, opacity: 1 },
+            { y: '30vh', opacity: 0, ease: 'power2.in' },
+            0.72
+          );
+
+          scrollTl.fromTo(
+            subheadRef.current,
+            { opacity: 1 },
+            { opacity: 0, ease: 'power2.in' },
+            0.85
+          );
+
+          scrollTl.fromTo(
+            headingRef.current,
+            { opacity: 1 },
+            { opacity: 0, ease: 'power2.in' },
+            0.88
+          );
+        }, sectionRef);
+
+        cleanup = () => ctx.revert();
+      } catch (e) {
+        console.warn('GSAP failed to load:', e);
       }
+    };
 
-      // Desktop: full scroll-driven animation
-      const scrollTl = gsap.timeline({
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top top',
-          end: '+=120%',
-          pin: true,
-          scrub: 1.2,
-        },
-      });
+    // Delay GSAP load
+    const rafId = requestAnimationFrame(() => {
+      setTimeout(initScrollAnimation, 100);
+    });
 
-      // Phase 1: ENTRANCE (0% - 30%)
-      scrollTl.fromTo(
-        headingRef.current,
-        { y: -50, opacity: 0 },
-        { y: 0, opacity: 1, ease: 'none' },
-        0
-      );
-
-      scrollTl.fromTo(
-        sellCardRef.current,
-        { x: '-60vw', opacity: 0 },
-        { x: 0, opacity: 1, ease: 'none' },
-        0.02
-      );
-
-      scrollTl.fromTo(
-        borrowCardRef.current,
-        { x: '60vw', opacity: 0 },
-        { x: 0, opacity: 1, ease: 'none' },
-        0.06
-      );
-
-      scrollTl.fromTo(
-        subheadRef.current,
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, ease: 'none' },
-        0.2
-      );
-
-      // Phase 3: EXIT (70% - 100%)
-      scrollTl.fromTo(
-        sellCardRef.current,
-        { y: 0, opacity: 1 },
-        { y: '30vh', opacity: 0, ease: 'power2.in' },
-        0.7
-      );
-
-      scrollTl.fromTo(
-        borrowCardRef.current,
-        { y: 0, opacity: 1 },
-        { y: '30vh', opacity: 0, ease: 'power2.in' },
-        0.72
-      );
-
-      scrollTl.fromTo(
-        subheadRef.current,
-        { opacity: 1 },
-        { opacity: 0, ease: 'power2.in' },
-        0.85
-      );
-
-      scrollTl.fromTo(
-        headingRef.current,
-        { opacity: 1 },
-        { opacity: 0, ease: 'power2.in' },
-        0.88
-      );
-    }, sectionRef);
-
-    return () => ctx.revert();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(rafId);
+      cleanup?.();
+    };
   }, []);
 
   const sellPoints = [
@@ -137,7 +155,9 @@ const Method = () => {
       <div className="relative z-10 w-full px-6 lg:px-10 py-20">
         <h2
           ref={headingRef}
-          className="font-display text-display-2 text-text-primary text-center mb-12 lg:mb-16"
+          className={`font-display text-display-2 text-text-primary text-center mb-12 lg:mb-16 transition-all duration-700 ${
+            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
         >
           Need cash? <span className="text-mint">Borrow, don't sell.</span>
         </h2>
@@ -146,7 +166,9 @@ const Method = () => {
           {/* Sell Card */}
           <div
             ref={sellCardRef}
-            className="glass-card rounded-3xl p-8 lg:p-10 border-red-500/20 opacity-70"
+            className={`glass-card rounded-3xl p-8 lg:p-10 border-red-500/20 opacity-70 transition-all duration-700 delay-100 ${
+              isVisible ? 'opacity-70 translate-x-0' : 'opacity-0 -translate-x-8'
+            }`}
           >
             <div className="flex items-center gap-3 mb-8">
               <div className="w-12 h-12 rounded-xl bg-red-500/15 flex items-center justify-center border border-red-500/25">
@@ -175,7 +197,9 @@ const Method = () => {
           {/* Borrow Card */}
           <div
             ref={borrowCardRef}
-            className="glass-card-strong rounded-3xl p-8 lg:p-10 border-mint/30 glow-mint relative overflow-hidden"
+            className={`glass-card-strong rounded-3xl p-8 lg:p-10 border-mint/30 glow-mint relative overflow-hidden transition-all duration-700 delay-200 ${
+              isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'
+            }`}
           >
             {/* Animated glow background */}
             <div className="absolute inset-0 bg-gradient-to-br from-mint/10 via-transparent to-electric-blue/10 animate-pulse" />
@@ -209,7 +233,9 @@ const Method = () => {
 
         <p
           ref={subheadRef}
-          className="text-center text-text-secondary mt-10 lg:mt-14 text-lg max-w-xl mx-auto"
+          className={`text-center text-text-secondary mt-10 lg:mt-14 text-lg max-w-xl mx-auto transition-all duration-700 delay-300 ${
+            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}
         >
           This is how the <span className="text-text-primary font-medium">smart money</span> plays.
         </p>
