@@ -9,7 +9,7 @@ const Method = () => {
   const sellCardRef = useRef<HTMLDivElement>(null);
   const borrowCardRef = useRef<HTMLDivElement>(null);
   const subheadRef = useRef<HTMLParagraphElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     // Simple intersection observer for initial visibility

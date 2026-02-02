@@ -18,7 +18,7 @@ const footerLinks = {
 
 const Footer = () => {
   const footerRef = useRef<HTMLElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     const observer = new IntersectionObserver(

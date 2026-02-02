@@ -50,7 +50,7 @@ const YieldLoop = () => {
   const nodesRef = useRef<(HTMLDivElement | null)[]>([]);
   const linesRef = useRef<SVGSVGElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     // Simple intersection observer for initial visibility

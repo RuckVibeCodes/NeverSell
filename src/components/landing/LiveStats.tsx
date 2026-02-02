@@ -71,7 +71,7 @@ const StatItem = ({ value, label, prefix = '', suffix = '', delay = 0, isVisible
 const LiveStats = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
