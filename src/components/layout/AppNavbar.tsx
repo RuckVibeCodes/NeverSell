@@ -24,15 +24,17 @@ export function AppNavbar() {
         
         {/* Right side - Wallet + Hamburger menu */}
         <div className="flex items-center gap-2">
-          {/* Wallet button - compact on mobile */}
-          <ConnectButton 
-            chainStatus="icon"
-            showBalance={false}
-            accountStatus={{
-              smallScreen: 'avatar',
-              largeScreen: 'full',
-            }}
-          />
+          {/* Wallet button - compact on mobile, hidden when mobile menu open */}
+          <div className="navbar-wallet-btn">
+            <ConnectButton 
+              chainStatus="icon"
+              showBalance={false}
+              accountStatus={{
+                smallScreen: 'avatar',
+                largeScreen: 'full',
+              }}
+            />
+          </div>
           {/* Hamburger menu - mobile only */}
           <HamburgerMenu />
         </div>

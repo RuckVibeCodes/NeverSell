@@ -41,9 +41,26 @@ const navItems: NavItem[] = [
  * HamburgerMenu - Fullscreen overlay menu for mobile (matches landing page style)
  * Contains all navigation items with wallet connect at bottom
  */
+// Export hook for parent components to know if menu is open
+export function useHamburgerMenuState() {
+  return { isOpen: typeof window !== 'undefined' && document.body.classList.contains('mobile-menu-open') };
+}
+
 export function HamburgerMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+
+  // Add class to body when menu is open (for CSS-based hiding of navbar elements)
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('mobile-menu-open');
+    } else {
+      document.body.classList.remove('mobile-menu-open');
+    }
+    return () => {
+      document.body.classList.remove('mobile-menu-open');
+    };
+  }, [isOpen]);
 
   // Close menu when route changes
   useEffect(() => {
