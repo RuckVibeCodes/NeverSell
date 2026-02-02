@@ -73,7 +73,7 @@ export default function ProfilePage() {
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="bg-navy-200 border border-white/10 rounded-lg px-3 py-2 text-white text-xl font-bold mb-1"
+                    className="bg-navy-light border border-white/10 rounded-lg px-3 py-2 text-white text-xl font-bold mb-1"
                   />
                 ) : (
                   <h2 className="text-2xl font-bold text-white">{displayName}</h2>
@@ -96,7 +96,7 @@ export default function ProfilePage() {
               <textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                className="w-full bg-navy-200 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-mint/50 resize-none"
+                className="w-full bg-navy-light border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-mint/50 resize-none"
                 rows={3}
                 maxLength={280}
               />

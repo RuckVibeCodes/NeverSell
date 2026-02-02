@@ -665,7 +665,7 @@ function ActionCard({
             placeholder="0.00"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full bg-navy-200 border border-white/10 rounded-xl px-4 py-4 text-white text-lg placeholder:text-white/30 focus:outline-none focus:border-mint/50 transition-colors"
+            className="w-full bg-navy-light border border-white/10 rounded-xl px-4 py-4 text-white text-lg placeholder:text-white/30 focus:outline-none focus:border-mint/50 transition-colors"
             disabled={isPending}
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">

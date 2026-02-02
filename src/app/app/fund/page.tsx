@@ -124,7 +124,7 @@ function Dropdown<T extends { symbol: string; name: string; icon: string }>({
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-navy-200 border border-white/10 hover:border-mint/30 transition-colors min-w-[140px] ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+        className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-navy-light border border-white/10 hover:border-mint/30 transition-colors min-w-[140px] ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         {selected ? (
           <>
@@ -377,7 +377,7 @@ export default function FundPage() {
           {/* From Section */}
           <div>
             <label className="text-white/60 text-sm mb-2 block">From</label>
-            <div className="bg-navy-200/50 border border-white/10 rounded-xl p-4 space-y-3">
+            <div className="bg-navy-light/50 border border-white/10 rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-3">
                 <Dropdown
                   items={CHAINS as unknown as typeof CHAINS[number][]}
@@ -422,7 +422,7 @@ export default function FundPage() {
 
           {/* Swap Direction Indicator */}
           <div className="flex justify-center">
-            <div className="w-10 h-10 rounded-xl bg-navy-200 border border-white/10 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-navy-light border border-white/10 flex items-center justify-center">
               <ArrowDown size={20} className="text-mint" />
             </div>
           </div>
@@ -430,7 +430,7 @@ export default function FundPage() {
           {/* To Section */}
           <div>
             <label className="text-white/60 text-sm mb-2 block">To (Arbitrum)</label>
-            <div className="bg-navy-200/50 border border-white/10 rounded-xl p-4 space-y-3">
+            <div className="bg-navy-light/50 border border-white/10 rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-3">
                 {/* Arbitrum - Locked */}
                 <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 min-w-[140px]">

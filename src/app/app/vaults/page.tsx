@@ -304,7 +304,7 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
                     placeholder="0.00"
                     value={depositAmount}
                     onChange={(e) => setDepositAmount(e.target.value)}
-                    className="w-full bg-navy-200 border border-white/10 rounded-xl px-4 py-4 text-white text-2xl placeholder:text-white/30 focus:outline-none focus:border-mint/50 transition-colors text-center"
+                    className="w-full bg-navy-light border border-white/10 rounded-xl px-4 py-4 text-white text-2xl placeholder:text-white/30 focus:outline-none focus:border-mint/50 transition-colors text-center"
                   />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2">
                     <span className="text-white/50 text-lg">USDC</span>
@@ -387,7 +387,7 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
                             type="number"
                             value={alloc.percentage}
                             onChange={(e) => handleAllocationChange(alloc.poolId, parseInt(e.target.value) || 0)}
-                            className="w-16 bg-navy-200 border border-white/10 rounded-lg px-2 py-1 text-white text-center"
+                            className="w-16 bg-navy-light border border-white/10 rounded-lg px-2 py-1 text-white text-center"
                           />
                           <span className="text-white/40">%</span>
                           <button
@@ -484,7 +484,7 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
                     placeholder="e.g., Alpha Hunter Strategy"
                     value={vaultName}
                     onChange={(e) => setVaultName(e.target.value)}
-                    className="w-full bg-navy-200 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-mint/50"
+                    className="w-full bg-navy-light border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-mint/50"
                     maxLength={50}
                   />
                 </div>
@@ -495,7 +495,7 @@ function CreateVaultModal({ onClose, onSuccess }: CreateVaultModalProps) {
                     placeholder="Describe your strategy..."
                     value={vaultDescription}
                     onChange={(e) => setVaultDescription(e.target.value)}
-                    className="w-full bg-navy-200 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-mint/50 resize-none"
+                    className="w-full bg-navy-light border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-mint/50 resize-none"
                     rows={3}
                     maxLength={280}
                   />
@@ -729,7 +729,7 @@ function DepositModal({ vault, onClose }: DepositModalProps) {
                 placeholder="0.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full bg-navy-200 border border-white/10 rounded-xl px-4 py-4 text-white text-lg placeholder:text-white/30 focus:outline-none focus:border-mint/50 transition-colors"
+                className="w-full bg-navy-light border border-white/10 rounded-xl px-4 py-4 text-white text-lg placeholder:text-white/30 focus:outline-none focus:border-mint/50 transition-colors"
                 disabled={isDepositing}
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
