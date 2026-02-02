@@ -32,59 +32,43 @@ export function OnrampButton({
   const [error, setError] = useState<string | null>(null);
 
   const handleOnramp = useCallback(async () => {
-    if (disabled) return;
+    if (disabled || !address) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      // If user has a connected wallet, use session token auth
-      if (address) {
-        const response = await fetch('/api/coinbase/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            address,
-            blockchains: ['ethereum', 'arbitrum', 'base', 'optimism'],
-            assets: ['ETH', 'USDC', 'USDT', 'DAI'],
-          }),
-        });
+      // Fetch session token from backend (required by Coinbase project settings)
+      const response = await fetch('/api/coinbase/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address,
+          blockchains: ['ethereum', 'arbitrum', 'base', 'optimism'],
+          assets: ['ETH', 'USDC', 'USDT', 'DAI'],
+        }),
+      });
 
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to initialize onramp');
-        }
-
-        const { token } = await response.json();
-
-        // Build authenticated Coinbase Onramp URL
-        const onrampUrl = new URL('https://pay.coinbase.com/buy/select-asset');
-        onrampUrl.searchParams.set('sessionToken', token);
-        
-        if (COINBASE_PROJECT_ID) {
-          onrampUrl.searchParams.set('appId', COINBASE_PROJECT_ID);
-        }
-        
-        onrampUrl.searchParams.set('defaultNetwork', defaultNetwork);
-        onrampUrl.searchParams.set('defaultAsset', defaultAsset);
-        onrampUrl.searchParams.set('presetFiatAmount', presetFiatAmount.toString());
-
-        window.open(onrampUrl.toString(), '_blank', 'width=460,height=750');
-      } else {
-        // No wallet connected - open Coinbase directly
-        // User will create/connect wallet through Coinbase flow
-        const onrampUrl = new URL('https://pay.coinbase.com/buy/select-asset');
-        
-        if (COINBASE_PROJECT_ID) {
-          onrampUrl.searchParams.set('appId', COINBASE_PROJECT_ID);
-        }
-        
-        onrampUrl.searchParams.set('defaultNetwork', defaultNetwork);
-        onrampUrl.searchParams.set('defaultAsset', defaultAsset);
-        onrampUrl.searchParams.set('presetFiatAmount', presetFiatAmount.toString());
-
-        window.open(onrampUrl.toString(), '_blank', 'width=460,height=750');
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to initialize onramp');
       }
+
+      const { token } = await response.json();
+
+      // Build authenticated Coinbase Onramp URL
+      const onrampUrl = new URL('https://pay.coinbase.com/buy/select-asset');
+      onrampUrl.searchParams.set('sessionToken', token);
+      
+      if (COINBASE_PROJECT_ID) {
+        onrampUrl.searchParams.set('appId', COINBASE_PROJECT_ID);
+      }
+      
+      onrampUrl.searchParams.set('defaultNetwork', defaultNetwork);
+      onrampUrl.searchParams.set('defaultAsset', defaultAsset);
+      onrampUrl.searchParams.set('presetFiatAmount', presetFiatAmount.toString());
+
+      window.open(onrampUrl.toString(), '_blank', 'width=460,height=750');
     } catch (err) {
       console.error('Onramp error:', err);
       setError(err instanceof Error ? err.message : 'Failed to open buy widget');
@@ -93,11 +77,13 @@ export function OnrampButton({
     }
   }, [address, disabled, defaultAsset, defaultNetwork, presetFiatAmount]);
 
+  const needsWallet = !address;
+
   return (
     <div className="flex flex-col">
       <button
         onClick={handleOnramp}
-        disabled={disabled || isLoading}
+        disabled={disabled || isLoading || needsWallet}
         className={`flex items-center justify-center gap-2 py-4 px-6 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-400 hover:to-blue-500 shadow-lg shadow-blue-500/25 ${className}`}
       >
         {isLoading ? (
@@ -105,9 +91,13 @@ export function OnrampButton({
         ) : (
           <CreditCard size={20} />
         )}
-        {isLoading ? 'Opening...' : 'Buy with Card'}
-        {!isLoading && <ExternalLink size={14} className="ml-1 opacity-60" />}
+        {isLoading ? 'Opening...' : needsWallet ? 'Connect Wallet First' : 'Buy with Card'}
+        {!isLoading && !needsWallet && <ExternalLink size={14} className="ml-1 opacity-60" />}
       </button>
+      
+      {needsWallet && (
+        <p className="text-white/40 text-xs mt-2 text-center">Connect your wallet to buy crypto</p>
+      )}
       
       {error && (
         <p className="text-red-400 text-xs mt-2 text-center">{error}</p>
