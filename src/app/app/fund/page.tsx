@@ -23,6 +23,29 @@ import { TokenLogo } from "@/components/ui/TokenLogo";
 // Platform fee (0.1%)
 const PLATFORM_FEE_PERCENT = 0.001;
 
+// Get Coinbase Onramp App ID from environment
+const getCoinbaseAppId = () => {
+  if (typeof window !== 'undefined') {
+    return process.env.NEXT_PUBLIC_COINBASE_ONRAMP_APP_ID || 'neversell';
+  }
+  return 'neversell';
+};
+
+// Coinbase Onramp URL builder
+function buildCoinbaseOnrampUrl(address: string, network: string = 'arbitrum'): string {
+  const appId = getCoinbaseAppId();
+  const onrampUrl = new URL('https://pay.coinbase.com/buy/select-asset');
+  onrampUrl.searchParams.set('appId', appId);
+  onrampUrl.searchParams.set('destinationWallets', JSON.stringify([{
+    address: address,
+    assets: ['USDC'],
+    supportedNetworks: [network],
+  }]));
+  // Pre-select USDC
+  onrampUrl.searchParams.set('defaultAsset', 'USDC');
+  return onrampUrl.toString();
+}
+
 // Chain definitions with metadata
 const CHAINS = [
   { id: 1, name: "Ethereum", symbol: "ETH", icon: "⟠", color: "from-blue-500 to-purple-500" },
@@ -387,15 +410,8 @@ export default function FundPage() {
           {isConnected && address ? (
             <button
               onClick={() => {
-                // Coinbase Onramp URL - opens in new tab
-                const onrampUrl = new URL('https://pay.coinbase.com/buy/select-asset');
-                onrampUrl.searchParams.set('appId', 'neversell'); // Replace with real app ID
-                onrampUrl.searchParams.set('destinationWallets', JSON.stringify([{
-                  address: address,
-                  assets: ['USDC'],
-                  supportedNetworks: ['arbitrum'],
-                }]));
-                window.open(onrampUrl.toString(), '_blank');
+                const onrampUrl = buildCoinbaseOnrampUrl(address, 'arbitrum');
+                window.open(onrampUrl, '_blank');
               }}
               className="w-full flex items-center justify-center gap-3 py-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold hover:from-blue-400 hover:to-blue-500 transition-all shadow-lg shadow-blue-500/25"
             >
