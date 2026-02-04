@@ -24,44 +24,102 @@ async function generateCDPJwt(): Promise<string> {
   const requestHost = 'api.developer.coinbase.com';
   const requestPath = '/onramp/v1/token';
 
-  const normalizedKey = apiKeySecret.replace(/\\n/g, '\n');
+  // Handle escaped newlines - try multiple formats
+  let normalizedKey = apiKeySecret;
+  
+  // Try replacing literal \n first
+  if (normalizedKey.includes('\\n')) {
+    normalizedKey = normalizedKey.replace(/\\n/g, '\n');
+  }
+  
+  // Remove any carriage returns
+  normalizedKey = normalizedKey.replace(/\r/g, '');
+  
+  console.log('[CDP] Key format check:', normalizedKey.substring(0, 50), '...');
   
   let privateKey: jose.JWK | jose.CryptoKey;
   
   if (normalizedKey.includes('-----BEGIN PRIVATE KEY-----')) {
     // PKCS#8 format
+    console.log('[CDP] Using PKCS#8 format');
     privateKey = await jose.importPKCS8(normalizedKey, 'ES256');
   } else if (normalizedKey.includes('-----BEGIN EC PRIVATE KEY-----')) {
-    // PKCS#1 EC format - parse manually and convert to JWK
-    const lines = normalizedKey.split('\n');
-    const keyBody = Buffer.from(lines.filter(l => !l.includes('-----')).join(''), 'base64');
+    // PKCS#1 EC format
+    console.log('[CDP] Using PKCS#1 EC format');
     
-    // Parse the SEC1 EC private key format to extract components
-    // EC Private Key (SEC1) structure:
-    // 0x02 (integer, 1 byte) + length + private key scalar
-    const privKeyBytes = keyBody.slice(7); // Skip the EC key header
+    const lines = normalizedKey.split('\n').filter(l => l.trim() !== '');
+    const keyBody = lines.filter(l => !l.includes('-----')).join('');
     
-    // Get public key from private key using elliptic
-    const ec = new EC('secp256k1');
-    const keyPair = ec.keyFromPrivate(privKeyBytes);
+    console.log('[CDP] Key body length:', keyBody.length);
     
-    const pubKey = keyPair.getPublic();
-    
-    // Create JWK - convert hex to base64url manually
-    const xHex = pubKey.getX().toString('hex');
-    const yHex = pubKey.getY().toString('hex');
-    const dHex = keyPair.getPrivate().toString('hex');
-    
-    const toBase64Url = (hex: string) => Buffer.from(hex, 'hex').toString('base64url');
-    
-    privateKey = {
-      kty: 'EC',
-      crv: 'secp256k1',
-      x: toBase64Url(xHex),
-      y: toBase64Url(yHex),
-      d: toBase64Url(dHex),
-    };
+    try {
+      const keyDer = Buffer.from(keyBody, 'base64');
+      console.log('[CDP] DER length:', keyDer.length);
+      
+      // For secp256k1, private key is 32 bytes
+      // SEC1 EC private key structure may have header bytes
+      const ec = new EC('secp256k1');
+      
+      // Try different offsets to find the private key
+      let keyPair;
+      
+      // Try treating the whole DER as potentially having the key at different positions
+      // Standard SEC1 for secp256k1: 32-byte private key
+      if (keyDer.length === 32) {
+        // Raw 32-byte key
+        keyPair = ec.keyFromPrivate(keyDer);
+      } else if (keyDer.length === 48 || keyDer.length === 49) {
+        // Might have algorithm identifier prefix
+        keyPair = ec.keyFromPrivate(keyDer.slice(-32));
+      } else if (keyDer.length > 32) {
+        // Try extracting 32-byte key from various positions
+        // First try at position that makes sense for EC key
+        for (let i = 0; i <= keyDer.length - 32; i++) {
+          const potentialKey = keyDer.slice(i, i + 32);
+          // Check if this could be a valid private key (must be < curve order)
+          const key = potentialKey.readUInt32BE(0);
+          if (key > 0 && key < 0xFFFFFFFF) { // Rough check
+            try {
+              const testPair = ec.keyFromPrivate(potentialKey);
+              if (testPair.getPublic()) {
+                keyPair = testPair;
+                console.log('[CDP] Found valid key at offset:', i);
+                break;
+              }
+            } catch {
+              continue;
+            }
+          }
+        }
+        
+        // Fallback: just use the last 32 bytes
+        if (!keyPair) {
+          keyPair = ec.keyFromPrivate(keyDer.slice(-32));
+        }
+      } else {
+        throw new Error('Key data too short');
+      }
+      
+      const pubKey = keyPair.getPublic();
+      
+      // Create JWK - convert hex to base64url
+      const toBase64Url = (hex: string) => Buffer.from(hex, 'hex').toString('base64url');
+      
+      privateKey = {
+        kty: 'EC',
+        crv: 'secp256k1',
+        x: toBase64Url(pubKey.getX().toString('hex')),
+        y: toBase64Url(pubKey.getY().toString('hex')),
+        d: toBase64Url(keyPair.getPrivate().toString('hex')),
+      };
+      
+      console.log('[CDP] Successfully created JWK from EC key');
+    } catch (parseError) {
+      console.error('[CDP] EC key parse error:', parseError);
+      throw new Error('Failed to parse EC private key');
+    }
   } else {
+    console.error('[CDP] Unknown key format');
     throw new Error('Invalid private key format');
   }
 
