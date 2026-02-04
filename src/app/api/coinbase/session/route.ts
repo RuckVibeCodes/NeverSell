@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as jose from 'jose';
+import crypto from 'crypto';
+import { ec as EC } from 'elliptic';
 
 interface SessionTokenRequest {
   address: string;
@@ -22,11 +24,46 @@ async function generateCDPJwt(): Promise<string> {
   const requestHost = 'api.developer.coinbase.com';
   const requestPath = '/onramp/v1/token';
 
-  // Parse the EC private key
-  const privateKey = await jose.importPKCS8(
-    apiKeySecret.replace(/\\n/g, '\n'),
-    'ES256'
-  );
+  const normalizedKey = apiKeySecret.replace(/\\n/g, '\n');
+  
+  let privateKey: jose.JWK | jose.CryptoKey;
+  
+  if (normalizedKey.includes('-----BEGIN PRIVATE KEY-----')) {
+    // PKCS#8 format
+    privateKey = await jose.importPKCS8(normalizedKey, 'ES256');
+  } else if (normalizedKey.includes('-----BEGIN EC PRIVATE KEY-----')) {
+    // PKCS#1 EC format - parse manually and convert to JWK
+    const lines = normalizedKey.split('\n');
+    const keyBody = Buffer.from(lines.filter(l => !l.includes('-----')).join(''), 'base64');
+    
+    // Parse the SEC1 EC private key format to extract components
+    // EC Private Key (SEC1) structure:
+    // 0x02 (integer, 1 byte) + length + private key scalar
+    const privKeyBytes = keyBody.slice(7); // Skip the EC key header
+    
+    // Get public key from private key using elliptic
+    const ec = new EC('secp256k1');
+    const keyPair = ec.keyFromPrivate(privKeyBytes);
+    
+    const pubKey = keyPair.getPublic();
+    
+    // Create JWK - convert hex to base64url manually
+    const xHex = pubKey.getX().toString('hex');
+    const yHex = pubKey.getY().toString('hex');
+    const dHex = keyPair.getPrivate().toString('hex');
+    
+    const toBase64Url = (hex: string) => Buffer.from(hex, 'hex').toString('base64url');
+    
+    privateKey = {
+      kty: 'EC',
+      crv: 'secp256k1',
+      x: toBase64Url(xHex),
+      y: toBase64Url(yHex),
+      d: toBase64Url(dHex),
+    };
+  } else {
+    throw new Error('Invalid private key format');
+  }
 
   const now = Math.floor(Date.now() / 1000);
   
