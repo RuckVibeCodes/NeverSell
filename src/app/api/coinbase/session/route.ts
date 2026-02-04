@@ -1,12 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as jose from 'jose';
 import crypto from 'crypto';
-import { ec as EC } from 'elliptic';
 
 interface SessionTokenRequest {
   address: string;
   blockchains?: string[];
   assets?: string[];
+}
+
+/**
+ * Parse raw SEC1 EC private key to JWK
+ */
+function sec1ToJwk(keyDer: Buffer): jose.JWK {
+  // SEC1 EC private key structure:
+  // ECPrivateKey ::= SEQUENCE {
+  //   version        INTEGER { ecPrivkeyVer1(1) },
+  //   privateKey     OCTET STRING,
+  //   parameters [0] ECParameters OPTIONAL
+  // }
+  
+  // Skip ASN.1 header - find the private key octet string
+  // For secp256k1, the key is 32 bytes
+  let privKeyOffset = -1;
+  
+  // Parse minimally to find the private key bytes
+  // EC private key OCTET STRING typically starts at offset 7-10
+  // The structure is: 02 01 01 (version=1) | 04 20 (octet string, 32 bytes) | ...
+  if (keyDer.length >= 38) {
+    // Common structure: 30 (SEQUENCE) | length | 02 01 01 (version=1) | 04 20 (octet string) | [32 bytes key]
+    privKeyOffset = 7; // 30 + length byte + 02 01 01 + 04 20
+  } else if (keyDer.length === 32) {
+    // Raw key
+    privKeyOffset = 0;
+  }
+  
+  if (privKeyOffset >= 0 && keyDer.length >= privKeyOffset + 32) {
+    const privateKeyBytes = keyDer.slice(privKeyOffset, privKeyOffset + 32);
+    
+    // Derive public key using Node.js crypto
+    const ecdsa = crypto.createECDH('secp256k1');
+    ecdsa.setPrivateKey(privateKeyBytes);
+    
+    const publicKeyBytes = ecdsa.getPublicKey();
+    
+    // Extract x and y from public key (first byte 04 is uncompressed point, then x (32 bytes), y (32 bytes))
+    if (publicKeyBytes.length === 65 && publicKeyBytes[0] === 0x04) {
+      const x = publicKeyBytes.slice(1, 33);
+      const y = publicKeyBytes.slice(33, 65);
+      
+      return {
+        kty: 'EC',
+        crv: 'secp256k1',
+        x: x.toString('base64url'),
+        y: y.toString('base64url'),
+        d: privateKeyBytes.toString('base64url'),
+      };
+    }
+  }
+  
+  throw new Error('Could not parse EC private key');
 }
 
 /**
@@ -24,103 +76,35 @@ async function generateCDPJwt(): Promise<string> {
   const requestHost = 'api.developer.coinbase.com';
   const requestPath = '/onramp/v1/token';
 
-  // Handle escaped newlines - try multiple formats
+  // Normalize key format
   let normalizedKey = apiKeySecret;
-  
-  // Try replacing literal \n first
   if (normalizedKey.includes('\\n')) {
     normalizedKey = normalizedKey.replace(/\\n/g, '\n');
   }
-  
-  // Remove any carriage returns
   normalizedKey = normalizedKey.replace(/\r/g, '');
   
-  console.log('[CDP] Key format check:', normalizedKey.substring(0, 50), '...');
+  console.log('[CDP] Key format:', normalizedKey.substring(0, 40));
   
-  let privateKey: jose.JWK | jose.CryptoKey;
+  let privateKey: jose.JWK;
   
   if (normalizedKey.includes('-----BEGIN PRIVATE KEY-----')) {
     // PKCS#8 format
-    console.log('[CDP] Using PKCS#8 format');
-    privateKey = await jose.importPKCS8(normalizedKey, 'ES256');
+    console.log('[CDP] Parsing PKCS#8');
+    const pkcs8Key = await jose.importPKCS8(normalizedKey, 'ES256');
+    privateKey = pkcs8Key as jose.JWK;
   } else if (normalizedKey.includes('-----BEGIN EC PRIVATE KEY-----')) {
     // PKCS#1 EC format
-    console.log('[CDP] Using PKCS#1 EC format');
+    console.log('[CDP] Parsing PKCS#1 EC');
     
     const lines = normalizedKey.split('\n').filter(l => l.trim() !== '');
-    const keyBody = lines.filter(l => !l.includes('-----')).join('');
+    const base64Body = lines.filter(l => !l.includes('-----')).join('');
+    const keyDer = Buffer.from(base64Body, 'base64');
     
-    console.log('[CDP] Key body length:', keyBody.length);
-    
-    try {
-      const keyDer = Buffer.from(keyBody, 'base64');
-      console.log('[CDP] DER length:', keyDer.length);
-      
-      // For secp256k1, private key is 32 bytes
-      // SEC1 EC private key structure may have header bytes
-      const ec = new EC('secp256k1');
-      
-      // Try different offsets to find the private key
-      let keyPair;
-      
-      // Try treating the whole DER as potentially having the key at different positions
-      // Standard SEC1 for secp256k1: 32-byte private key
-      if (keyDer.length === 32) {
-        // Raw 32-byte key
-        keyPair = ec.keyFromPrivate(keyDer);
-      } else if (keyDer.length === 48 || keyDer.length === 49) {
-        // Might have algorithm identifier prefix
-        keyPair = ec.keyFromPrivate(keyDer.slice(-32));
-      } else if (keyDer.length > 32) {
-        // Try extracting 32-byte key from various positions
-        // First try at position that makes sense for EC key
-        for (let i = 0; i <= keyDer.length - 32; i++) {
-          const potentialKey = keyDer.slice(i, i + 32);
-          // Check if this could be a valid private key (must be < curve order)
-          const key = potentialKey.readUInt32BE(0);
-          if (key > 0 && key < 0xFFFFFFFF) { // Rough check
-            try {
-              const testPair = ec.keyFromPrivate(potentialKey);
-              if (testPair.getPublic()) {
-                keyPair = testPair;
-                console.log('[CDP] Found valid key at offset:', i);
-                break;
-              }
-            } catch {
-              continue;
-            }
-          }
-        }
-        
-        // Fallback: just use the last 32 bytes
-        if (!keyPair) {
-          keyPair = ec.keyFromPrivate(keyDer.slice(-32));
-        }
-      } else {
-        throw new Error('Key data too short');
-      }
-      
-      const pubKey = keyPair.getPublic();
-      
-      // Create JWK - convert hex to base64url
-      const toBase64Url = (hex: string) => Buffer.from(hex, 'hex').toString('base64url');
-      
-      privateKey = {
-        kty: 'EC',
-        crv: 'secp256k1',
-        x: toBase64Url(pubKey.getX().toString('hex')),
-        y: toBase64Url(pubKey.getY().toString('hex')),
-        d: toBase64Url(keyPair.getPrivate().toString('hex')),
-      };
-      
-      console.log('[CDP] Successfully created JWK from EC key');
-    } catch (parseError) {
-      console.error('[CDP] EC key parse error:', parseError);
-      throw new Error('Failed to parse EC private key');
-    }
+    console.log('[CDP] Key DER length:', keyDer.length);
+    privateKey = sec1ToJwk(keyDer);
+    console.log('[CDP] Successfully parsed EC key to JWK');
   } else {
-    console.error('[CDP] Unknown key format');
-    throw new Error('Invalid private key format');
+    throw new Error('Invalid private key format - no PEM header found');
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -140,7 +124,7 @@ async function generateCDPJwt(): Promise<string> {
     .setIssuedAt(now)
     .setNotBefore(now)
     .setExpirationTime(now + 120)
-    .sign(privateKey);
+    .sign(privateKey as jose.JWK);
 
   return jwt;
 }
