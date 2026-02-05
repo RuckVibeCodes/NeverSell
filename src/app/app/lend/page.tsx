@@ -7,13 +7,11 @@ import { formatUnits } from "viem";
 import { useAaveDeposit } from "@/hooks/useAaveDeposit";
 import { TokenLogo } from "@/components/ui/TokenLogo";
 import { useAavePosition } from "@/hooks/useAavePosition";
-import { useGMXApy, formatAPY, formatLastUpdated } from "@/hooks/useGMXApy";
-import { useAaveSupplyRates, FALLBACK_AAVE_SUPPLY_APY } from "@/hooks/useAaveSupplyRate";
+import { useRealApy, formatRealApy, getApyColor } from "@/hooks/useRealApy";
 import { AAVE_V3_ADDRESSES } from "@/lib/aave";
 import { getArbiscanTxUrl, parseTransactionError } from "@/lib/arbiscan";
 import { HarvestCard } from "@/components/dashboard";
 import type { Address } from "viem";
-import type { GMPoolName } from "@/lib/gmx";
 
 // Mock data for demo mode
 const MOCK_LEND_DATA = {
@@ -228,21 +226,19 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
           <div className="mb-6 space-y-4">
             {/* Blended APY */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-white/60 text-sm">Blended APY</span>
+              <div className="text-white/60 text-sm">Net APY</div>
                 <div className="group relative">
                   <Info size={14} className="text-white/40 cursor-help" />
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-navy-100 rounded-lg text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 min-w-[220px]">
                     <div className="text-white/60 mb-1">APY Breakdown:</div>
-                    <div className="mb-1">• Aave (60%): {formatAPY(apyData.aave)}</div>
-                    <div className="mb-1">• GM Pool (40%): {formatAPY(apyData.gmPool)}</div>
-                    <div className="text-white/50 pl-2 text-[10px]">Fee: {formatAPY(apyData.gmPoolFee)} + Perf: {formatAPY(apyData.gmPoolPerf)}</div>
-                    <div className="mt-2 text-white/40 text-[10px] whitespace-normal max-w-[200px]">Performance APY reflects pool token appreciation and may vary.</div>
+                    <div className="mb-1">• Aave: {formatRealApy(apyData.aave)}</div>
+                    <div className="mb-1">• GMX: {formatRealApy(apyData.gmPool)}</div>
+                    <div className="mt-2 text-white/40 text-[10px]">Net APY after 10% platform fee</div>
                   </div>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-mint font-bold text-lg">{formatAPY(apyData.blended)}</span>
+                <span className={`text-lg font-bold ${getApyColor(apyData.blended)}`}>{formatRealApy(apyData.blended)}</span>
               </div>
             </div>
 
@@ -376,18 +372,19 @@ function AssetCard({
         </div>
         
         <div className="text-right group/apy relative">
-          <div className="flex items-center gap-1 text-mint text-xl font-bold">
+          <div className={`flex items-center gap-1 text-xl font-bold ${getApyColor(apyData.blended)}`}>
             <TrendingUp size={18} />
-            {formatAPY(apyData.blended)}
+            {formatRealApy(apyData.blended)}
           </div>
-          <p className="text-white/50 text-xs">Blended APY</p>
+          <p className="text-white/50 text-xs">Net APY</p>
           {/* APY Breakdown Tooltip */}
           <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-navy-100 rounded-lg text-xs text-white/80 opacity-0 group-hover/apy:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 border border-white/10 min-w-[220px]">
-            <div className="text-white/60 mb-1">APY Breakdown:</div>
-            <div className="mb-1">• Aave (60%): {formatAPY(apyData.aave)}</div>
-            <div className="mb-1">• GM Pool (40%): {formatAPY(apyData.gmPool)}</div>
-            <div className="text-white/50 pl-2 text-[10px]">Fee: {formatAPY(apyData.gmPoolFee)} + Perf: {formatAPY(apyData.gmPoolPerf)}</div>
-            <div className="mt-2 text-white/40 text-[10px] whitespace-normal max-w-[200px]">Performance APY reflects pool token appreciation and may vary.</div>
+            <div className="text-white/60 mb-1">APY Breakdown (after fees):</div>
+            <div className="mb-1">• Aave: {formatRealApy(apyData.aave)}</div>
+            <div className="mb-1">• GMX: {formatRealApy(apyData.gmPool)}</div>
+            <div className="mt-2 text-white/40 text-[10px] whitespace-normal max-w-[200px]">
+              Net APY after 10% NeverSell fee
+            </div>
           </div>
         </div>
       </div>
@@ -439,10 +436,7 @@ export default function LendPage() {
   const [selectedAsset, setSelectedAsset] = useState<typeof lendableAssets[0] | null>(null);
   
   const { position, refetch: refetchPosition } = useAavePosition();
-  const { apyData, isLoading: gmxApyLoading, lastUpdated } = useGMXApy();
-  const { supplyRates, isLoading: aaveApyLoading } = useAaveSupplyRates();
-  
-  const apyLoading = gmxApyLoading || aaveApyLoading;
+  const { data: realApyData, loading: apyLoading, error: apyError } = useRealApy();
   
   // Demo mode when connected but no real position
   const hasRealPosition = position && position.totalCollateralUSD > 0;
@@ -455,32 +449,25 @@ export default function LendPage() {
     ltv: position.ltv,
   } : MOCK_LEND_DATA;
 
-  // Calculate blended APY for each asset
-  // Formula: (Aave Supply APY × 0.6) + (GM Pool Total APY × 0.4)
-  const getBlendedApy = useMemo(() => {
-    return (symbol: string): { blended: number; aave: number; gmPool: number; gmPoolFee: number; gmPoolPerf: number } => {
-      // Get Aave supply rate
-      const aaveApy = supplyRates[symbol] ?? FALLBACK_AAVE_SUPPLY_APY[symbol] ?? 0;
-      
-      // Get GM pool APY (total = fee + performance)
-      const poolName = ASSET_GM_POOL[symbol];
-      const poolApy = poolName ? apyData[poolName] : null;
-      const gmPoolFeeApy = poolApy?.feeApy ?? 0;
-      const gmPoolPerfApy = poolApy?.perfApy ?? 0;
-      const gmPoolTotalApy = poolApy?.totalApy ?? 0;
-      
-      // Calculate blended APY using total APY (fee + performance)
-      const blendedApy = (aaveApy * AAVE_WEIGHT) + (gmPoolTotalApy * GMX_WEIGHT);
-      
+  // Get APY from real API data
+  const getBlendedApy = (symbol: string): { blended: number; aave: number; gmPool: number; gmPoolFee: number; gmPoolPerf: number } => {
+    // Map symbol format (WBTC -> wbtc)
+    const symbolId = symbol.toLowerCase();
+    const apy = realApyData?.assets[symbolId];
+    
+    if (apy) {
       return {
-        blended: Math.round(blendedApy * 100) / 100,
-        aave: aaveApy,
-        gmPool: gmPoolTotalApy,
-        gmPoolFee: gmPoolFeeApy,
-        gmPoolPerf: gmPoolPerfApy,
+        blended: apy.netApy,
+        aave: apy.aaveApy,
+        gmPool: apy.gmxApy,
+        gmPoolFee: apy.gmxApy * 0.6, // Approximate fee portion
+        gmPoolPerf: apy.gmxApy * 0.4, // Approximate performance portion
       };
-    };
-  }, [apyData, supplyRates]);
+    }
+    
+    // Fallback if no data
+    return { blended: 0, aave: 0, gmPool: 0, gmPoolFee: 0, gmPoolPerf: 0 };
+  };
 
   const selectedAssetApy = selectedAsset ? getBlendedApy(selectedAsset.symbol) : { blended: 0, aave: 0, gmPool: 0, gmPoolFee: 0, gmPoolPerf: 0 };
 
@@ -490,9 +477,9 @@ export default function LendPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-display font-bold text-white mb-2">Lend & Earn</h1>
         <p className="text-white/60">Deposit assets to earn yield on GM pools and unlock borrowing capacity</p>
-        {lastUpdated && (
+        {realApyData && (
           <p className="text-white/40 text-xs mt-2">
-            APY data updated: {formatLastUpdated(lastUpdated)}
+            APY data updated: {new Date(realApyData.updatedAt).toLocaleString()}
           </p>
         )}
       </div>
@@ -603,7 +590,18 @@ export default function LendPage() {
       ) : apyLoading ? (
         <div className="glass-card p-12 text-center">
           <Loader2 size={32} className="animate-spin text-mint mx-auto mb-4" />
-          <p className="text-white/60">Loading yield data...</p>
+          <p className="text-white/60">Loading yield data from Aave & GMX...</p>
+        </div>
+      ) : apyError ? (
+        <div className="glass-card p-12 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-400 mx-auto mb-4">
+            <AlertCircle size={32} />
+          </div>
+          <h2 className="text-xl font-semibold text-white mb-2">Failed to Load APY Data</h2>
+          <p className="text-white/60 mb-4">{apyError}</p>
+          <button onClick={() => window.location.reload()} className="btn-primary">
+            Try Again
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
