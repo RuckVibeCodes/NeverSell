@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { PiggyBank, TrendingUp, Loader2, Check, AlertCircle, X, Info, ExternalLink, ArrowUpRight } from "lucide-react";
+import { TrendingUp, Loader2, Check, AlertCircle, X, Info, ExternalLink, ArrowUpRight, Wallet, Zap } from "lucide-react";
 import { useAccount, useBalance } from "wagmi";
-import { formatUnits } from "viem";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { formatUnits, parseUnits } from "viem";
 import { useAaveDeposit } from "@/hooks/useAaveDeposit";
+import { useGaslessDeposit } from "@/hooks/useGaslessDeposit";
 import { TokenLogo } from "@/components/ui/TokenLogo";
 import { useAavePosition } from "@/hooks/useAavePosition";
 import { useRealApy, formatRealApy, getApyColor } from "@/hooks/useRealApy";
@@ -78,6 +80,10 @@ interface SupplyModalProps {
 
 function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
   const [amount, setAmount] = useState("");
+  const [useGasless] = useState(true); // Default to gasless (toggle removed for cleaner UX)
+  const [gaslessError, setGaslessError] = useState<string | null>(null);
+  const [gaslessSuccess, setGaslessSuccess] = useState(false);
+  const [gaslessHash, setGaslessHash] = useState<string | null>(null);
   const { address } = useAccount();
   
   const { data: balance, refetch: refetchBalance } = useBalance({
@@ -85,9 +91,16 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
     token: asset.address as Address,
   });
 
-  // Handle successful deposit
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleDepositSuccess = useCallback((_hash: string) => {
+  // Gasless deposit hook
+  const { 
+    depositWithPermit, 
+    isProcessing: isGaslessProcessing, 
+    status: gaslessStatus,
+    PLATFORM_GAS_FEE_USD,
+  } = useGaslessDeposit();
+
+  // Fallback to traditional deposit if gasless fails
+  const handleDepositSuccess = useCallback(() => {
     refetchBalance();
     onSuccess?.();
   }, [refetchBalance, onSuccess]);
@@ -112,14 +125,16 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
     onDepositSuccess: handleDepositSuccess,
   });
 
-  // Auto-proceed to deposit after approval succeeds
+  // Auto-proceed to deposit after approval succeeds (traditional flow)
   useEffect(() => {
-    if (isApprovalSuccess && !needsApproval && !isDepositing && !isDepositPending && !isDepositSuccess) {
+    if (!useGasless && isApprovalSuccess && !needsApproval && !isDepositing && !isDepositPending && !isDepositSuccess) {
       deposit();
     }
-  }, [isApprovalSuccess, needsApproval, isDepositing, isDepositPending, isDepositSuccess, deposit]);
+  }, [useGasless, isApprovalSuccess, needsApproval, isDepositing, isDepositPending, isDepositSuccess, deposit]);
 
-  const isPending = isApproving || isApprovalPending || isDepositing || isDepositPending;
+  const isPending = isGaslessProcessing || isApproving || isApprovalPending || isDepositing || isDepositPending;
+  const isSuccess = gaslessSuccess || isDepositSuccess;
+  const finalHash = gaslessHash || depositHash;
 
   const handleMaxClick = () => {
     if (balance) {
@@ -127,8 +142,46 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
     }
   };
 
+  // Gasless deposit handler
+  const handleGaslessDeposit = async () => {
+    if (!amount || parseFloat(amount) <= 0) return;
+    
+    setGaslessError(null);
+    
+    const tokenDecimals = balance?.decimals || 18;
+    const amountBigInt = parseUnits(amount, tokenDecimals);
+    const assetPrice = ASSET_PRICES[asset.symbol] || 1;
+    
+    // Check minimum deposit (must cover gas fee)
+    const minDepositUSD = PLATFORM_GAS_FEE_USD * 2; // At least 2x gas fee
+    const depositValueUSD = parseFloat(amount) * assetPrice;
+    
+    if (depositValueUSD < minDepositUSD) {
+      setGaslessError(`Minimum deposit: $${minDepositUSD.toFixed(2)} (to cover gas)`);
+      return;
+    }
+
+    const result = await depositWithPermit({
+      tokenSymbol: asset.symbol,
+      amount: amountBigInt,
+      tokenPriceUSD: assetPrice,
+      depositContract: AAVE_V3_ADDRESSES.POOL as Address,
+    });
+
+    if (result.success) {
+      setGaslessSuccess(true);
+      setGaslessHash(result.hash || null);
+      refetchBalance();
+      onSuccess?.();
+    } else {
+      setGaslessError(result.error || "Gasless deposit failed");
+    }
+  };
+
   const handleAction = () => {
-    if (needsApproval) {
+    if (useGasless) {
+      handleGaslessDeposit();
+    } else if (needsApproval) {
       approve();
     } else {
       deposit();
@@ -137,19 +190,23 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
 
   const handleClose = () => {
     reset();
+    setGaslessError(null);
+    setGaslessSuccess(false);
+    setGaslessHash(null);
     onClose();
   };
 
   const getButtonText = () => {
+    if (isGaslessProcessing) return gaslessStatus || 'Processing...';
     if (isApproving || isApprovalPending) return 'Approving...';
     if (isDepositing || isDepositPending) return 'Depositing...';
-    if (isDepositSuccess) return 'Success!';
-    if (needsApproval) return `Approve ${asset.symbol}`;
-    return 'Deposit';
+    if (isSuccess) return 'Success!';
+    if (!useGasless && needsApproval) return `Approve ${asset.symbol}`;
+    return useGasless ? 'Deposit (Gasless)' : 'Deposit';
   };
 
   // Parse errors for user-friendly messages
-  const errorMessage = parseTransactionError(depositError || approvalError);
+  const errorMessage = gaslessError || parseTransactionError(depositError || approvalError);
 
   // Calculate projections based on NeverSell strategy
   const amountNum = parseFloat(amount) || 0;
@@ -162,7 +219,7 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
   // Monthly earnings based on blended APY
   // Blended = (Aave APY × 0.6) + (GM Pool Total APY × 0.4)
   const monthlyEarningsGross = (depositValueUSD * (apyData.blended / 100)) / 12;
-  const monthlyEarningsNet = monthlyEarningsGross * 0.9; // After 10% platform fee
+  const monthlyEarningsNet = monthlyEarningsGross * 0.9; // After platform fee
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -176,12 +233,21 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
         </button>
 
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <TokenLogo symbol={asset.symbol} size={48} />
-          <div>
-            <h3 className="text-xl font-semibold text-white">{asset.symbol}</h3>
-            <p className="text-white/50 text-sm">{asset.name}</p>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <TokenLogo symbol={asset.symbol} size={48} />
+            <div>
+              <h3 className="text-xl font-semibold text-white">{asset.symbol}</h3>
+              <p className="text-white/50 text-sm">{asset.name}</p>
+            </div>
           </div>
+          {/* Gasless Badge */}
+          {useGasless && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-mint/10 border border-mint/30">
+              <Zap size={14} className="text-mint" />
+              <span className="text-mint text-xs font-medium">Gasless</span>
+            </div>
+          )}
         </div>
 
         {/* Amount input */}
@@ -218,18 +284,7 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
           <div className="mb-6 space-y-4">
             {/* Net APY */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="text-white/60 text-sm">Net APY</div>
-                <div className="group relative">
-                  <Info size={14} className="text-white/40 cursor-help" />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-navy-100 rounded-lg text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 min-w-[220px]">
-                    <div className="text-white/60 mb-1">APY Breakdown:</div>
-                    <div className="mb-1">• Aave: {formatRealApy(apyData.aave)}</div>
-                    <div className="mb-1">• GMX: {formatRealApy(apyData.gmPool)}</div>
-                    <div className="mt-2 text-white/40 text-[10px]">Net APY after 10% platform fee</div>
-                  </div>
-                </div>
-              </div>
+              <div className="text-white/60 text-sm">APY</div>
               <div className="text-right">
                 <span className={`text-lg font-bold ${getApyColor(apyData.blended)}`}>{formatRealApy(apyData.blended)}</span>
               </div>
@@ -237,18 +292,9 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
 
             {/* Monthly Earnings */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-white/60 text-sm">Monthly Earnings</span>
-                <div className="group relative">
-                  <Info size={14} className="text-white/40 cursor-help" />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-navy-100 rounded-lg text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                    After platform performance fee
-                  </div>
-                </div>
-              </div>
+              <div className="text-white/60 text-sm">Monthly Earnings</div>
               <div className="text-right">
                 <span className="text-mint font-bold text-lg">~${monthlyEarningsNet.toFixed(2)}</span>
-                <span className="text-white/40 text-xs ml-1">(after performance fee)</span>
               </div>
             </div>
 
@@ -274,13 +320,15 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
         {/* Action button */}
         <button 
           onClick={handleAction}
-          disabled={!amount || parseFloat(amount) <= 0 || isPending || isDepositSuccess}
+          disabled={!amount || parseFloat(amount) <= 0 || isPending || isSuccess}
           className="w-full btn-primary flex items-center justify-center gap-2 py-4 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isPending ? (
             <Loader2 size={18} className="animate-spin" />
-          ) : isDepositSuccess ? (
+          ) : isSuccess ? (
             <Check size={18} />
+          ) : useGasless ? (
+            <Zap size={18} />
           ) : null}
           {getButtonText()}
         </button>
@@ -294,15 +342,21 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
         )}
 
         {/* Success */}
-        {isDepositSuccess && (
+        {isSuccess && (
           <div className="mt-4 p-4 rounded-xl bg-mint/10 border border-mint/20 space-y-3">
             <div className="flex items-center gap-2 text-mint">
               <Check size={18} />
               <span className="font-medium">Successfully deposited {amount} {asset.symbol}!</span>
             </div>
-            {depositHash && (
+            {useGasless && (
+              <div className="flex items-center gap-2 text-mint/60 text-xs">
+                <Zap size={12} />
+                <span>Gasless deposit — no ETH needed</span>
+              </div>
+            )}
+            {finalHash && (
               <a 
-                href={getArbiscanTxUrl(depositHash)} 
+                href={getArbiscanTxUrl(finalHash)} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-mint/80 hover:text-mint text-sm transition-colors"
@@ -327,13 +381,16 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
 function AssetCard({ 
   asset, 
   apyData,
-  onSupply 
+  onSupply,
+  isConnected
 }: { 
   asset: typeof lendableAssets[0]; 
   apyData: { blended: number; aave: number; gmPool: number; gmPoolFee: number; gmPoolPerf: number };
   onSupply: () => void;
+  isConnected: boolean;
 }) {
-  const { address, isConnected } = useAccount();
+  const { address } = useAccount();
+  const { openConnectModal } = useConnectModal();
   
   const { data: balance } = useBalance({
     address,
@@ -351,6 +408,14 @@ function AssetCard({
   const suppliedValueUSD = supplied * assetPrice;
   const borrowingCapacity = suppliedValueUSD * 0.6;
 
+  const handleAction = () => {
+    if (isConnected) {
+      onSupply();
+    } else {
+      openConnectModal?.();
+    }
+  };
+
   return (
     <div className="glass-card p-6 hover:border-mint/20 transition-all duration-300 group">
       <div className="flex items-center justify-between mb-4">
@@ -364,40 +429,39 @@ function AssetCard({
           </div>
         </div>
         
-        <div className="text-right group/apy relative">
+        <div className="text-right">
           <div className={`flex items-center gap-1 text-xl font-bold ${getApyColor(apyData.blended)}`}>
             <TrendingUp size={18} />
             {formatRealApy(apyData.blended)}
           </div>
-          <p className="text-white/50 text-xs">Net APY</p>
-          {/* APY Breakdown Tooltip */}
-          <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-navy-100 rounded-lg text-xs text-white/80 opacity-0 group-hover/apy:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 border border-white/10 min-w-[220px]">
-            <div className="text-white/60 mb-1">APY Breakdown (after fees):</div>
-            <div className="mb-1">• Aave: {formatRealApy(apyData.aave)}</div>
-            <div className="mb-1">• GMX: {formatRealApy(apyData.gmPool)}</div>
-            <div className="mt-2 text-white/40 text-[10px] whitespace-normal max-w-[200px]">
-              Net APY after 10% NeverSell fee
-            </div>
+          <p className="text-white/50 text-xs">APY</p>
+        </div>
+      </div>
+
+      {/* Stats - only show when connected */}
+      {isConnected ? (
+        <div className="grid grid-cols-2 gap-4 mb-4 p-4 rounded-xl bg-white/[0.02]">
+          <div>
+            <p className="text-white/40 text-xs mb-1">Wallet Balance</p>
+            <p className="text-white font-medium">
+              {balance ? parseFloat(formatUnits(balance.value, balance.decimals)).toFixed(4) : '0.00'}
+            </p>
+          </div>
+          <div>
+            <p className="text-white/40 text-xs mb-1">Supplied</p>
+            <p className="text-mint font-medium">{supplied.toFixed(4)}</p>
           </div>
         </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 mb-4 p-4 rounded-xl bg-white/[0.02]">
-        <div>
-          <p className="text-white/40 text-xs mb-1">Wallet Balance</p>
-          <p className="text-white font-medium">
-            {balance ? parseFloat(formatUnits(balance.value, balance.decimals)).toFixed(4) : '0.00'}
+      ) : (
+        <div className="mb-4 p-4 rounded-xl bg-white/[0.02]">
+          <p className="text-white/40 text-sm text-center">
+            Connect wallet to see your balance and deposit
           </p>
         </div>
-        <div>
-          <p className="text-white/40 text-xs mb-1">Supplied</p>
-          <p className="text-mint font-medium">{supplied.toFixed(4)}</p>
-        </div>
-      </div>
+      )}
 
       {/* Borrowing capacity for supplied assets */}
-      {supplied > 0 && (
+      {isConnected && supplied > 0 && (
         <div className="mb-4 p-3 rounded-xl bg-mint/5 border border-mint/20">
           <div className="flex justify-between items-center">
             <span className="text-white/60 text-sm">Borrowing Capacity</span>
@@ -410,11 +474,17 @@ function AssetCard({
       )}
 
       <button 
-        onClick={onSupply}
-        disabled={!isConnected}
-        className="w-full btn-primary py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+        onClick={handleAction}
+        className={`w-full py-3 flex items-center justify-center gap-2 ${isConnected ? 'btn-primary' : 'btn-primary'}`}
       >
-        Deposit
+        {isConnected ? (
+          'Deposit'
+        ) : (
+          <>
+            <Wallet size={18} />
+            Connect Wallet
+          </>
+        )}
       </button>
     </div>
   );
@@ -568,15 +638,19 @@ export default function LendPage() {
         </div>
       </div>
 
+      {/* APY Data - Always visible */}
       {!isConnected ? (
-        <div className="glass-card p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-mint/20 to-purple-500/20 flex items-center justify-center text-mint mx-auto mb-4">
-            <PiggyBank size={32} />
+        <div className="mb-6 p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🔓</span>
+            <p className="text-white/70 text-sm">
+              APYs are live and visible. Connect your wallet to deposit and see your balance.
+            </p>
           </div>
-          <h2 className="text-xl font-semibold text-white mb-2">Connect Your Wallet</h2>
-          <p className="text-white/60">Connect your wallet to start earning yield.</p>
         </div>
-      ) : apyLoading ? (
+      ) : null}
+
+      {apyLoading ? (
         <div className="glass-card p-12 text-center">
           <Loader2 size={32} className="animate-spin text-mint mx-auto mb-4" />
           <p className="text-white/60">Loading yield data from Aave & GMX...</p>
@@ -600,6 +674,7 @@ export default function LendPage() {
               asset={asset} 
               apyData={getBlendedApy(asset.symbol)}
               onSupply={() => setSelectedAsset(asset)}
+              isConnected={isConnected}
             />
           ))}
         </div>

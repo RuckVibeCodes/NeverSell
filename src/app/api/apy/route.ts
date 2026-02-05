@@ -68,8 +68,10 @@ async function getAaveApy(chainId: number, assetAddress: string): Promise<number
   if (!result.result || result.result === '0x') throw new Error('Empty response from RPC');
 
   // Parse liquidityRate from returned data
+  // getReserveData returns: (unbacked, accruedToTreasury, totalStableDebt, totalVariableDebt, liquidityRate, ...)
+  // liquidityRate is at index 4 (5th value), so offset is 2 + 64*4 to 2 + 64*5
   const data = result.result as string;
-  const liquidityRateHex = '0x' + data.slice(64 * 3, 64 * 4);
+  const liquidityRateHex = '0x' + data.slice(2 + 64 * 4, 2 + 64 * 5);
   const liquidityRate = BigInt(liquidityRateHex);
   
   return liquidityRateToApy(liquidityRate);
