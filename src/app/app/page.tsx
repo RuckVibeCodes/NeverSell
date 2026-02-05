@@ -45,19 +45,31 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Link href="/app/deposit" className="glass-card p-6 hover:border-mint/50 transition-colors group">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-mint/10 flex items-center justify-center group-hover:bg-mint/20 transition-colors">
               <ArrowDownToLine className="text-mint" size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white">Deposit Assets</h3>
-              <p className="text-white/50 text-sm">Supply collateral and earn yield</p>
+              <h3 className="text-lg font-semibold text-white">Deposit</h3>
+              <p className="text-white/50 text-sm">Supply & earn yield</p>
             </div>
           </div>
         </Link>
-        
+
+        <Link href="/app/withdraw" className="glass-card p-6 hover:border-mint/50 transition-colors group">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-mint/10 flex items-center justify-center group-hover:bg-mint/20 transition-colors">
+              <ArrowUpFromLine className="text-mint" size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Withdraw</h3>
+              <p className="text-white/50 text-sm">Bridge out to any chain</p>
+            </div>
+          </div>
+        </Link>
+
         <Link href="/app/borrow" className="glass-card p-6 hover:border-mint/50 transition-colors group">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-mint/10 flex items-center justify-center group-hover:bg-mint/20 transition-colors">
@@ -65,7 +77,7 @@ export default function Dashboard() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white">Borrow</h3>
-              <p className="text-white/50 text-sm">Access liquidity without selling</p>
+              <p className="text-white/50 text-sm">Access liquidity</p>
             </div>
           </div>
         </Link>
