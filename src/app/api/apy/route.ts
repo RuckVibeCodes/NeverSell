@@ -101,31 +101,31 @@ export async function GET(request: Request) {
       aaveApy: number;
       gmxApy: number;
       grossApy: number;
-      feePercent: number;
       netApy: number;
     }> = {};
 
     for (const [assetId, assetAddress] of Object.entries(ASSET_ADDRESSES)) {
-      // Fetch real Aave APY from chain
-      const aaveApy = await getAaveApy(chainId, assetAddress);
       const gmxApy = estimateGmxApy(assetId);
-
-      // Calculate weighted APY
-      const isStablecoin = assetId === 'usdc';
-      const weights = isStablecoin 
-        ? { aave: 0.50, gmx: 0.20 }
-        : { aave: 0.40, gmx: 0.60 };
-
-      const grossApy = (aaveApy * weights.aave) + (gmxApy * weights.gmx);
       
-      // Fee is deducted from yield, not reducing the APY display
+      // Try to fetch Aave APY, fall back to 0 if not available
+      let aaveApy = 0;
+      try {
+        aaveApy = await getAaveApy(chainId, assetAddress);
+      } catch {
+        console.log(`[APY] Aave not available for ${assetId}, using GMX only`);
+      }
+
+      // Combined yield: Aave lending + GMX liquidity provision
+      // If Aave is 0 or unavailable, we still show GMX yield
+      const grossApy = aaveApy + gmxApy;
+      
+      // Net APY = gross minus 10% performance fee (baked in, not shown to user)
       const netApy = grossApy * (1 - NEVERSELL_FEE);
 
       results[assetId] = {
         aaveApy,
         gmxApy,
         grossApy,
-        feePercent: NEVERSELL_FEE * 100,
         netApy,
       };
     }
@@ -137,7 +137,6 @@ export async function GET(request: Request) {
       success: true,
       data: {
         assets: results,
-        feePercent: NEVERSELL_FEE * 100,
         updatedAt: Date.now(),
       },
     });
