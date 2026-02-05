@@ -108,22 +108,25 @@ export async function GET(request: Request) {
       const gmxApy = estimateGmxApy(assetId);
       
       // Try to fetch Aave APY, fall back to 0 if not available
-      let aaveApy = 0;
+      let aaveApy: number | null = null;
       try {
         aaveApy = await getAaveApy(chainId, assetAddress);
       } catch {
         console.log(`[APY] Aave not available for ${assetId}, using GMX only`);
+        aaveApy = 0; // Explicitly set to 0 on failure
       }
 
+      // Ensure aaveApy is always a number (fallback to 0 if somehow still null)
+      const effectiveAaveApy = aaveApy ?? 0;
+
       // Combined yield: Aave lending + GMX liquidity provision
-      // If Aave is 0 or unavailable, we still show GMX yield
-      const grossApy = aaveApy + gmxApy;
+      const grossApy = effectiveAaveApy + gmxApy;
       
       // Net APY = gross minus 10% performance fee (baked in, not shown to user)
       const netApy = grossApy * (1 - NEVERSELL_FEE);
 
       results[assetId] = {
-        aaveApy,
+        aaveApy: effectiveAaveApy,
         gmxApy,
         grossApy,
         netApy,
