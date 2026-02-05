@@ -9,9 +9,10 @@ interface ApyResponse {
       aaveApy: number;
       gmxApy: number;
       grossApy: number;
+      feePercent: number;
       netApy: number;
     }>;
-    fee: number;
+    feePercent: number;
     updatedAt: number;
   };
   error?: {
@@ -37,7 +38,7 @@ export function useRealApy() {
         
         if (json.success && json.data?.assets) {
           // Only accept real data, no fallbacks
-          const hasData = Object.values(json.data.assets).some(a => a.netApy > 0);
+          const hasData = Object.values(json.data.assets).some(a => a.grossApy > 0);
           
           if (hasData) {
             setData(json.data);

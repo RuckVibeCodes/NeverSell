@@ -98,9 +98,8 @@ export async function GET(request: Request) {
     const results: Record<string, {
       aaveApy: number;
       gmxApy: number;
-      rawAaveApy: number;
-      rawGmxApy: number;
       grossApy: number;
+      feePercent: number;
       netApy: number;
     }> = {};
 
@@ -116,15 +115,16 @@ export async function GET(request: Request) {
         : { aave: 0.40, gmx: 0.60 };
 
       const grossApy = (aaveApy * weights.aave) + (gmxApy * weights.gmx);
+      
+      // Fee is deducted from yield, not reducing the APY display
       const netApy = grossApy * (1 - NEVERSELL_FEE);
 
       results[assetId] = {
-        aaveApy: Number(aaveApy.toFixed(2)),
+        aaveApy,
         gmxApy,
-        rawAaveApy: aaveApy,
-        rawGmxApy: gmxApy,
-        grossApy: Number(grossApy.toFixed(2)),
-        netApy: Number(netApy.toFixed(2)),
+        grossApy,
+        feePercent: NEVERSELL_FEE * 100,
+        netApy,
       };
     }
 
@@ -135,7 +135,7 @@ export async function GET(request: Request) {
       success: true,
       data: {
         assets: results,
-        fee: NEVERSELL_FEE * 100,
+        feePercent: NEVERSELL_FEE * 100,
         updatedAt: Date.now(),
       },
     });
