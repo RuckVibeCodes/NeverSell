@@ -58,7 +58,6 @@ export function useRealApy() {
 
 // Display component for APY
 export function ApyDisplay({ 
-  assetId, 
   data 
 }: { 
   assetId: string; 

@@ -1,12 +1,5 @@
 import { NextResponse } from 'next/server';
 
-// Aave V3 Pool addresses
-const AAVE_POOL_ADDRESSES: Record<number, string> = {
-  42161: '0x794a61358d6845594f94dc1db02a252b5b4814ad', // Arbitrum
-  1: '0x87870Bca3F5f39fAf3580fedor1d09b5C0312E04', // Ethereum
-  137: '0x794a61358d6845594f94dc1db02a252b5b4814ad', // Polygon
-};
-
 // Aave Protocol Data Provider addresses
 const AAVE_DATA_PROVIDER_ADDRESSES: Record<number, string> = {
   42161: '0x69fa688f1dc47d4b5d8029d5a35fb7a548310654', // Arbitrum

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { PiggyBank, TrendingUp, Loader2, Check, AlertCircle, X, Info, ExternalLink, ArrowUpRight } from "lucide-react";
 import { useAccount, useBalance } from "wagmi";
 import { formatUnits } from "viem";
@@ -36,14 +36,6 @@ const ASSET_PRICES: Record<string, number> = {
   ETH: 3400,
   USDC: 1,
   ARB: 0.80,
-};
-
-// Map assets to their GM pool for APY
-const ASSET_GM_POOL: Record<string, GMPoolName> = {
-  WBTC: "BTC/USD",
-  ETH: "ETH/USD",
-  USDC: "ETH/USD", // USDC uses ETH/USD pool (short side)
-  ARB: "ARB/USD",
 };
 
 const lendableAssets = [
@@ -224,9 +216,10 @@ function SupplyModal({ asset, apyData, onClose, onSuccess }: SupplyModalProps) {
         {/* Strategy breakdown */}
         {amountNum > 0 && (
           <div className="mb-6 space-y-4">
-            {/* Blended APY */}
+            {/* Net APY */}
             <div className="flex items-center justify-between">
-              <div className="text-white/60 text-sm">Net APY</div>
+              <div className="flex items-center gap-2">
+                <div className="text-white/60 text-sm">Net APY</div>
                 <div className="group relative">
                   <Info size={14} className="text-white/40 cursor-help" />
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-navy-100 rounded-lg text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 min-w-[220px]">
@@ -426,10 +419,6 @@ function AssetCard({
     </div>
   );
 }
-
-// Blended APY calculation constants
-const AAVE_WEIGHT = 0.6;  // 60% to Aave
-const GMX_WEIGHT = 0.4;   // 40% to GM pools
 
 export default function LendPage() {
   const { isConnected } = useAccount();

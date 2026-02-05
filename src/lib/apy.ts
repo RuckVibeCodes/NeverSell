@@ -1,4 +1,5 @@
 import { Asset } from '@/types/api';
+import { type Address } from 'viem';
 
 // Asset prices (will be fetched from on-chain or API)
 export const ASSET_PRICES: Record<string, number> = {
@@ -12,7 +13,7 @@ export const ASSET_PRICES: Record<string, number> = {
 export const AAVE_POOL_ADDRESS = '0x794a61358d6845594f94dc1db02a252b5b4814ad';
 
 // Asset addresses on Arbitrum
-export const ASSET_ADDRESSES: Record<string, string> = {
+export const ASSET_ADDRESSES: Record<string, Address> = {
   wbtc: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
   weth: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
   usdc: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
@@ -110,15 +111,20 @@ export function calculateNetApy(
 }
 
 /**
- * Generate real APY data for all assets
+ * APY data structure
  */
-export async function getRealApyData(): Promise<Record<string, {
+interface ApyData {
   aaveApy: number;
   gmxApy: number;
   grossApy: number;
   netApy: number;
-}>> {
-  const result: Record<string, any> = {};
+}
+
+/**
+ * Generate real APY data for all assets
+ */
+export async function getRealApyData(): Promise<Record<string, ApyData>> {
+  const result: Record<string, ApyData> = {};
   
   for (const [assetId, address] of Object.entries(ASSET_ADDRESSES)) {
     // Fetch real Aave APY
@@ -152,9 +158,10 @@ export function getMockAssets(): Asset[] {
       name: 'Wrapped Bitcoin',
       address: ASSET_ADDRESSES.wbtc,
       decimals: 8,
-      logoUrl: '/assets/wbtc.svg',
+      iconUrl: '/assets/wbtc.svg',
+      priceUsd: '97500',
       aaveSupported: true,
-      gmxPoolAddress: '0x70E95D7a09D4e584b97c5F38f5a04C8fC74E21c6',
+      gmxPoolAddress: '0x70E95D7a09D4e584b97c5F38f5a04C8fC74E21c6' as Address,
     },
     {
       id: 'weth',
@@ -162,9 +169,10 @@ export function getMockAssets(): Asset[] {
       name: 'Wrapped Ether',
       address: ASSET_ADDRESSES.weth,
       decimals: 18,
-      logoUrl: '/assets/weth.svg',
+      iconUrl: '/assets/weth.svg',
+      priceUsd: '3250',
       aaveSupported: true,
-      gmxPoolAddress: '0x70E95D7a09D4e584b97c5F38f5a04C8fC74E21c6',
+      gmxPoolAddress: '0x70E95D7a09D4e584b97c5F38f5a04C8fC74E21c6' as Address,
     },
     {
       id: 'arb',
@@ -172,9 +180,10 @@ export function getMockAssets(): Asset[] {
       name: 'Arbitrum',
       address: ASSET_ADDRESSES.arb,
       decimals: 18,
-      logoUrl: '/assets/arb.svg',
+      iconUrl: '/assets/arb.svg',
+      priceUsd: '0.85',
       aaveSupported: true,
-      gmxPoolAddress: '0x70E95D7a09D4e584b97c5F38f5a04C8fC74E21c6',
+      gmxPoolAddress: '0x70E95D7a09D4e584b97c5F38f5a04C8fC74E21c6' as Address,
     },
     {
       id: 'usdc',
@@ -182,9 +191,9 @@ export function getMockAssets(): Asset[] {
       name: 'USD Coin',
       address: ASSET_ADDRESSES.usdc,
       decimals: 6,
-      logoUrl: '/assets/usdc.svg',
+      iconUrl: '/assets/usdc.svg',
+      priceUsd: '1.00',
       aaveSupported: true,
-      gmxPoolAddress: '0x70E95D7a09D4e584b97c5F38f5a04C8fC74E21c6',
     },
   ];
 }
