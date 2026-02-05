@@ -67,7 +67,7 @@ export function useRealApy() {
           });
           setError(null);
         }
-      } catch (err) {
+      } catch {
         // Network error - use fallback
         setData({
           assets: FALLBACK_APY,

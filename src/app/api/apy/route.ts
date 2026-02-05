@@ -7,6 +7,13 @@ const AAVE_DATA_PROVIDER_ADDRESSES: Record<number, string> = {
   137: '0x69fa688f1dc47d4b5d8029d5a35fb7a548310654', // Polygon
 };
 
+// Public RPC URLs (no API key needed for low traffic)
+const RPC_URLS: Record<number, string> = {
+  42161: process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL || 'https://arb1.arbitrum.io/rpc',
+  1: process.env.NEXT_PUBLIC_ETH_RPC_URL || 'https://eth.llamarpc.com',
+  137: process.env.NEXT_PUBLIC_POLY_RPC_URL || 'https://polygon-rpc.com',
+};
+
 // Asset addresses on Arbitrum
 const ASSET_ADDRESSES: Record<string, string> = {
   wbtc: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
@@ -32,9 +39,12 @@ function liquidityRateToApy(liquidityRate: bigint): number {
  * Get APY from Aave contract using read contract call
  */
 async function getAaveApy(chainId: number, assetAddress: string): Promise<number> {
-  const rpcUrl = process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL || 'https://arb1.arbitrum.io/rpc';
-  
+  const rpcUrl = RPC_URLS[chainId];
   const dataProviderAddress = AAVE_DATA_PROVIDER_ADDRESSES[chainId];
+  
+  if (!rpcUrl) {
+    throw new Error(`No RPC URL for chain ${chainId}`);
+  }
   if (!dataProviderAddress) {
     throw new Error(`Unsupported chain: ${chainId}`);
   }
@@ -42,52 +52,72 @@ async function getAaveApy(chainId: number, assetAddress: string): Promise<number
   // Function selector for getReserveData
   const methodId = '0x35ea6a75';
   
-  const response = await fetch(rpcUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'eth_call',
-      params: [{
-        to: dataProviderAddress,
-        data: methodId + assetAddress.slice(2).padStart(64, '0')
-      }, 'latest']
-    })
-  });
+  try {
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'eth_call',
+        params: [{
+          to: dataProviderAddress,
+          data: methodId + assetAddress.slice(2).padStart(64, '0')
+        }, 'latest']
+      })
+    });
 
-  const result = await response.json();
-  
-  if (result.error) {
-    throw new Error(`RPC error: ${result.error.message}`);
+    const result = await response.json();
+    
+    if (result.error) {
+      throw new Error(`RPC error: ${result.error.message}`);
+    }
+
+    if (!result.result || result.result === '0x') {
+      throw new Error('Empty response from RPC');
+    }
+
+    // Parse the returned data
+    // getReserveData returns: [availableLiquidity, totalStableDebt, totalVariableDebt, liquidityRate, stableBorrowRate, variableBorrowRate, lastUpdateTimestamp, ...]
+    const data = result.result as string;
+    const liquidityRateHex = '0x' + data.slice(64 * 3, 64 * 4); // 4th field (0-indexed)
+    const liquidityRate = BigInt(liquidityRateHex);
+    
+    return liquidityRateToApy(liquidityRate);
+  } catch (err) {
+    throw new Error(`Failed to fetch Aave APY: ${err}`);
   }
-
-  // Parse the returned data
-  // getReserveData returns: [availableLiquidity, totalStableDebt, totalVariableDebt, liquidityRate, stableBorrowRate, variableBorrowRate, lastUpdateTimestamp, ...]
-  const data = result.result;
-  const liquidityRateHex = '0x' + data.slice(64 * 3, 64 * 4); // 4th field (0-indexed)
-  const liquidityRate = BigInt(liquidityRateHex);
-  
-  return liquidityRateToApy(liquidityRate);
 }
 
 /**
- * Estimate GMX APY based on 63% of trading fees
- * This is an estimate - real GMX APY varies daily
+ * Estimate GMX APY based on typical performance
  */
 function estimateGmxApy(assetSymbol: string): number {
-  // Base estimates based on typical GMX performance
   const baseApy: Record<string, number> = {
     wbtc: 12.0,
     weth: 15.0,
     arb: 18.0,
     usdc: 5.0,
   };
-  
   return baseApy[assetSymbol] || 10.0;
 }
 
+/**
+ * Fallback APY when on-chain fetch fails
+ */
+function getFallbackApy(assetId: string): { aave: number; gmx: number } {
+  const fallbacks: Record<string, { aave: number; gmx: number }> = {
+    wbtc: { aave: 1.5, gmx: 12.0 },
+    weth: { aave: 2.5, gmx: 15.0 },
+    usdc: { aave: 5.0, gmx: 5.0 },
+    arb: { aave: 3.0, gmx: 18.0 },
+  };
+  return fallbacks[assetId] || { aave: 2.0, gmx: 10.0 };
+}
+
 export async function GET(request: Request) {
+  const startTime = Date.now();
+  
   try {
     const { searchParams } = new URL(request.url);
     const chainId = parseInt(searchParams.get('chainId') || '42161');
@@ -110,35 +140,27 @@ export async function GET(request: Request) {
     for (const asset of assets) {
       // Get real Aave APY
       let aaveApy = 0;
+      
       try {
         aaveApy = await getAaveApy(chainId, asset.address);
-      } catch (err) {
-        console.error(`Failed to fetch Aave APY for ${asset.id}:`, err);
-        // Fallback to estimate
-        const estimates: Record<string, number> = {
-          wbtc: 1.5,
-          weth: 2.5,
-          usdc: 5.0,
-          arb: 3.0,
-        };
-        aaveApy = estimates[asset.id] || 2.0;
+      } catch {
+        // eslint-disable-next-line no-console
+        console.warn(`[APY] Failed to fetch ${asset.id} from chain, using fallback`);
+        const fallback = getFallbackApy(asset.id);
+        aaveApy = fallback.aave;
       }
 
-      // Estimate GMX APY (63% of trading fees)
-      // In production, this would come from GMX analytics API
+      // Estimate GMX APY
       const rawGmxApy = estimateGmxApy(asset.id);
       const gmxApy = rawGmxApy;
 
-      // Calculate weighted APY (60% GMX, 40% Aave for crypto assets)
+      // Calculate weighted APY
       const isStablecoin = asset.id === 'usdc';
       const weights = isStablecoin 
-        ? { aave: 0.50, gmx: 0.20 } // USDC: 50% Aave, 20% GMX, 30% other
-        : { aave: 0.40, gmx: 0.60 }; // Crypto: 40% Aave, 60% GMX
+        ? { aave: 0.50, gmx: 0.20 }
+        : { aave: 0.40, gmx: 0.60 };
 
-      // Calculate gross APY (what the protocol earns)
       const grossApy = (aaveApy * weights.aave) + (gmxApy * weights.gmx);
-
-      // Calculate net APY (what user sees, after NeverSell fee)
       const netApy = grossApy * (1 - NEVERSELL_FEE);
 
       results[asset.id] = {
@@ -151,6 +173,9 @@ export async function GET(request: Request) {
       };
     }
 
+    const duration = Date.now() - startTime;
+    console.log(`[APY] Generated in ${duration}ms`);
+
     return NextResponse.json({
       success: true,
       data: {
@@ -158,13 +183,9 @@ export async function GET(request: Request) {
         fee: NEVERSELL_FEE * 100,
         updatedAt: Date.now(),
       },
-      meta: {
-        timestamp: Date.now(),
-        requestId: crypto.randomUUID(),
-      }
     });
   } catch (error) {
-    console.error('APY calculation error:', error);
+    console.error('[APY] Error:', error);
     return NextResponse.json({
       success: false,
       error: {
