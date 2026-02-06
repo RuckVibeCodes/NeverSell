@@ -89,21 +89,11 @@ async function fetchGmxApyData(): Promise<Record<string, number>> {
   }
 }
 
-/**
- * Get GMX APY for a specific asset
- */
-async function getGmxApy(assetSymbol: string): Promise<number> {
-  const apyData = await fetchGmxApyData();
-  return apyData[assetSymbol] || FALLBACK_GMX_APY[assetSymbol] || 15.0;
-}
-
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(request: Request) {
   const startTime = Date.now();
   
   try {
-    const { searchParams } = new URL(request.url);
-    const chainId = parseInt(searchParams.get('chainId') || '42161');
-
     const results: Record<string, {
       aaveApy: number;
       gmxApy: number;
