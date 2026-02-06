@@ -5,26 +5,80 @@ import { NextResponse } from 'next/server';
 // Returns real-time blended APY from Aave + GMX, minus platform fee
 // ============================================================
 
-// Current Aave V3 Arbitrum supply APYs (updated Feb 6, 2026)
-// Source: Aave V3 Arbitrum UI - https://app.aave.com/markets/?marketName=proto_arbitrum_v3
-const AAVE_SUPPLY_APY: Record<string, number> = {
-  wbtc: 0.02,   // ~0.02% (very low, mostly used as collateral)
-  weth: 1.85,   // ~1.85% (based on recent utilization)
-  usdc: 4.20,   // ~4.20% (stablecoin lending demand)
-  arb: 0.15,    // ~0.15% (low borrow demand)
-};
-
 // Asset IDs for iteration
 const ASSET_IDS = ['wbtc', 'weth', 'usdc', 'arb'];
 
 // NeverSell platform fee (10% of gross yields)
 const NEVERSELL_FEE = 0.10;
 
+// Fallback Aave APYs if DeFiLlama fails
+const FALLBACK_AAVE_APY: Record<string, number> = {
+  wbtc: 0.02,
+  weth: 1.85,
+  usdc: 4.20,
+  arb: 0.15,
+};
+
+// Cache for Aave APY data from DeFiLlama
+let aaveApyCache: { data: Record<string, number>; timestamp: number } | null = null;
+const AAVE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 /**
- * Get Aave supply APY for an asset
+ * Fetch Aave supply APYs from DeFiLlama
  */
-function getAaveApy(assetId: string): number {
-  return AAVE_SUPPLY_APY[assetId] || 0;
+async function fetchAaveApyData(): Promise<Record<string, number>> {
+  // Return cached data if still fresh
+  if (aaveApyCache && Date.now() - aaveApyCache.timestamp < AAVE_CACHE_TTL) {
+    return aaveApyCache.data;
+  }
+
+  try {
+    const response = await fetch('https://yields.llama.fi/pools', {
+      next: { revalidate: 300 },
+    });
+    
+    if (!response.ok) throw new Error(`DeFiLlama API error: ${response.status}`);
+    
+    const json = await response.json();
+    const pools = json.data || [];
+    
+    // Filter for Aave V3 Arbitrum pools
+    const aaveArbitrumPools = pools.filter((pool: { project: string; chain: string }) => 
+      pool.project === 'aave-v3' && pool.chain === 'Arbitrum'
+    );
+    
+    const result: Record<string, number> = {};
+    
+    // Map our asset IDs to DeFiLlama symbols
+    const symbolMap: Record<string, string[]> = {
+      wbtc: ['WBTC'],
+      weth: ['WETH'],
+      usdc: ['USDC', 'USDC.E'],
+      arb: ['ARB'],
+    };
+    
+    for (const assetId of ASSET_IDS) {
+      const symbols = symbolMap[assetId] || [assetId.toUpperCase()];
+      const pool = aaveArbitrumPools.find((p: { symbol: string }) => 
+        symbols.includes(p.symbol)
+      );
+      
+      if (pool && typeof pool.apy === 'number') {
+        result[assetId] = pool.apy; // Already in percentage format
+      } else {
+        result[assetId] = FALLBACK_AAVE_APY[assetId] || 0;
+      }
+    }
+    
+    // Update cache
+    aaveApyCache = { data: result, timestamp: Date.now() };
+    console.log('[APY] Fetched fresh Aave APY from DeFiLlama:', result);
+    
+    return result;
+  } catch (err) {
+    console.error('[APY] DeFiLlama API fetch failed:', err);
+    return FALLBACK_AAVE_APY;
+  }
 }
 
 // GMX pool addresses for each asset
@@ -89,8 +143,7 @@ async function fetchGmxApyData(): Promise<Record<string, number>> {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function GET(request: Request) {
+export async function GET() {
   const startTime = Date.now();
   
   try {
@@ -101,13 +154,16 @@ export async function GET(request: Request) {
       netApy: number;
     }> = {};
 
-    // Fetch GMX APY data once (cached)
-    const gmxApyData = await fetchGmxApyData();
+    // Fetch APY data (both cached for 5 min)
+    const [gmxApyData, aaveApyData] = await Promise.all([
+      fetchGmxApyData(),
+      fetchAaveApyData(),
+    ]);
     
     // Calculate APY for each asset
     for (const assetId of ASSET_IDS) {
       const gmxApy = gmxApyData[assetId] || FALLBACK_GMX_APY[assetId] || 15;
-      const aaveApy = getAaveApy(assetId);
+      const aaveApy = aaveApyData[assetId] || FALLBACK_AAVE_APY[assetId] || 0;
 
       // Calculate combined APY
       // grossApy = Aave supply yield + GMX liquidity provision yield
