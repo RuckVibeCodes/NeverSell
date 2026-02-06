@@ -510,8 +510,15 @@ export default function LendPage() {
 
   // Get APY from real API data
   const getBlendedApy = (symbol: string): { blended: number; aave: number; gmPool: number; gmPoolFee: number; gmPoolPerf: number } => {
-    // Map symbol format (WBTC -> wbtc)
-    const symbolId = symbol.toLowerCase();
+    // Map symbol format (ETH -> weth, WBTC -> wbtc, etc.)
+    const symbolMap: Record<string, string> = {
+      'ETH': 'weth',
+      'WETH': 'weth', 
+      'WBTC': 'wbtc',
+      'USDC': 'usdc',
+      'ARB': 'arb',
+    };
+    const symbolId = symbolMap[symbol] || symbol.toLowerCase();
     const apy = realApyData?.assets[symbolId];
     
     if (apy) {

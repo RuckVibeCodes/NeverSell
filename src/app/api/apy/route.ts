@@ -77,18 +77,74 @@ async function getAaveApy(chainId: number, assetAddress: string): Promise<number
   return liquidityRateToApy(liquidityRate);
 }
 
+// GMX pool addresses for each asset
+const GMX_POOL_ADDRESSES: Record<string, string> = {
+  wbtc: '0x47c031236e19d024b42f8AE6780E44A573170703', // BTC/USD
+  weth: '0x70d95587d40A2caf56bd97485aB3Eec10Bee6336', // ETH/USD
+  arb: '0xC25cEf6061Cf5dE5eb761b50E4743c1F5D7E5407',  // ARB/USD
+  usdc: '0x70d95587d40A2caf56bd97485aB3Eec10Bee6336', // Uses ETH/USD pool
+};
+
+// Fallback APYs in case GMX API fails
+const FALLBACK_GMX_APY: Record<string, number> = {
+  wbtc: 16.87,
+  weth: 19.29,
+  arb: 17.76,
+  usdc: 19.29,
+};
+
+// Cache for GMX APY data
+let gmxApyCache: { data: Record<string, number>; timestamp: number } | null = null;
+const GMX_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 /**
- * Get GMX APY from real API data (updated Feb 2026)
+ * Fetch real GMX APY data from GMX API
  */
-function getGmxApy(assetSymbol: string): number {
-  // Real GMX pool APYs as of Feb 6, 2026
-  const realApys: Record<string, number> = {
-    wbtc: 16.87,  // BTC/USD pool
-    weth: 19.29,  // ETH/USD pool  
-    arb: 17.76,   // ARB/USD pool
-    usdc: 19.29,  // Uses ETH/USD pool (short side)
-  };
-  return realApys[assetSymbol] || 15.0;
+async function fetchGmxApyData(): Promise<Record<string, number>> {
+  // Return cached data if still fresh
+  if (gmxApyCache && Date.now() - gmxApyCache.timestamp < GMX_CACHE_TTL) {
+    return gmxApyCache.data;
+  }
+
+  try {
+    const response = await fetch('https://arbitrum-api.gmxinfra.io/apy?period=total', {
+      next: { revalidate: 300 }, // Cache for 5 minutes
+    });
+    
+    if (!response.ok) throw new Error(`GMX API error: ${response.status}`);
+    
+    const data = await response.json();
+    const markets = data.markets || {};
+    
+    const result: Record<string, number> = {};
+    
+    for (const [assetId, poolAddress] of Object.entries(GMX_POOL_ADDRESSES)) {
+      // Try both checksummed and lowercase
+      const apyData = markets[poolAddress] || markets[poolAddress.toLowerCase()];
+      if (apyData && typeof apyData.apy === 'number') {
+        result[assetId] = apyData.apy * 100; // Convert decimal to percentage
+      } else {
+        result[assetId] = FALLBACK_GMX_APY[assetId] || 15;
+      }
+    }
+    
+    // Update cache
+    gmxApyCache = { data: result, timestamp: Date.now() };
+    console.log('[APY] Fetched fresh GMX APY data:', result);
+    
+    return result;
+  } catch (err) {
+    console.error('[APY] GMX API fetch failed:', err);
+    return FALLBACK_GMX_APY;
+  }
+}
+
+/**
+ * Get GMX APY for a specific asset
+ */
+async function getGmxApy(assetSymbol: string): Promise<number> {
+  const apyData = await fetchGmxApyData();
+  return apyData[assetSymbol] || FALLBACK_GMX_APY[assetSymbol] || 15.0;
 }
 
 export async function GET(request: Request) {
@@ -105,11 +161,14 @@ export async function GET(request: Request) {
       netApy: number;
     }> = {};
 
+    // Fetch GMX APY data once (cached)
+    const gmxApyData = await fetchGmxApyData();
+    
     // Process all assets in parallel for speed
     const assetEntries = Object.entries(ASSET_ADDRESSES);
     
     await Promise.all(assetEntries.map(async ([assetId, assetAddress]) => {
-      const gmxApy = getGmxApy(assetId);
+      const gmxApy = gmxApyData[assetId] || FALLBACK_GMX_APY[assetId] || 15;
       
       // Try to fetch Aave APY, fall back to 0 if not available
       let aaveApy = 0;
