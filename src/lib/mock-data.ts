@@ -21,10 +21,10 @@ export const MOCK_ASSETS: AssetFull[] = [
     iconUrl: '/assets/wbtc.svg',
     priceUsd: '97500',
     aaveSupported: true,
-    blendedApy: 15.12,
+    blendedApy: 11.65, // (1.5 * 0.6) + (16.87 * 0.4)
     yieldSources: [
-      { protocol: 'Aave', apy: 1.5, weight: 40 },
-      { protocol: 'GMX', apy: 18.0, weight: 60 },
+      { protocol: 'Aave', apy: 1.5, weight: 60 },
+      { protocol: 'GMX', apy: 16.87, weight: 40 },
     ],
     tvl: 1_250_000,
     minDeposit: 0.001,
@@ -39,11 +39,10 @@ export const MOCK_ASSETS: AssetFull[] = [
     iconUrl: '/assets/weth.svg',
     priceUsd: '3250',
     aaveSupported: true,
-    blendedApy: 14.28,
+    blendedApy: 8.98, // (2.1 * 0.6) + (19.29 * 0.4)
     yieldSources: [
-      { protocol: 'Aave', apy: 2.1, weight: 35 },
-      { protocol: 'GMX', apy: 21.0, weight: 45 },
-      { protocol: 'Pendle', apy: 8.5, weight: 20 },
+      { protocol: 'Aave', apy: 2.1, weight: 60 },
+      { protocol: 'GMX', apy: 19.29, weight: 40 },
     ],
     tvl: 1_850_000,
     minDeposit: 0.01,
@@ -58,11 +57,10 @@ export const MOCK_ASSETS: AssetFull[] = [
     iconUrl: '/assets/arb.svg',
     priceUsd: '0.85',
     aaveSupported: true,
-    blendedApy: 16.45,
+    blendedApy: 9.02, // (3.2 * 0.6) + (17.76 * 0.4)
     yieldSources: [
-      { protocol: 'Aave', apy: 3.2, weight: 25 },
-      { protocol: 'GMX', apy: 19.5, weight: 55 },
-      { protocol: 'Camelot', apy: 22.0, weight: 20 },
+      { protocol: 'Aave', apy: 3.2, weight: 60 },
+      { protocol: 'GMX', apy: 17.76, weight: 40 },
     ],
     tvl: 650_000,
     minDeposit: 10,
@@ -77,11 +75,10 @@ export const MOCK_ASSETS: AssetFull[] = [
     iconUrl: '/assets/usdc.svg',
     priceUsd: '1.00',
     aaveSupported: true,
-    blendedApy: 8.24,
+    blendedApy: 11.20, // (5.8 * 0.6) + (19.29 * 0.4) - uses ETH/USD pool
     yieldSources: [
-      { protocol: 'Aave', apy: 5.8, weight: 50 },
-      { protocol: 'Compound', apy: 6.2, weight: 30 },
-      { protocol: 'GMX', apy: 15.0, weight: 20 },
+      { protocol: 'Aave', apy: 5.8, weight: 60 },
+      { protocol: 'GMX', apy: 19.29, weight: 40 },
     ],
     tvl: 450_000,
     minDeposit: 10,
