@@ -353,15 +353,22 @@ export function useGMXMarketsInfo(): GMXMarketsInfoResult {
             }
           }
           
-          // Merge APY data (key is checksummed address from API)
+          // Merge APY data (key is checksummed address from API - normalize to lowercase)
+          // Create lowercase lookup for APY data
+          const apyLookup: Record<string, APYMarketData> = {};
           for (const [address, data] of Object.entries(apyData)) {
-            const key = address.toLowerCase();
-            if (updated[key]) {
-              updated[key] = {
-                ...updated[key],
-                apy: data.apy,
-                baseApy: data.baseApy,
-                bonusApr: data.bonusApr,
+            apyLookup[address.toLowerCase()] = data;
+          }
+          
+          // Apply APY data to markets
+          for (const [marketKey, market] of Object.entries(updated)) {
+            const apyForMarket = apyLookup[marketKey];
+            if (apyForMarket) {
+              updated[marketKey] = {
+                ...market,
+                apy: apyForMarket.apy,
+                baseApy: apyForMarket.baseApy,
+                bonusApr: apyForMarket.bonusApr,
               };
             }
           }
@@ -392,9 +399,15 @@ export function useGMXMarketsInfo(): GMXMarketsInfoResult {
         
         const marketsMap: Record<string, MarketInfo> = {};
         
+        // Create lowercase lookup for APY data
+        const apyLookup: Record<string, APYMarketData> = {};
+        for (const [address, data] of Object.entries(apyData)) {
+          apyLookup[address.toLowerCase()] = data;
+        }
+        
         for (const restMarket of restMarkets) {
           const key = restMarket.marketToken.toLowerCase();
-          const apy = apyData[restMarket.marketToken] || apyData[key];
+          const apy = apyLookup[key];
           
           marketsMap[key] = {
             marketToken: restMarket.marketToken,

@@ -36,34 +36,34 @@ export interface UseGMXApyResult {
 }
 
 // Fallback APY values (used when SDK/API fails)
-// Updated periodically based on GMX UI
+// Updated 2026-02-06 based on GMX API
 const FALLBACK_APY: Record<GMPoolName, PoolAPY> = {
   'BTC/USD': {
     poolName: 'BTC/USD',
-    feeApy: 10.77,
-    perfApy: 4.05,
-    totalApy: 14.82,
-    apy7d: 14.82,
+    feeApy: 16.87,
+    perfApy: 0,
+    totalApy: 16.87,
+    apy7d: 16.87,
     tvlUsd: 80_000_000,
-    lastUpdated: new Date('2026-02-01'),
+    lastUpdated: new Date('2026-02-06'),
   },
   'ETH/USD': {
     poolName: 'ETH/USD',
-    feeApy: 12.14,
-    perfApy: 7.61,
-    totalApy: 19.75,
-    apy7d: 19.75,
+    feeApy: 19.29,
+    perfApy: 0,
+    totalApy: 19.29,
+    apy7d: 19.29,
     tvlUsd: 76_000_000,
-    lastUpdated: new Date('2026-02-01'),
+    lastUpdated: new Date('2026-02-06'),
   },
   'ARB/USD': {
     poolName: 'ARB/USD',
-    feeApy: 6.0,
-    perfApy: 2.65,
-    totalApy: 8.65,
-    apy7d: 8.65,
+    feeApy: 17.76,
+    perfApy: 0,
+    totalApy: 17.76,
+    apy7d: 17.76,
     tvlUsd: 700_000,
-    lastUpdated: new Date('2026-02-01'),
+    lastUpdated: new Date('2026-02-06'),
   },
 };
 
@@ -159,13 +159,32 @@ export function useGMXApy(): UseGMXApyResult {
     return result;
   }, [markets, isLoading, isError]);
 
-  // Use fallback data if error occurred
+  // Use fallback data if error occurred OR if pools have null data
   const finalApyData = useMemo(() => {
     if (isError) {
       return FALLBACK_APY;
     }
+    
+    // Check if any pool is still null after loading - use fallback for those
+    const poolNames = Object.keys(GM_POOLS) as GMPoolName[];
+    const hasNullPools = poolNames.some(name => !apyData[name]);
+    
+    if (!isLoading && hasNullPools) {
+      // Merge fallback for missing pools
+      const merged: Record<GMPoolName, PoolAPY | null> = { ...apyData };
+      for (const poolName of poolNames) {
+        if (!merged[poolName]) {
+          merged[poolName] = { ...FALLBACK_APY[poolName], lastUpdated: new Date() };
+          if (process.env.NODE_ENV === 'development') {
+            console.warn(`Using fallback APY for ${poolName}`);
+          }
+        }
+      }
+      return merged as Record<GMPoolName, PoolAPY>;
+    }
+    
     return apyData;
-  }, [apyData, isError]);
+  }, [apyData, isError, isLoading]);
 
   const lastUpdated = useMemo(() => {
     if (pricesUpdatedAt) {
