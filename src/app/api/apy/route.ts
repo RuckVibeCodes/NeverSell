@@ -11,6 +11,10 @@ const ASSET_IDS = ['wbtc', 'weth', 'usdc', 'arb'];
 // NeverSell platform fee (10% of gross yields)
 const NEVERSELL_FEE = 0.10;
 
+// Allocation split (fixed)
+const AAVE_ALLOCATION = 0.60;  // 60% to Aave
+const GMX_ALLOCATION = 0.40;   // 40% to GMX
+
 // Fallback Aave APYs if DeFiLlama fails
 const FALLBACK_AAVE_APY: Record<string, number> = {
   wbtc: 0.02,
@@ -165,9 +169,9 @@ export async function GET() {
       const gmxApy = gmxApyData[assetId] || FALLBACK_GMX_APY[assetId] || 15;
       const aaveApy = aaveApyData[assetId] || FALLBACK_AAVE_APY[assetId] || 0;
 
-      // Calculate combined APY
-      // grossApy = Aave supply yield + GMX liquidity provision yield
-      const grossApy = aaveApy + gmxApy;
+      // Calculate combined APY (weighted by allocation)
+      // 60% of funds go to Aave, 40% go to GMX
+      const grossApy = (AAVE_ALLOCATION * aaveApy) + (GMX_ALLOCATION * gmxApy);
       
       // netApy = gross minus 10% platform performance fee
       const netApy = grossApy * (1 - NEVERSELL_FEE);
