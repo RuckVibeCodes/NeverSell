@@ -550,6 +550,35 @@ export default function LendPage() {
         )}
       </div>
 
+      {/* Passive Income Banner */}
+      <div className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-amber-500/10 via-orange-500/10 to-yellow-500/10 border border-amber-500/30 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/20 to-transparent rounded-full blur-2xl -mr-8 -mt-8" />
+        <div className="relative">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-3xl">💤</span>
+            <h2 className="text-xl font-bold text-white">Earn While You Sleep</h2>
+          </div>
+          <p className="text-white/70 text-lg mb-4">
+            Your assets generate yield <span className="text-amber-400 font-semibold">24/7</span> — no trading, no timing the market, no effort. 
+            Just deposit and let your money work for you.
+          </p>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+              <span className="text-mint">✓</span>
+              <span className="text-white/80">100% Passive</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+              <span className="text-mint">✓</span>
+              <span className="text-white/80">Real Yield from DeFi</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+              <span className="text-mint">✓</span>
+              <span className="text-white/80">Withdraw Anytime</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Strategy explanation */}
       <div className="glass-card p-6 mb-8 border-mint/20">
         <h2 className="text-lg font-semibold text-white mb-3">How NeverSell Works</h2>
