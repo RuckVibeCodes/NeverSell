@@ -7,3 +7,6 @@ export { CopyStrategyButton } from './CopyStrategyButton';
 export { LeaderboardTable } from './LeaderboardTable';
 export { LeaderboardFilters } from './LeaderboardFilters';
 export { TrendingCreators } from './TrendingCreators';
+export { VaultCard, VaultCardSkeleton } from './VaultCard';
+export { VaultFilters } from './VaultFilters';
+export { VaultDiscovery } from './VaultDiscovery';

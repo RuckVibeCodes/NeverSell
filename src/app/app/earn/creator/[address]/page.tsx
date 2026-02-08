@@ -1,411 +1,324 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { 
-  ArrowLeft, 
-  TrendingUp, 
-  Calendar, 
-  RefreshCw, 
-  Plus, 
-  Minus, 
-  Edit3,
-  Share2,
-  Copy,
-  Check,
-  Loader2,
-} from 'lucide-react';
+import { useState, use } from 'react';
 import Link from 'next/link';
-import { CreatorHeader, PortfolioComposition, CopyStrategyButton } from '@/components/earn';
+import {
+  ArrowLeft,
+  Twitter,
+  Youtube,
+  Globe,
+  Check,
+  TrendingUp,
+  Users,
+  DollarSign,
+  PieChart,
+  Copy,
+  Share2,
+  Star,
+  Clock,
+} from 'lucide-react';
+import { mockLeaderboardData, type LeaderboardEntry, type Creator } from '@/lib/mock-leaderboard-data';
+import { PortfolioComposition } from '@/components/earn/PortfolioComposition';
+import { StrategyUpdateFeed } from '@/components/earn/StrategyUpdateFeed';
+import { CopyStrategyButton } from '@/components/earn/CopyStrategyButton';
 
-interface CreatorData {
-  address: string;
-  avatar: string;
-  name: string;
-  handle: string;
-  verified: boolean;
-  bio: string;
-  color: string;
-  stats: {
-    followers: number;
-    tvl: number;
-    thirtyDayReturn: number;
-    copiers: number;
-    allTimeReturn: number;
-    apy: number;
-  };
-  socials: {
-    twitter?: string;
-    telegram?: string;
-    discord?: string;
-    website?: string;
-  };
-  allocations: Array<{
-    poolId: string;
-    name: string;
-    percentage: number;
-    color: string;
-  }>;
-  strategyUpdates: Array<{
-    id: string;
-    timestamp: string;
-    type: 'rebalance' | 'add' | 'remove' | 'update';
-    message: string;
-  }>;
-  performanceHistory: Array<{
-    date: string;
-    value: number;
-  }>;
-}
-
-function getUpdateIcon(type: string) {
-  switch (type) {
-    case 'rebalance':
-      return <RefreshCw size={16} className="text-purple-400" />;
-    case 'add':
-      return <Plus size={16} className="text-green-400" />;
-    case 'remove':
-      return <Minus size={16} className="text-red-400" />;
-    case 'update':
-      return <Edit3 size={16} className="text-blue-400" />;
-    default:
-      return <Edit3 size={16} className="text-white/40" />;
-  }
-}
-
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0) {
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    if (diffHours === 0) {
-      const diffMins = Math.floor(diffMs / (1000 * 60));
-      return `${diffMins}m ago`;
-    }
-    return `${diffHours}h ago`;
-  }
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-// Simple mock chart component
-function PerformanceChart({ data }: { data: Array<{ date: string; value: number }> }) {
-  if (!data || data.length === 0) return null;
-  
-  const maxValue = Math.max(...data.map(d => d.value));
-  const minValue = Math.min(...data.map(d => d.value));
-  const range = maxValue - minValue || 1;
-  
-  const startValue = data[0]?.value || 100;
-  const endValue = data[data.length - 1]?.value || 100;
-  const change = ((endValue - startValue) / startValue) * 100;
-  
-  return (
-    <div className="glass-card p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-bold text-white">Performance</h2>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5">
-            <Calendar size={14} className="text-white/40" />
-            <span className="text-white/60 text-sm">30D</span>
-          </div>
-          <div className={`flex items-center gap-1 ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            <TrendingUp size={18} />
-            <span className="font-bold">{change >= 0 ? '+' : ''}{change.toFixed(1)}%</span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Chart area */}
-      <div className="relative h-48 md:h-64">
-        {/* Y-axis labels */}
-        <div className="absolute left-0 top-0 bottom-8 w-12 flex flex-col justify-between text-right pr-2">
-          <span className="text-white/40 text-xs">{maxValue.toFixed(0)}%</span>
-          <span className="text-white/40 text-xs">{((maxValue + minValue) / 2).toFixed(0)}%</span>
-          <span className="text-white/40 text-xs">{minValue.toFixed(0)}%</span>
-        </div>
-        
-        {/* Chart */}
-        <div className="absolute left-14 right-0 top-0 bottom-0">
-          {/* Grid lines */}
-          <div className="absolute inset-0 flex flex-col justify-between">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="border-t border-white/5" />
-            ))}
-          </div>
-          
-          {/* SVG line chart */}
-          <svg className="w-full h-full" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={change >= 0 ? '#4ade80' : '#f87171'} stopOpacity="0.3" />
-                <stop offset="100%" stopColor={change >= 0 ? '#4ade80' : '#f87171'} stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            
-            {/* Area fill */}
-            <path
-              d={`
-                M 0 ${100 - ((data[0].value - minValue) / range) * 100}
-                ${data.map((d, i) => `L ${(i / (data.length - 1)) * 100} ${100 - ((d.value - minValue) / range) * 100}`).join(' ')}
-                L 100 100
-                L 0 100
-                Z
-              `}
-              fill="url(#chartGradient)"
-              className="transition-all duration-500"
-            />
-            
-            {/* Line */}
-            <path
-              d={`
-                M 0 ${100 - ((data[0].value - minValue) / range) * 100}
-                ${data.map((d, i) => `L ${(i / (data.length - 1)) * 100} ${100 - ((d.value - minValue) / range) * 100}`).join(' ')}
-              `}
-              fill="none"
-              stroke={change >= 0 ? '#4ade80' : '#f87171'}
-              strokeWidth="2"
-              vectorEffect="non-scaling-stroke"
-              className="transition-all duration-500"
-            />
-            
-            {/* Data points */}
-            {data.map((d, i) => (
-              <circle
-                key={i}
-                cx={`${(i / (data.length - 1)) * 100}%`}
-                cy={`${100 - ((d.value - minValue) / range) * 100}%`}
-                r="4"
-                fill={change >= 0 ? '#4ade80' : '#f87171'}
-                className="opacity-0 hover:opacity-100 transition-opacity"
-              />
-            ))}
-          </svg>
-          
-          {/* X-axis labels */}
-          <div className="absolute bottom-0 left-0 right-0 flex justify-between pt-2">
-            {data.filter((_, i) => i % Math.ceil(data.length / 4) === 0 || i === data.length - 1).map((d, i) => (
-              <span key={i} className="text-white/40 text-xs">
-                {new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-      
-      {/* Stats row below chart */}
-      <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/10">
-        <div className="text-center">
-          <p className="text-white/40 text-xs mb-1">Start Value</p>
-          <p className="text-white font-medium">${startValue.toFixed(0)}</p>
-        </div>
-        <div className="text-center">
-          <p className="text-white/40 text-xs mb-1">Current Value</p>
-          <p className="text-white font-medium">${endValue.toFixed(0)}</p>
-        </div>
-        <div className="text-center">
-          <p className="text-white/40 text-xs mb-1">Profit/Loss</p>
-          <p className={`font-medium ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {change >= 0 ? '+' : ''}${(endValue - startValue).toFixed(0)}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function CreatorProfilePage({ params }: { params: Promise<{ address: string }> }) {
+export default function CreatorProfilePage({ 
+  params 
+}: { 
+  params: Promise<{ address: string }> 
+}) {
   const resolvedParams = use(params);
-  const [creator, setCreator] = useState<CreatorData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    async function fetchCreator() {
-      try {
-        const res = await fetch(`/api/earn/creators/${resolvedParams.address}`);
-        if (!res.ok) {
-          if (res.status === 404) {
-            setError('Creator not found');
-          } else {
-            setError('Failed to load creator profile');
-          }
-          return;
-        }
-        const data = await res.json();
-        setCreator(data);
-      } catch (err) {
-        console.error('Error fetching creator:', err);
-        setError('Failed to load creator profile');
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    fetchCreator();
-  }, [resolvedParams.address]);
-
-  const handleShare = async () => {
-    const url = window.location.href;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${creator?.name} on NeverSell`,
-          text: `Check out ${creator?.name}'s trading strategy on NeverSell!`,
-          url,
-        });
-      } catch {
-        // User cancelled or error
-      }
-    } else {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  if (loading) {
+  const [activeTab, setActiveTab] = useState<'overview' | 'portfolio' | 'updates'>('overview');
+  
+  // Get creator from mock data (in production, fetch from API)
+  const creatorId = resolvedParams.address;
+  const creatorData = mockLeaderboardData.find(e => e.creator.id === creatorId);
+  
+  if (!creatorData) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 size={48} className="animate-spin text-mint" />
+      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Creator Not Found</h1>
+          <Link href="/app/earn/leaderboard" className="text-emerald-400 hover:underline">
+            Back to Leaderboard
+          </Link>
         </div>
       </div>
     );
   }
 
-  if (error || !creator) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link 
-          href="/app/vaults"
-          className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors mb-6"
-        >
-          <ArrowLeft size={18} />
-          Back to Vaults
-        </Link>
-        
-        <div className="glass-card p-12 text-center">
-          <div className="w-20 h-20 rounded-2xl bg-red-500/20 flex items-center justify-center text-4xl mx-auto mb-4">
-            😕
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">{error || 'Creator not found'}</h2>
-          <p className="text-white/60">The creator profile you&apos;re looking for doesn&apos;t exist or has been removed.</p>
-        </div>
-      </div>
-    );
-  }
+  const entry = creatorData;
+  const creator = entry.creator;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Back navigation */}
-      <div className="flex items-center justify-between mb-6">
-        <Link 
-          href="/app/vaults"
-          className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors"
-        >
-          <ArrowLeft size={18} />
-          Back to Vaults
-        </Link>
+    <div className="min-h-screen bg-gray-950 text-white">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden">
+        {/* Background gradient */}
+        <div className={`absolute inset-0 bg-gradient-to-br ${entry.color} opacity-20`} />
         
-        <button
-          onClick={handleShare}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 text-white/70 hover:bg-white/10 transition-colors"
-        >
-          {copied ? <Check size={18} /> : <Share2 size={18} />}
-          {copied ? 'Copied!' : 'Share'}
-          {!copied && <Copy size={14} className="text-white/40" />}
-        </button>
-      </div>
-      
-      {/* Creator Header */}
-      <div className="mb-6">
-        <CreatorHeader
-          avatar={creator.avatar}
-          name={creator.name}
-          handle={creator.handle}
-          verified={creator.verified}
-          bio={creator.bio}
-          stats={{
-            followers: creator.stats.followers,
-            tvl: creator.stats.tvl,
-            thirtyDayReturn: creator.stats.thirtyDayReturn,
-            copiers: creator.stats.copiers,
-          }}
-          socials={creator.socials}
-          color={creator.color}
-        />
-      </div>
-      
-      {/* Two column layout for desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Portfolio Composition - takes 2 columns */}
-        <div className="lg:col-span-2">
-          <PortfolioComposition
-            allocations={creator.allocations}
-            totalValue={creator.stats.tvl}
-          />
-        </div>
-        
-        {/* Copy Strategy CTA - takes 1 column */}
-        <div className="glass-card p-6">
-          <div className="mb-4">
-            <p className="text-white/40 text-xs mb-1">Estimated APY</p>
-            <p className="text-3xl font-bold text-mint">{creator.stats.apy}%</p>
-          </div>
-          
-          <div className="mb-4">
-            <p className="text-white/40 text-xs mb-1">All-Time Return</p>
-            <p className={`text-2xl font-bold ${creator.stats.allTimeReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {creator.stats.allTimeReturn >= 0 ? '+' : ''}{creator.stats.allTimeReturn}%
-            </p>
-          </div>
-          
-          <CopyStrategyButton
-            creatorName={creator.name}
-            creatorFee={20}
-            platformFee={10}
-          />
-        </div>
-      </div>
-      
-      {/* Performance Chart */}
-      <div className="mb-6">
-        <PerformanceChart data={creator.performanceHistory} />
-      </div>
-      
-      {/* Strategy Updates Feed */}
-      <div className="glass-card p-6">
-        <h2 className="text-lg font-bold text-white mb-6">Strategy Updates</h2>
-        
-        <div className="space-y-4">
-          {creator.strategyUpdates.map((update) => (
-            <div 
-              key={update.id}
-              className="flex gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors"
-            >
-              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-                {getUpdateIcon(update.type)}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <p className="text-white/90">{update.message}</p>
-                <p className="text-white/40 text-sm mt-1">{formatDate(update.timestamp)}</p>
+        <div className="relative max-w-7xl mx-auto px-4 py-8">
+          {/* Back link */}
+          <Link 
+            href="/app/earn/leaderboard"
+            className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Leaderboard
+          </Link>
+
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Profile Info */}
+            <div className="flex-1">
+              <div className="flex items-start gap-6">
+                {/* Avatar */}
+                <div className={`w-24 h-24 rounded-2xl bg-gradient-to-br ${entry.color} flex items-center justify-center text-4xl shadow-xl`}>
+                  {creator.avatar}
+                </div>
+
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-3xl font-bold">{creator.name}</h1>
+                    {creator.verified && (
+                      <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                        <Check className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <p className="text-gray-400 mb-3">{creator.handle}</p>
+                  <p className="text-gray-300 mb-4">{creator.bio}</p>
+
+                  {/* Social Links */}
+                  <div className="flex gap-3">
+                    {creator.socials?.twitter && (
+                      <a href={`https://twitter.com/${creator.socials.twitter}`} target="_blank" rel="noopener" className="p-2 bg-gray-800 rounded-lg hover:bg-gray-700">
+                        <Twitter className="w-5 h-5" />
+                      </a>
+                    )}
+                    {creator.socials?.youtube && (
+                      <a href={`https://youtube.com/@${creator.socials.youtube}`} target="_blank" rel="noopener" className="p-2 bg-gray-800 rounded-lg hover:bg-gray-700">
+                        <Youtube className="w-5 h-5" />
+                      </a>
+                    )}
+                    <button className="p-2 bg-gray-800 rounded-lg hover:bg-gray-700">
+                      <Share2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* Stats Cards */}
+            <div className="lg:w-80 space-y-3">
+              <StatCard
+                icon={TrendingUp}
+                label="30D Returns"
+                value={`${entry.performance.thirtyDay >= 0 ? '+' : ''}${entry.performance.thirtyDay.toFixed(1)}%`}
+                positive={entry.performance.thirtyDay >= 0}
+              />
+              <StatCard
+                icon={DollarSign}
+                label="TVL"
+                value={formatNumber(entry.tvl)}
+                subtitle="Total Value Locked"
+              />
+              <StatCard
+                icon={Users}
+                label="Followers"
+                value={formatFollowers(entry.followers)}
+                subtitle={`+${entry.followerGrowth}% this week`}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="flex gap-1 p-1 bg-gray-900 rounded-xl mb-6 w-fit">
+          {(['overview', 'portfolio', 'updates'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === tab
+                  ? 'bg-gray-700 text-white'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
           ))}
         </div>
-        
-        {creator.strategyUpdates.length === 0 && (
-          <p className="text-white/40 text-center py-8">No strategy updates yet.</p>
+
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Strategy Info */}
+              <div className="bg-gray-900 rounded-2xl p-6">
+                <h2 className="text-lg font-semibold mb-4">Strategy</h2>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getRiskColor(entry.riskLevel)}`}>
+                    {entry.riskLevel} risk
+                  </span>
+                  <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                    {entry.strategyType}
+                  </span>
+                  {entry.tags.map(tag => (
+                    <span key={tag} className="px-3 py-1 rounded-full bg-gray-800 text-gray-300 border border-gray-700">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-gray-400">
+                  Trading {entry.strategyType} strategy focused on {entry.tags.slice(0, 3).join(', ')}.
+                  Consistent returns with {entry.riskLevel} risk management.
+                </p>
+              </div>
+
+              {/* Performance Chart Placeholder */}
+              <div className="bg-gray-900 rounded-2xl p-6">
+                <h2 className="text-lg font-semibold mb-4">Performance</h2>
+                <div className="h-64 bg-gray-800 rounded-xl flex items-center justify-center">
+                  <p className="text-gray-500">Performance chart coming soon</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Copy Button */}
+              <div className="bg-gray-900 rounded-2xl p-6">
+                <h3 className="text-lg font-semibold mb-4">Copy This Strategy</h3>
+                <CopyStrategyButton creatorId={creator.id} />
+                <p className="text-xs text-gray-500 text-center mt-3">
+                  You&apos;ll automatically copy their future trades
+                </p>
+              </div>
+
+              {/* Quick Stats */}
+              <div className="bg-gray-900 rounded-2xl p-6">
+                <h3 className="text-lg font-semibold mb-4">Stats</h3>
+                <div className="space-y-3">
+                  <StatRow label="90D Returns" value={`${entry.performance.ninetyDay >= 0 ? '+' : ''}${entry.performance.ninetyDay.toFixed(1)}%`} />
+                  <StatRow label="All Time" value={`${entry.performance.allTime >= 0 ? '+' : ''}${entry.performance.allTime.toFixed(1)}%`} />
+                  <StatRow label="TVL Growth" value={`${entry.tvlGrowth >= 0 ? '+' : ''}${entry.tvlGrowth.toFixed(1)}%`} />
+                  <StatRow label="Joined" value={formatDate(entry.joinedAt)} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'portfolio' && (
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <PortfolioComposition allocations={[
+                { token: 'ETH', percent: 40, apy: 8.5 },
+                { token: 'USDC', percent: 30, apy: 12.2 },
+                { token: 'WBTC', percent: 20, apy: 5.8 },
+                { token: 'ARB', percent: 10, apy: 15.3 },
+              ]} />
+            </div>
+            <div>
+              <div className="bg-gray-900 rounded-2xl p-6">
+                <h3 className="text-lg font-semibold mb-4">Allocation</h3>
+                <div className="space-y-3">
+                  <AllocationBar token="ETH" percent={40} color="#627EEA" />
+                  <AllocationBar token="USDC" percent={30} color="#2775CA" />
+                  <AllocationBar token="WBTC" percent={20} color="#F7931A" />
+                  <AllocationBar token="ARB" percent={10} color="#28A0F0" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'updates' && (
+          <StrategyUpdateFeed creatorId={creator.id} />
         )}
       </div>
     </div>
   );
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  positive,
+  subtitle,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  positive?: boolean;
+  subtitle?: string;
+}) {
+  return (
+    <div className="bg-gray-900/80 backdrop-blur rounded-xl p-4">
+      <div className="flex items-center gap-2 text-gray-400 mb-1">
+        <Icon className="w-4 h-4" />
+        <span className="text-sm">{label}</span>
+      </div>
+      <p className={`text-xl font-bold ${positive !== undefined ? (positive ? 'text-emerald-400' : 'text-red-400') : 'text-white'}`}>
+        {value}
+      </p>
+      {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+    </div>
+  );
+}
+
+function StatRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between py-2 border-b border-gray-800 last:border-0">
+      <span className="text-gray-400">{label}</span>
+      <span className="font-medium">{value}</span>
+    </div>
+  );
+}
+
+function AllocationBar({ token, percent, color }: { token: string; percent: number; color: string }) {
+  return (
+    <div>
+      <div className="flex justify-between text-sm mb-1">
+        <span>{token}</span>
+        <span className="text-gray-400">{percent}%</span>
+      </div>
+      <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+        <div 
+          className="h-full rounded-full"
+          style={{ width: `${percent}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function formatNumber(num: number): string {
+  if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000) return `$${(num / 1_000).toFixed(0)}K`;
+  return `$${num.toFixed(0)}`;
+}
+
+function formatFollowers(num: number): string {
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
+  return num.toString();
+}
+
+function getRiskColor(risk: 'low' | 'medium' | 'high') {
+  if (risk === 'low') return 'text-green-400 bg-green-500/10 border-green-500/20';
+  if (risk === 'medium') return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+  return 'text-red-400 bg-red-500/10 border-red-500/20';
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('en-US', { 
+    month: 'short', 
+    year: 'numeric' 
+  });
 }
