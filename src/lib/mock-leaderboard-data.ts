@@ -9,6 +9,7 @@ export interface Creator {
   bio: string;
   socials?: {
     twitter?: string;
+    youtube?: string;
     telegram?: string;
     discord?: string;
   };

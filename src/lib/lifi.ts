@@ -248,7 +248,7 @@ export async function getCrossChainDepositQuote(
     toChain: destChainId,
     fromToken: fromTokenAddress,
     toToken: destToken,
-    fromAmount,
+    fromAmount: sourceAmount,
     fromAddress: senderAddress,
     toAddress: senderAddress, // Will be updated to vault address
     slippage,
@@ -259,7 +259,8 @@ export async function getCrossChainDepositQuote(
   };
 
   const step = await getQuote(quoteRequest);
-  const route = convertQuoteToRoute(step);
+  // Route object available for debugging/validation
+  const _route = convertQuoteToRoute(step);
 
   // Calculate minimum output (after slippage)
   const toAmount = step.estimate?.toAmount || '0';
@@ -297,10 +298,11 @@ export async function getCrossChainDepositQuote(
  */
 export async function executeCrossChainDeposit(
   quote: CrossChainQuote,
-  senderAddress: string,
-  vaultAddress: string
+  _senderAddress: string,
+  _vaultAddress: string
 ): Promise<CrossChainDepositResult> {
   // Update the route's toAddress to be the vault
+  // Note: senderAddress and vaultAddress will be used when we implement vault routing
   const route = quote.steps[0] && convertQuoteToRoute(quote.steps[0]);
   
   if (!route) {
@@ -310,7 +312,7 @@ export async function executeCrossChainDeposit(
   // Execute the bridge
   await executeRoute(route, {
     updateRouteHook: (updatedRoute) => {
-      console.log('Bridge progress:', updatedRoute.status);
+      console.log('Bridge progress:', updatedRoute.id);
     },
   });
 
@@ -340,6 +342,7 @@ export async function estimateCrossChainGas(
       destToken: sourceToken === 'NATIVE' 
         ? TOKENS.WETH_ARB 
         : TOKENS.USDC[ChainId.ARB],
+      vaultAddress: '0x0000000000000000000000000000000000000000', // placeholder for estimation
     });
 
     return `~$${quote.gasCostUsd}`;

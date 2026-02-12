@@ -6,18 +6,13 @@ import {
   ArrowLeft,
   Twitter,
   Youtube,
-  Globe,
   Check,
   TrendingUp,
   Users,
   DollarSign,
-  PieChart,
-  Copy,
   Share2,
-  Star,
-  Clock,
 } from 'lucide-react';
-import { mockLeaderboardData, type LeaderboardEntry, type Creator } from '@/lib/mock-leaderboard-data';
+import { mockLeaderboardData } from '@/lib/mock-leaderboard-data';
 import { PortfolioComposition } from '@/components/earn/PortfolioComposition';
 import { StrategyUpdateFeed } from '@/components/earn/StrategyUpdateFeed';
 import { CopyStrategyButton } from '@/components/earn/CopyStrategyButton';
@@ -193,7 +188,7 @@ export default function CreatorProfilePage({
               {/* Copy Button */}
               <div className="bg-gray-900 rounded-2xl p-6">
                 <h3 className="text-lg font-semibold mb-4">Copy This Strategy</h3>
-                <CopyStrategyButton creatorId={creator.id} />
+                <CopyStrategyButton creatorName={creator.name} />
                 <p className="text-xs text-gray-500 text-center mt-3">
                   You&apos;ll automatically copy their future trades
                 </p>
@@ -216,12 +211,15 @@ export default function CreatorProfilePage({
         {activeTab === 'portfolio' && (
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <PortfolioComposition allocations={[
-                { token: 'ETH', percent: 40, apy: 8.5 },
-                { token: 'USDC', percent: 30, apy: 12.2 },
-                { token: 'WBTC', percent: 20, apy: 5.8 },
-                { token: 'ARB', percent: 10, apy: 15.3 },
-              ]} />
+              <PortfolioComposition 
+                totalValue={entry.tvl}
+                allocations={[
+                  { poolId: 'eth-lido', name: 'ETH via Lido', percentage: 40, color: 'from-blue-500 to-blue-600' },
+                  { poolId: 'usdc-aave', name: 'USDC on Aave', percentage: 30, color: 'from-cyan-500 to-cyan-600' },
+                  { poolId: 'wbtc-beefy', name: 'WBTC via Beefy', percentage: 20, color: 'from-orange-500 to-orange-600' },
+                  { poolId: 'arb-gmx', name: 'ARB on GMX', percentage: 10, color: 'from-sky-500 to-sky-600' },
+                ]} 
+              />
             </div>
             <div>
               <div className="bg-gray-900 rounded-2xl p-6">
@@ -238,7 +236,11 @@ export default function CreatorProfilePage({
         )}
 
         {activeTab === 'updates' && (
-          <StrategyUpdateFeed creatorId={creator.id} />
+          <StrategyUpdateFeed 
+            portfolioId={creator.id} 
+            creatorName={creator.name}
+            creatorAvatar={creator.avatar}
+          />
         )}
       </div>
     </div>

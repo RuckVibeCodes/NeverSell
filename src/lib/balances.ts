@@ -3,8 +3,7 @@
  * Get token balances across all supported chains
  */
 
-import { ChainId, type Address } from '@lifi/sdk';
-import type { BeefyChain } from './beefy';
+import { ChainId } from '@lifi/sdk';
 
 // Supported chains for balance queries
 export const BALANCE_CHAINS = [

@@ -9,7 +9,7 @@
  */
 
 import type { BeefyVaultWithStats } from './beefy';
-import { BEEFY_CHAINS, type BeefyChain } from './beefy';
+import type { BeefyChain } from './beefy';
 
 export type YieldSource = 'beefy' | 'gmx' | 'aave' | 'social';
 
@@ -189,8 +189,9 @@ export function allocateDeposits(
   opportunities: YieldOpportunity[],
   totalAmount: number,
   maxPositions: number = 5,
-  config: YieldRouterConfig
+  _config: YieldRouterConfig
 ): AllocationResult {
+  // Note: config will be used for risk tolerance adjustments in future iterations
   if (opportunities.length === 0 || totalAmount <= 0) {
     return {
       opportunities: [],
@@ -204,7 +205,6 @@ export function allocateDeposits(
   // Select top opportunities with diversification
   const selected: YieldOpportunity[] = [];
   const chainCount: Record<string, number> = {};
-  let totalAllocated = 0;
   
   for (const opp of opportunities) {
     if (selected.length >= maxPositions) break;
@@ -224,7 +224,6 @@ export function allocateDeposits(
     
     selected.push(opp);
     chainCount[chainKey] = (chainCount[chainKey] || 0) + getAllocationAmount(opp, totalAmount, selected.length);
-    totalAllocated += chainCount[chainKey];
   }
   
   // Calculate allocation percentages
