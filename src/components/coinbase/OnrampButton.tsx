@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { CreditCard, Loader2, ExternalLink, Wallet } from 'lucide-react';
+import { CreditCard, Loader2, ExternalLink } from 'lucide-react';
 
 interface OnrampButtonProps {
   address?: string; // Optional - can work without wallet
