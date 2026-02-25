@@ -15,12 +15,12 @@ const NEVERSELL_FEE = 0.10;
 const AAVE_ALLOCATION = 0.60;  // 60% to Aave
 const GMX_ALLOCATION = 0.40;   // 40% to GMX
 
-// Fallback Aave APYs if DeFiLlama fails
+// Fallback Aave APYs if DeFiLlama fails (realistic Feb 2026)
 const FALLBACK_AAVE_APY: Record<string, number> = {
-  wbtc: 0.02,
-  weth: 1.85,
-  usdc: 4.20,
-  arb: 0.15,
+  wbtc: 1.50,
+  weth: 2.10,
+  usdc: 4.50,
+  arb: 0.60,
 };
 
 // Cache for Aave APY data from DeFiLlama
@@ -93,12 +93,12 @@ const GMX_POOL_ADDRESSES: Record<string, string> = {
   usdc: '0x70d95587d40A2caf56bd97485aB3Eec10Bee6336', // Uses ETH/USD pool
 };
 
-// Fallback APYs in case GMX API fails
+// Fallback APYs in case GMX API fails (realistic Feb 2026)
 const FALLBACK_GMX_APY: Record<string, number> = {
-  wbtc: 16.87,
-  weth: 19.29,
-  arb: 17.76,
-  usdc: 19.29,
+  wbtc: 2.5,
+  weth: 4.0,
+  arb: 1.5,
+  usdc: 8.0,
 };
 
 // Cache for GMX APY data

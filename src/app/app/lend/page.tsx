@@ -543,7 +543,7 @@ export default function LendPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-display font-bold text-white mb-2">Lend & Earn</h1>
         <p className="text-white/60">Deposit assets to earn yield on GM pools and unlock borrowing capacity</p>
-        {realApyData && (
+        {realApyData && realApyData.updatedAt > 0 && (
           <p className="text-white/40 text-xs mt-2">
             APY data updated: {new Date(realApyData.updatedAt).toLocaleString()}
           </p>
@@ -691,29 +691,28 @@ export default function LendPage() {
           <Loader2 size={32} className="animate-spin text-mint mx-auto mb-4" />
           <p className="text-white/60">Loading yield data from Aave & GMX...</p>
         </div>
-      ) : apyError ? (
-        <div className="glass-card p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-400 mx-auto mb-4">
-            <AlertCircle size={32} />
-          </div>
-          <h2 className="text-xl font-semibold text-white mb-2">Failed to Load APY Data</h2>
-          <p className="text-white/60 mb-4">{apyError}</p>
-          <button onClick={() => window.location.reload()} className="btn-primary">
-            Try Again
-          </button>
-        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {lendableAssets.map((asset) => (
-            <AssetCard 
-              key={asset.symbol} 
-              asset={asset} 
-              apyData={getBlendedApy(asset.symbol)}
-              onSupply={() => setSelectedAsset(asset)}
-              isConnected={isConnected}
-            />
-          ))}
-        </div>
+        <>
+          {apyError && (
+            <div className="mb-4 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center gap-3">
+              <AlertCircle size={16} className="text-yellow-400 shrink-0" />
+              <p className="text-white/60 text-sm">
+                Live APY data unavailable — showing estimated rates. <button onClick={() => window.location.reload()} className="text-mint underline underline-offset-2">Retry</button>
+              </p>
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {lendableAssets.map((asset) => (
+              <AssetCard
+                key={asset.symbol}
+                asset={asset}
+                apyData={getBlendedApy(asset.symbol)}
+                onSupply={() => setSelectedAsset(asset)}
+                isConnected={isConnected}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {/* Supply Modal */}
